@@ -47,36 +47,29 @@ def retrograde(row)
   row.reverse.each.map { |note| note }
 end
 
-##| def inversion(row)
-##|   puts row
-##|   i = 0
-##|   while i < row.length
-##|     y = y + 1
-##|     while y < row.length
-##|       puts row[i] + row[y]
-##|     end
-##|     y += 1
-##|   end
-##|   i += 1
-##| end
-
-def inversion(row)
+def inversion(r, m)
   i = 0
-  while row[i] > row.length
+  m << r[i]
+  while i < r.length
     y = 1
-    while row[1] > row.length
-      puts "hi"
+    while y < r.length
+      if r[i] < r[y]
+        x = r[y] - r[i]
+        m << r[i] - x
+      else
+        return  
+      end
+      y += 1
     end
-    ##| x[i] - x[0] = y
-    ##| puts x[0]-y
     i += 1
   end
-  
 end
 
 matrix.each do |row|
-  inversion(row)
+  inversion(row, measures)
 end
+
+p measures
 
 ##| matrix.each do |row|
 ##|   measures << retrograde(row)
