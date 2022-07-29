@@ -69,8 +69,8 @@ matrix.each do |row|
   inversion(row, measures)
 end
 
+measures = measures.each_slice(5).to_a
 p measures
-
 ##| matrix.each do |row|
 ##|   measures << retrograde(row)
 ##| end
