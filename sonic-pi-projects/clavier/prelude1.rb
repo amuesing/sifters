@@ -39,7 +39,7 @@ matrix = [[60, 64, 67, 72, 76],
           [43, 50, 55, 59, 65],
           [36, 48, 55, 58, 64]]
 
-
+row = []
 measures = []
 
 
@@ -49,28 +49,45 @@ end
 
 def inversion(r, m)
   i = 0
+  y = 1
   m << r[i]
-  while i < r.length
-    y = 1
-    while y < r.length
-      if r[i] < r[y]
-        x = r[y] - r[i]
-        m << r[i] - x
-      else
-        return  
-      end
-      y += 1
+  while y < r.length
+    if r[i] > r[y]
+    x = r[i] - r[y]
+    m << r[i] + x
+    else # if r[i] < r[y]
+      x = r[y] - r[i]
+      m << r[i] - x #what if r[i] === r[y] (repeated note)
     end
-    i += 1
+    y += 1
   end
 end
 
-matrix.each do |row|
-  inversion(row, measures)
+def retrograde_inversion(r, m)
+i = array.length
+m << r[i]
+while i > 0
+  puts "hi"
+  i -= 1
+end
 end
 
-measures = measures.each_slice(5).to_a
-p measures
+
+
+# matrix.each do |r|
+#   row << retrograde(r)
+# end
+
+matrix.each do |r|
+  r.each do |t|
+    row << t
+  end
+  end
+  
+  inversion(row, measures)
+  
+  p measures.reverse.each_slice(5).to_a
+
 ##| matrix.each do |row|
 ##|   measures << retrograde(row)
 ##| end
