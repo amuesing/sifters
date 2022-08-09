@@ -47,7 +47,8 @@ def retrograde(row)
   row.reverse.each.map { |note| note }
 end
 
-def inversion(r, m)
+def inversion(r)
+  m = []
   i = 0
   y = 1
   m << r[i]
@@ -61,6 +62,7 @@ def inversion(r, m)
     end
     y += 1
   end
+  return m
 end
 
 def retrograde_inversion(r, m)
