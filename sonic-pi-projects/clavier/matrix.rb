@@ -5,31 +5,53 @@ matrix = [[60, 64, 67, 72, 76],
 
 row = []
 
-# class Matrix
+class Matrix
 
-def inversion(matrix)
-    r = []
-    m = []
-    i = 0
-    y = 1
-    matrix.each do |row|
-        row.each do |note|
-            r << note
-        end
+    @@all = []
+
+    attr_accessor :prime, :inversion, :retrograde, :retrograde_inversion
+
+    def initialize(row)
+        @row
+        @@all << self
     end
-    m << r[i]
-    while y < r.length
-        if r[i] > r[y]
-        x = r[i] - r[y]
-        m << r[i] + x
-        else # if r[i] < r[y]
-        x = r[y] - r[i]
-        m << r[i] - x #what if r[i] === r[y] (repeated note)
-        end
-        y += 1
+
+    def transposition()
+
     end
-    m = m.each_slice(5).to_a
-    matrix.replace(m)
+
+    def inversion(matrix)
+        r = []
+        m = []
+        i = 0
+        y = 1
+        matrix.each do |row|
+            row.each do |note|
+                r << note
+            end
+        end
+        m << r[i]
+        while y < r.length
+            if r[i] > r[y]
+            x = r[i] - r[y]
+            m << r[i] + x
+            else # if r[i] < r[y]
+            x = r[y] - r[i]
+            m << r[i] - x #what if r[i] === r[y] (repeated note)
+            end
+            y += 1
+        end
+        m = m.each_slice(5).to_a
+        matrix.replace(m)
+    end
+
+    def retrograde
+
+    end
+
+    def retrograde_inversion
+
+    end
 end
 
 
