@@ -1,23 +1,46 @@
+
 row = [60, 64, 67, 72, 76]
 matrix = []
+interval = []
+sum = []
 
 # build a transposition method which returns a traspositioal matrix given
 # an array of integers
 
-def transposition(r, m)
-    y = []
-    r.each do |t|
-        m << r[0] + (r[0] - t)
-        y << (t - r[0])
-        # m << Array.new(r.length) { x }
+def transposition( r, m, i )
+    # i = []
+    r.each do |x|
+        y = r[0] + ( r[0] - x )
+        i << ( x - r[0] )
+        m << Array.new(r.length) { y }
         # p y 
     end
-    p y
 end
 
-transposition(row, matrix)
+def sum_array ( m, i, s )
+    m.each do |int|
+        s << int.zip(i).map(&:sum)
+    end
+end
 
-# p matrix
+
+# def transposition(r, m)
+# i = 0
+# v = []
+#     while i < r.length
+#         x = r[0] + (r[0] - r[i])
+#         y = (r[i] - r[0])
+#         m << Array.new(r.length) { x }
+#         v << y
+#         i += 1
+#     end
+# end
+
+transposition(row, matrix, interval)
+
+sum_array( matrix, interval, sum)
+
+p sum
 
 # expecting
 # [60, 64, 67, 72, 76],
