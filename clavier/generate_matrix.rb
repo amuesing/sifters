@@ -19,11 +19,11 @@ def generate_matrix(r, m)
     y.each do |x| 
 
         trix = Matrix[x.zip(i).map(&:sum)]
-        z = Matrix.combine(rix, trix) {|a, b| a = b}
+        # z = Matrix.combine(rix, trix) {|a, b| a = b}
 
         # z << x.zip(i).map(&:sum)
     #    m << x.zip(i).map(&:sum)
-    p z
+    p trix
     end
     # p rix
 end
