@@ -2,25 +2,37 @@ require "matrix"
 
 row = [60, 64, 67, 72, 76]
 matrix = []
-m = Matrix[[1]]
+
+m = Matrix[]
 # m = Matrix.build(1) {matrix}
 
 def generate_matrix(r, m)
     i = []
     y = []
+    rix = Matrix[[0]]
+
 
     r.each do |x|
         i << (x - r[0])
         y << Array.new(r.length) {r[0] + (r[0] - x)}
     end
     y.each do |x| 
-       m << x.zip(i).map(&:sum)
+
+        trix = Matrix[x.zip(i).map(&:sum)]
+        z = Matrix.combine(rix, trix) {|a, b| a = b}
+
+        # z << x.zip(i).map(&:sum)
+    #    m << x.zip(i).map(&:sum)
+    p z
     end
+    # p rix
 end
 
 generate_matrix(row, matrix)
 
-p m
+# p y
+# p m
+
 
 # expecting
 # [60, 64, 67, 72, 76],
