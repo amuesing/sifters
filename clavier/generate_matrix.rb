@@ -1,40 +1,39 @@
 require "matrix"
 
-row = [60, 64, 67, 72, 76]
-matrix = []
+r = [60, 64, 67, 72, 76]
+m = []
+matrix = Matrix.build(1) {m}
 
-m = Matrix[]
-# m = Matrix.build(1) {matrix}
 
 def generate_matrix(r, m)
     i = []
+    x = []
     y = []
-    rix = Matrix[[0]]
+    z = Matrix[[0, 0]]
 
-
-    r.each do |x|
-        i << (x - r[0])
-        y << Array.new(r.length) {r[0] + (r[0] - x)}
+    r.each do |n|
+        i << (n - r[0])
+        x << Array.new(r.length) {r[0] + (r[0] - n)}
     end
-    y.each do |x| 
 
-        trix = Matrix[x.zip(i).map(&:sum)]
-        # z = Matrix.combine(rix, trix) {|a, b| a = b}
-
-        # z << x.zip(i).map(&:sum)
-    #    m << x.zip(i).map(&:sum)
-    p trix
+    x.each do |n| 
+        y << n.zip(i).map(&:sum)
     end
-    # p rix
+
+    y.each do |n|
+        Matrix.combine(z, Matrix[n]) {n}
+    end
+
+    p z
 end
 
-generate_matrix(row, matrix)
+m
 
-# p y
+generate_matrix(r, m)
+
+
 # p m
 
-
-# expecting
 # [60, 64, 67, 72, 76],
 # [56, 60, 63, 68, 72],
 # [53, 57, 60, 65, 69],
