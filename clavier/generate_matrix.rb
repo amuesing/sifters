@@ -1,15 +1,15 @@
 require "matrix"
 
+
+# what if I do r = Matrix[60, 64, 67, 72, 76]
 r = [60, 64, 67, 72, 76]
 m = []
-matrix = Matrix.build(1) {m}
 
 
 def generate_matrix(r, m)
     i = []
     x = []
     y = []
-    z = Matrix[[0, 0]]
 
     r.each do |n|
         i << (n - r[0])
@@ -21,18 +21,29 @@ def generate_matrix(r, m)
     end
 
     y.each do |n|
-        Matrix.combine(z, Matrix[n]) {n}
+        n.each do |o|
+            m << o
+        end
     end
-
-    p z
 end
-
-m
 
 generate_matrix(r, m)
 
+# m.each_slice(5).to_a
 
-# p m
+# z = Matrix[m]
+
+# # m.each do |x|
+#     Matrix.combine(z, Matrix[m]) {|x, y| m}
+# end
+
+# p m.each_slice(r.length).to_a
+
+# p Matrix[m.each_slice(r.length).to_a]
+
+# p Matrix.build(1) {m}
+
+p m.to_i
 
 # [60, 64, 67, 72, 76],
 # [56, 60, 63, 68, 72],
