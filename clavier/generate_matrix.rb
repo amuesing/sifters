@@ -1,52 +1,36 @@
 require "matrix"
 
-
-# what if I do r = Matrix[60, 64, 67, 72, 76]
 r = [60, 64, 67, 72, 76]
 m = []
-
+n = []
 
 def generate_matrix(r, m)
     i = []
-    x = []
     y = []
-
     r.each do |n|
-        i << (n - r[0])
-        x << Array.new(r.length) {r[0] + (r[0] - n)}
+        i << (n - r.first)
+        y << Array.new(r.length) {r.first + (r.first - n)}
     end
-
-    x.each do |n| 
-        y << n.zip(i).map(&:sum)
+    y.each do |n| 
+        m << n.zip(i).map(&:sum)
     end
+end
 
-    y.each do |n|
-        n.each do |o|
-            m << o
+def altered_matrix(m, n)
+    m.each do |x|
+        x.each do |y|
+            n << y + 6
         end
     end
 end
 
 generate_matrix(r, m)
+altered_matrix(m, n)
 
-# m.each_slice(5).to_a
+m = Matrix.rows(m)
+n = Matrix.rows(n.each_slice(r.length).to_a)
+z = m + n
 
-# z = Matrix[m]
+p m[0, 0]
 
-# # m.each do |x|
-#     Matrix.combine(z, Matrix[m]) {|x, y| m}
-# end
-
-# p m.each_slice(r.length).to_a
-
-# p Matrix[m.each_slice(r.length).to_a]
-
-# p Matrix.build(1) {m}
-
-p m.to_i
-
-# [60, 64, 67, 72, 76],
-# [56, 60, 63, 68, 72],
-# [53, 57, 60, 65, 69],
-# [48, 52, 55, 60, 64],
-# [44, 48, 51, 56, 60]
+# p m.index(&:even?)
