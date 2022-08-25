@@ -19,7 +19,7 @@ end
 def altered_matrix(m, n)
     m.each do |x|
         x.each do |y|
-            n << y + 6
+            n << y + 1
         end
     end
 end
