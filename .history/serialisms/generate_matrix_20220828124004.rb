@@ -1,3 +1,5 @@
+require "matrix"
+require './test.rb'
 m = [60, 64, 67, 72, 76]
 
 def generate_matrix(m)
@@ -27,3 +29,17 @@ end
 
 generate_matrix(m)
 midi_to_freq(m)
+
+prime = Matrix.rows(m)
+inversion = Matrix.columns(m)
+retrograde = Matrix.rows(m.reverse)
+retrograde_inversion = Matrix.columns(m.reverse)
+
+test
+
+#     i1  i2  i3  i4  i5
+# p1 [60, 64, 67, 72, 76]
+# p2 [56, 60, 63, 68, 72]
+# p3 [53, 57, 60, 65, 69]
+# p4 [48, 52, 55, 60, 64]
+# p5 [44, 48, 51, 56, 60]

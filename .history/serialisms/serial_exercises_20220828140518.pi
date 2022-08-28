@@ -26,3 +26,4 @@ inversion.each do |n|
     play hz_to_midi(2*(n/3.14))
     sleep n/314
 end
+end

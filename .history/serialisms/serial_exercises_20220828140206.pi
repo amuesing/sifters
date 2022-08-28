@@ -9,11 +9,6 @@ m = [60, 64, 67, 72, 76]
 generate_matrix(m)
 midi_to_freq(m)
 
-prime = Matrix.rows(m)
-inversion = Matrix.columns(m)
-retrograde = Matrix.rows(m.reverse)
-retrograde_inversion = Matrix.columns(m.reverse)
-
 loop do
 in_thread do 
     prime.each do |m|
@@ -25,4 +20,5 @@ end
 inversion.each do |n|
     play hz_to_midi(2*(n/3.14))
     sleep n/314
+end
 end

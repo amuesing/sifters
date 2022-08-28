@@ -1,3 +1,8 @@
+require "matrix"
+
+use_synth :saw
+use_bpm 60
+
 m = [60, 64, 67, 72, 76]
 
 def generate_matrix(m)
@@ -27,3 +32,27 @@ end
 
 generate_matrix(m)
 midi_to_freq(m)
+
+prime = Matrix.rows(m)
+inversion = Matrix.columns(m)
+retrograde = Matrix.rows(m.reverse)
+retrograde_inversion = Matrix.columns(m.reverse)
+
+p prime.row(0)
+
+
+in_thread do
+    prime.each do |m|
+    play hz_to_midi(2(m/3.14))
+    sleep m/314
+    # m.each do |n|
+    # play hz_to_midi(n) 
+    # sleep 0.5
+    # end
+    end
+end
+
+inversion.each do |n|
+    play hz_to_midi2(n/3.14)
+    sleep n/314
+end
