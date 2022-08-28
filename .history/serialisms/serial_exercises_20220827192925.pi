@@ -1,5 +1,7 @@
 require "matrix"
 
+use_synth :piano
+
 m = [60, 64, 67, 72, 76]
 
 def generate_matrix(m)
@@ -16,7 +18,7 @@ def generate_matrix(m)
     m.replace(z)
 end
 
-def midi_to_freq(m)
+def note_to_freq(m)
     f = []
     m.each do |n|
         n.each do |o|
@@ -28,18 +30,24 @@ def midi_to_freq(m)
 end
 
 generate_matrix(m)
-midi_to_freq(m)
+note_to_freq(m)
 
 prime = Matrix.rows(m)
 inversion = Matrix.columns(m)
 retrograde = Matrix.rows(m.reverse)
 retrograde_inversion = Matrix.columns(m.reverse)
 
-p prime.row(0)
+# p prime
 
-#     i1  i2  i3  i4  i5
-# p1 [60, 64, 67, 72, 76]
-# p2 [56, 60, 63, 68, 72]
-# p3 [53, 57, 60, 65, 69]
-# p4 [48, 52, 55, 60, 64]
-# p5 [44, 48, 51, 56, 60]
+in_thread do
+    prime.each do |m|
+    play hz_to_midi(m/3.14)
+    sleep m/314
+    # m.each do |n|
+    # play hz_to_midi(n)
+    # sleep 0.5
+    # end
+    end
+end
+
+inversion

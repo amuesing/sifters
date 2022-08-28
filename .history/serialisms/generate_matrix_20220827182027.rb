@@ -3,40 +3,43 @@ require "matrix"
 m = [60, 64, 67, 72, 76]
 
 def generate_matrix(m)
-    x = []
+    i = []
     y = []
-    z = []
     m.each do |n|
-        x << (n - m.first)
+        i << (n - m.first)
         y << Array.new(m.length) {m.first + (m.first - n)}
     end
     y.each do |n| 
-        z << n.zip(x).map(&:sum)
+        m.replace(n.zip(i).map(&:sum))
     end
-    m.replace(z)
+    def note_to_freq(m)
+        f = []
+        m.each do |n|
+            n.each do |o|
+        a = 440
+        f << (a / 32.to_f) * (2 ** ((o - 9) / 12.to_f))
+            end
+        end
+        m.replace(f.each_slice(m.length).to_a) 
+    end
+    note_to_freq(m)
 end
 
-def midi_to_freq(m)
-    f = []
-    m.each do |n|
-        n.each do |o|
-    a = 440
-    f << (a / 32.to_f) * (2 ** ((o - 9) / 12.to_f))
-        end
-    end
-    m.replace(f.each_slice(m.length).to_a) 
-end
+
 
 generate_matrix(m)
-midi_to_freq(m)
+
 
 prime = Matrix.rows(m)
 inversion = Matrix.columns(m)
 retrograde = Matrix.rows(m.reverse)
 retrograde_inversion = Matrix.columns(m.reverse)
 
-p prime.row(0)
+p prime
 
+# p note_to_freq(69)
+
+# p m.index(&:even?)
 #     i1  i2  i3  i4  i5
 # p1 [60, 64, 67, 72, 76]
 # p2 [56, 60, 63, 68, 72]

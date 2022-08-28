@@ -1,22 +1,20 @@
 require "matrix"
 
 m = [60, 64, 67, 72, 76]
+# m = []
 
 def generate_matrix(m)
-    x = []
+    i = []
     y = []
     z = []
     m.each do |n|
-        x << (n - m.first)
+        i << (n - m.first)
         y << Array.new(m.length) {m.first + (m.first - n)}
     end
     y.each do |n| 
-        z << n.zip(x).map(&:sum)
+        z << n.zip(i).map(&:sum)
     end
-    m.replace(z)
-end
-
-def midi_to_freq(m)
+    def note_to_freq(m)
     f = []
     m.each do |n|
         n.each do |o|
@@ -25,17 +23,32 @@ def midi_to_freq(m)
         end
     end
     m.replace(f.each_slice(m.length).to_a) 
+    end
+    note_to_freq(z)
 end
 
+# def note_to_freq(m)
+#     f = []
+#     m.each do |n|
+#         n.each do |o|
+#     a = 440
+#     f << (a / 32.to_f) * (2 ** ((o - 9) / 12.to_f))
+#         end
+#     end
+#     m.replace(f.each_slice(m.length).to_a) 
+# end
+
 generate_matrix(m)
-midi_to_freq(m)
+# note_to_freq(m)
 
-prime = Matrix.rows(m)
-inversion = Matrix.columns(m)
-retrograde = Matrix.rows(m.reverse)
-retrograde_inversion = Matrix.columns(m.reverse)
+p m
 
-p prime.row(0)
+# prime = Matrix.rows(m)
+# inversion = Matrix.columns(m)
+# retrograde = Matrix.rows(m.reverse)
+# retrograde_inversion = Matrix.columns(m.reverse)
+
+# p prime
 
 #     i1  i2  i3  i4  i5
 # p1 [60, 64, 67, 72, 76]

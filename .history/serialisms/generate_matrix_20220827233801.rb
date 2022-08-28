@@ -28,7 +28,7 @@ def midi_to_freq(m)
 end
 
 generate_matrix(m)
-midi_to_freq(m)
+convert_to_freq(m)
 
 prime = Matrix.rows(m)
 inversion = Matrix.columns(m)

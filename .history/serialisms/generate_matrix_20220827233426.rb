@@ -16,7 +16,7 @@ def generate_matrix(m)
     m.replace(z)
 end
 
-def midi_to_freq(m)
+def note_to_freq(m)
     f = []
     m.each do |n|
         n.each do |o|
@@ -28,14 +28,14 @@ def midi_to_freq(m)
 end
 
 generate_matrix(m)
-midi_to_freq(m)
+note_to_freq(m)
 
 prime = Matrix.rows(m)
 inversion = Matrix.columns(m)
 retrograde = Matrix.rows(m.reverse)
 retrograde_inversion = Matrix.columns(m.reverse)
 
-p prime.row(0)
+p prime.row
 
 #     i1  i2  i3  i4  i5
 # p1 [60, 64, 67, 72, 76]
