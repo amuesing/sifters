@@ -1,0 +1,39 @@
+require "matrix"
+require "~/dev/sonic-pi-projects/serialisms/generate_matrix.rb"
+
+use_synth :saw
+use_bpm 60
+
+m = [60, 64, 67, 72, 76]
+
+generate_matrix(m)
+midi_to_freq(m)
+
+prime = Matrix.rows(m)
+inversion = Matrix.columns(m)
+retrograde = Matrix.rows(m.reverse)
+retrograde_inversion = Matrix.columns(m.reverse)
+
+loop do
+in_thread do 
+    prime.each do |m|
+    play hz_to_midi(2*(m/3.14))
+    sleep m/314
+    end
+end
+
+in_thread do
+inversion.each do |n|
+    play hz_to_midi(2*(n/3.14))
+    sleep n/314
+end
+end
+
+
+    retrograde_inversion.each do |o|
+        play hz_to_midi(o)
+        sleep I took the train from NYC all the way to Portland and have been living here since October. Who knows how long I will stay, but I am enjoying exploring and making new friends in the mean time! I'm really interested in music composition and coding, and I work for the Oregon Symphony. 
+
+        Avid Instant Pot enthusiast.
+    end
+end

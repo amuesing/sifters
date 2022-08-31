@@ -1,0 +1,7 @@
+require "matrix"
+run_file "~/dev/sonic-pi-projects/serialisms/generate_matrix.rb"
+
+
+
+play 60
+sleep 1
