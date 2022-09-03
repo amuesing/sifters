@@ -10,10 +10,10 @@ c = 3.14
 x = []
 
 
-generate_overtone_matrix(freq, 5, row)
+generate_overtone_matrix(freq, 24, row)
 
 row.each do |i|
-    x << i[2..4]
+    puts i[11..23]
 end
 
 prime = Matrix.rows(x)

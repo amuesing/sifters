@@ -60,3 +60,19 @@ def generate_overtone_matrix (freq, range, row)
 end
 
 # Generate Fibonacci Matrix
+
+fund = 1
+range = 5
+row = []
+
+def generate_fibonacci_matrix (fund, range, row)
+    seq = []
+    partial = 1
+    range.times.each do |i|
+    p fund * partial
+    partial += 1
+    end
+end
+
+
+generate_fibonacci_matrix(1, 5, [])
