@@ -1,0 +1,24 @@
+require "matrix"
+require "~/dev/sonic-pi-projects/serialisms/modules.rb"
+
+use_synth :saw
+use_bpm 120
+
+freq = 220
+row = []
+
+generate_overtone_matrix(freq, 12, row)
+
+prime = Matrix.rows(row)
+inversion = Matrix.columns(row)
+retrograde = Matrix.rows(row.reverse)
+retrograde_inversion = Matrix.columns(row.reverse)
+
+# loop do
+#     prime.each do |i|
+#         play hz_to_midi(i)
+#         sleep 0.5
+#     end
+# end
+
+p prime
