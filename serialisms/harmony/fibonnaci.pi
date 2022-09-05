@@ -4,12 +4,16 @@ require "~/dev/sonic-pi-projects/serialisms/modules.rb"
 use_synth :saw
 use_bpm 72
 
-row = [1, 2, 3, 5, 8]
+fund = 1
+r = 24
+row = []
 
+construct_fibonacci_sequence(fund, r, row)
 generate_serial_matrix(row)
 
-puts row
-
+row.each do |i|
+    puts i[2..row.length]
+end
 #1,    2,    3,    5,    8
 #2,    4,    6,   10,   16
 #3,    6,    9,   15,   24

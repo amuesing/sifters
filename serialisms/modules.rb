@@ -61,18 +61,61 @@ end
 
 # Generate Fibonacci Matrix
 
-fund = 1
-range = 5
-row = []
-
-def generate_fibonacci_matrix (fund, range, row)
-    seq = []
-    partial = 1
-    range.times.each do |i|
-    p fund * partial
-    partial += 1
+def construct_fibonacci_sequence(fund, range, arr)
+    i = 0
+    y = fund
+    range.times do
+        arr << i
+        i, y = y, i + y
     end
 end
 
+fund = 1
+range = 8
+row = []
 
-generate_fibonacci_matrix(1, 5, [])
+def construct_fibonacci_matrix(fund, range, row)
+    i = 0
+    x = []
+    y = []
+    z = []
+    range.times do
+        row << i
+        r = i + fund
+        i = fund
+        fund = r
+        #same as
+        #i, y = y, i + y
+    end
+
+    row.each do |n|
+        # do same as above but with n and fund for each iteration
+        # x << (n - row.first)
+        x << Array(n)
+    end
+
+    # x.each do |m|
+    #     m.each do |n|
+    #         p n
+    #     end
+    # end
+
+    row.replace(x)
+
+end
+
+construct_fibonacci_matrix(fund, range, row)
+
+a = []
+
+row.each do |i|
+    c = 0
+    range.times do 
+        a << c
+        r = c + i[0]
+        c = i[0]
+        i[0] = r
+    end
+end
+
+p a.each_slice(range).to_a
