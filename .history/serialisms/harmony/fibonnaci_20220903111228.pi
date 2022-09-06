@@ -1,0 +1,11 @@
+require "matrix"
+require "~/dev/sonic-pi-projects/serialisms/modules.rb"
+
+use_synth :saw
+use_bpm 144
+
+#1,    2,    3,    5,    8
+#2,    4,    6,   10,   16
+#3,    6,    9,   15,   24
+#5,   10,   15,   25,   40
+#8,   16,   24,   40,   64
