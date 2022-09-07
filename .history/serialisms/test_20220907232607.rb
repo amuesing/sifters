@@ -23,4 +23,4 @@ arr.each do |y|
 end
 construct_fibonacci_matrix(arr)
 
-p arr
+p Matrix(arr

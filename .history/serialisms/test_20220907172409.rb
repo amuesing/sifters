@@ -1,0 +1,12 @@
+arr = [0, 1, 1, 2, 3, 5, 8, 13]
+
+arr.each do |y|
+    
+range = 10
+i = 0
+y = 
+
+range.times do 
+    p i
+    i, y = y, i + y
+end

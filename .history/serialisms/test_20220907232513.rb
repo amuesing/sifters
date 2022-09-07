@@ -17,10 +17,7 @@ arr.each do |y|
                 i, y = y, i + y
             end 
         end
-    x << sub_arr
+    x sub_arr
     end
-    arr.replace(x)
 end
 construct_fibonacci_matrix(arr)
-
-p arr

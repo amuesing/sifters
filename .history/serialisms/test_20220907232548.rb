@@ -22,5 +22,3 @@ arr.each do |y|
     arr.replace(x)
 end
 construct_fibonacci_matrix(arr)
-
-p arr

@@ -71,7 +71,7 @@ def construct_fibonacci_sequence(fund, range, arr)
 end
 
 fund = 1
-range = 5
+range = 8
 row = []
 
 def construct_fibonacci_matrix(fund, range, row)
@@ -97,12 +97,9 @@ def construct_fibonacci_matrix(fund, range, row)
 
     x.each do |m|
         m.each do |n|
-            i = 1
-            if n == 0
-                z << n
-                i = n 
-            z << n
-            i = n
+            i = 0
+            z << n + i
+            
         end
     end
 

@@ -100,7 +100,6 @@ def construct_fibonacci_matrix(fund, range, row)
             i = 1
             if n == 0
                 z << n
-                i = n 
             z << n
             i = n
         end

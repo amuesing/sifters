@@ -1,3 +1,5 @@
+
+
 arr = [0, 1, 1, 2, 3, 5, 8, 13]
 
 def construct_fibonacci_matrix(arr)
@@ -23,4 +25,4 @@ arr.each do |y|
 end
 construct_fibonacci_matrix(arr)
 
-p arr
+p Matrix(arr)
