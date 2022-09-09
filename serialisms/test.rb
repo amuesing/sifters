@@ -1,4 +1,4 @@
-require "~/dev/sonic-pi-projects/serialisms/modules.rb"
+require "./index.rb"
 
 fund = 1
 range = 24

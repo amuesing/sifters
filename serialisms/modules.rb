@@ -14,15 +14,15 @@ def generate_serial_matrix(row)
     row.replace(matrix)
 end
 
-def midi_to_freq(row)
-    f = []
-    row.each do |n|
-        n.each do |o|
+def midi_to_freq(matrix)
+    freq = []
+    matrix.each do |row|
+        row.each do |tone|
             a = 440
-            f << (a / 32.to_f) * (2 ** ((o - 9) / 12.to_f))
+            freq << (a / 32.to_f) * (2 ** ((tone - 9) / 12.to_f))
         end
     end
-    row.replace(f.each_slice(row.length).to_a) 
+    matrix.replace(freq.each_slice(matrix.length).to_a) 
 end
 
 #####
