@@ -1,5 +1,3 @@
-require 'prime'
-
 def generate_serial_matrix(row)
     x = []
     y = []
@@ -72,8 +70,49 @@ def construct_fibonacci_sequence(fund, range, arr)
     end
 end
 
+fund = 1
+range = 5
+row = []
+
+def construct_fibonacci_matrix(fund, range, row)
+    i = 0
+    x = []
+    y = []
+    z = []
+    range.times do
+        row << i
+        r = i + fund
+        i = fund
+        fund = r
+        #same as
+        #i, y = y, i + y
+    end
+
+    row.each do |n|
+        # do same as above but with n and fund for each iteration
+        # x << (n - row.first)
+        # x << Array(n)
+        x << Array.new(range) {n} 
+    end
+
+    x.each do |m|
+        m.each do |n|
+            i = 1
+            if n == 0
+                z << n
+                i = n 
+            z << n
+            i = n
+        end
+    end
+
+    # row.replace(x)
+
+    p z
+end
+
 def construct_fibonacci_matrix(fund, range, arr)
-    matrix = []
+    sub_arr = []
     if fund == 0
         i = 1
         range.times do
@@ -102,11 +141,7 @@ def construct_fibonacci_matrix(fund, range, arr)
             i, y = y, i + y
         end 
     end
-        matrix << x
+        sub_arr << x
     end
-    arr.replace(matrix)
-end
-
-def select_primes(arr)
-    arr.replace(arr.select {|n| n.prime?})
+    arr.replace(sub_arr)
 end

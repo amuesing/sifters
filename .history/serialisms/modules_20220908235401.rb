@@ -1,5 +1,3 @@
-require 'prime'
-
 def generate_serial_matrix(row)
     x = []
     y = []
@@ -108,5 +106,3 @@ def construct_fibonacci_matrix(fund, range, arr)
 end
 
 def select_primes(arr)
-    arr.replace(arr.select {|n| n.prime?})
-end

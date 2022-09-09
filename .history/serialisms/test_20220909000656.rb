@@ -6,7 +6,7 @@ def generate_serial_matrix(row)
     z = []
     row.each do |tone|
         interval << (tone - row.first)
-        y << Array.new(row.length) {row.first + (row.first - tone)}
+        y << Array.new(row.length) {row.first + (row.first - n)}
     end
     y.each do |n| 
         z << n.zip(interval).map(&:sum)
@@ -15,5 +15,3 @@ def generate_serial_matrix(row)
 end
 
 generate_serial_matrix(row)
-
-p row

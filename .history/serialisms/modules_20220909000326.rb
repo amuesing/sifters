@@ -1,11 +1,11 @@
 require 'prime'
 
 def generate_serial_matrix(row)
-    x = []
+    interval = []
     y = []
     z = []
     row.each do |n|
-        x << (n - row.first)
+        interval << (n - row.first)
         y << Array.new(row.length) {row.first + (row.first - n)}
     end
     y.each do |n| 

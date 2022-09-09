@@ -108,5 +108,5 @@ def construct_fibonacci_matrix(fund, range, arr)
 end
 
 def select_primes(arr)
+    primes = arr.select {|n| n.prime?}
     arr.replace(arr.select {|n| n.prime?})
-end

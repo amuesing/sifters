@@ -1,7 +1,7 @@
 require 'prime'
 
 def generate_serial_matrix(row)
-    x = []
+    interval = []
     y = []
     z = []
     row.each do |n|
