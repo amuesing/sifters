@@ -9,7 +9,7 @@ def generate_serial_matrix(row)
         collumns << Array.new(row.length) {row.first + (row.first - tone)}
     end
     collumns.each do |trans| 
-        matrix << trans.zip(interval).map(&:sum)
+        matrix << transposition.zip(interval).map(&:sum)
     end
     row.replace(matrix)
 end
@@ -58,17 +58,16 @@ end
 
 # Generate Fibonacci Matrix
 
-def generate_fibonacci_sequence(fund, range, arr)
+def construct_fibonacci_sequence(fund, range, arr)
     i = 0
     y = fund
-    # What if y = 0?
     range.times do
         arr << i
         i, y = y, i + y
     end
 end
 
-def generate_fibonacci_matrix(fund, range, arr)
+def construct_fibonacci_matrix(fund, range, arr)
     matrix = []
     if fund == 0
         i = 1

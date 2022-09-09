@@ -61,14 +61,13 @@ end
 def generate_fibonacci_sequence(fund, range, arr)
     i = 0
     y = fund
-    # What if y = 0?
     range.times do
         arr << i
         i, y = y, i + y
     end
 end
 
-def generate_fibonacci_matrix(fund, range, arr)
+def construct_fibonacci_matrix(fund, range, arr)
     matrix = []
     if fund == 0
         i = 1
