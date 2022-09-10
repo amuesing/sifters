@@ -1,9 +1,0 @@
-require "matrix"
-require "~/dev/sonic-pi-projects/serialisms/modules.rb"
-
-freq = 110
-row = []
-
-generate_overtones(freq, 12, row)
-
-generate_matrix
