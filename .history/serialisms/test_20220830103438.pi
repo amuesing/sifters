@@ -1,0 +1,10 @@
+require "matrix"
+require "./test.rb"
+
+# m = [60, 64, 67, 72, 76]
+
+# generate_matrix(m)
+
+# p m
+
+test

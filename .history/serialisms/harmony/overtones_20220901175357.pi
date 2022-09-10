@@ -1,0 +1,5 @@
+require "matrix"
+require "~/dev/sonic-pi-projects/serialisms/modules.rb"
+
+freq = 440
+

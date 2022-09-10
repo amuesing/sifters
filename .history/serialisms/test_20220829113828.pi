@@ -1,0 +1,8 @@
+require "matrix"
+require "~/dev/sonic-pi-projects/serialisms/generate_matrix.rb"
+
+m = [60, 64, 67, 72, 76]
+
+generate_matrix(m)
+
+p m

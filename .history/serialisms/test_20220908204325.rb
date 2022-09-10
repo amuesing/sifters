@@ -1,0 +1,3 @@
+require 'prime'
+
+Prime.new
