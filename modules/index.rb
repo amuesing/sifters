@@ -1,6 +1,0 @@
-require "./generate_fibonacci_matrix.rb"
-require "./generate_fibonacci_sequence.rb"
-require "./generate_overtone_matrix.rb"
-require "./generate_serial_matrix.rb"
-require "./midi_to_freq.rb"
-require "./select_primes.rb"
