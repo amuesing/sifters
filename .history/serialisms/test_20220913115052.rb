@@ -12,11 +12,17 @@
 #     end
 #   end
 
-perm = function(n, k) {
-    grid = matrix(rep(0:n, k), n + 1, k)
-    all = expand.grid(data.frame(grid))
-    sums = rowSums(all)
-    all[sums == n,]
-}
+arr = [5,10,15,20,30]
+ee = []
+# max = 200
+# while (ee.sum < max) do
+  ee << arr.sample(1).first
+# end
 
-perm(5, 3)
+ee.pop(2)
+val = max - ee.sum
+pair = arr.uniq.combination(2).detect { |a, b| a + b == val }
+ee << pair
+ee.flatten
+
+p ee

@@ -18,5 +18,3 @@ perm = function(n, k) {
     sums = rowSums(all)
     all[sums == n,]
 }
-
-perm(5, 3)
