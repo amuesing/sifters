@@ -1,5 +1,7 @@
 import numpy as np
 
+row = [1,2,3,4]
+
 def generate_serial_matrix(row):
     intervals = []
     columns = []
