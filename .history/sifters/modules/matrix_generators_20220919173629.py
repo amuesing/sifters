@@ -9,6 +9,8 @@ def serial(row):
         columns.append([(row[0] + (row[0] - tone))] * len(row))
     return np.add(intervals, columns)
 
+def overtone(fre)
+
 def fibonacci(fund, length):
     matrix = []
     seq = []
@@ -36,14 +38,5 @@ def fibonacci(fund, length):
                 i, note = note, i + note
     return [list(array) for array in np.array_split(np.array(matrix), len(seq))]
 
-def overtone(fund, length):
-    partial = 1
-    overtones = []
-    subtones = []
-    matrix = []
-    for _ in range(length):
-        overtones.append(fund * float(partial))
-    return overtones
-
 if __name__ == '__main__':
-    print(overtone(0, 5))
+    print(fibonacci(0, 5))

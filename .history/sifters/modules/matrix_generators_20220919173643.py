@@ -36,14 +36,7 @@ def fibonacci(fund, length):
                 i, note = note, i + note
     return [list(array) for array in np.array_split(np.array(matrix), len(seq))]
 
-def overtone(fund, length):
-    partial = 1
-    overtones = []
-    subtones = []
-    matrix = []
-    for _ in range(length):
-        overtones.append(fund * float(partial))
-    return overtones
+
 
 if __name__ == '__main__':
-    print(overtone(0, 5))
+    print(fibonacci(0, 5))

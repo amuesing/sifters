@@ -42,8 +42,6 @@ def overtone(fund, length):
     subtones = []
     matrix = []
     for _ in range(length):
-        overtones.append(fund * float(partial))
-    return overtones
 
 if __name__ == '__main__':
-    print(overtone(0, 5))
+    print(fibonacci(0, 5))
