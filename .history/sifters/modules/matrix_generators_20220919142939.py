@@ -29,21 +29,17 @@ def fibonacci(fund, length):
             for _ in range(len(seq)):
                 matrix.append(note)
                 note, i = i, note + i
-        else:
-            i = 0
-            for _ in range(len(seq)):
-                matrix.append(note)
-                i, note = note, i + note
-    return [list(array) for array in np.array_split(np.array(matrix), len(seq))]
-
-def overtone(fund, length):
-    partial = 1
-    overtones = []
-    subtones = []
-    matrix = []
-    for _ in range(length):
-        overtones.append(fund * float(partial))
-    return overtones
+    #     else:
+    #         i = 0
+    #         for _ in range(len(seq)):
+    #             matrix.append(note)
+    #             i, note = note, i + note
+    #             np.concatenate((matrix, x))
+    # return np.array_split(matrix, 5)
+    return len(seq)
 
 if __name__ == '__main__':
-    print(overtone(0, 5))
+    a = np.array([1,2,3,4])
+    b = np.array([5,6,7,8])
+    c = np.concatenate((a, b))
+    print(c)
