@@ -37,7 +37,7 @@ def fibonacci(fund, length):
     return [list(array) for array in np.array_split(np.array(matrix), len(seq))]
 
 def overtone(fund, length):
-    # what if fund is 0 -- return error message
+    # what if fund is 0
     partial = 1
     overtones = []
     subtones = []
@@ -45,10 +45,7 @@ def overtone(fund, length):
     for _ in range(length):
         overtones.append(fund * float(partial))
         partial += 1
-    partial = 1
-    for i in overtones:
-        subtones.append()
     return overtones
 
 if __name__ == '__main__':
-    print(overtone(220, 5))
+    print(overtone(1, 5))

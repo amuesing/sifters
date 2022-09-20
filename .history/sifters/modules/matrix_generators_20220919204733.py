@@ -45,10 +45,7 @@ def overtone(fund, length):
     for _ in range(length):
         overtones.append(fund * float(partial))
         partial += 1
-    partial = 1
-    for i in overtones:
-        subtones.append()
     return overtones
 
 if __name__ == '__main__':
-    print(overtone(220, 5))
+    print(overtone(22, 5))
