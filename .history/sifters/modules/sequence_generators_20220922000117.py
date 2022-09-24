@@ -51,4 +51,4 @@ def to_sum_k(n, k):
     return res 
 
 if __name__ == '__main__':
-    print(to_sum_k(4,4)) 
+    print(to_sum_k(2,2)) 

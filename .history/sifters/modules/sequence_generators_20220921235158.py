@@ -32,23 +32,5 @@ def midi_to_freq(matrix):
 #             res.append(sub + [i])
 #     return res
 
-cache = {}
-def to_sum_k(n, k):
-    res = cache.get((n,k), [])
-    if res: 
-        return res
-
-    if n == 1: 
-        res  = [ [k] ]
-    elif n > k or n <= 0:
-        res = []
-    else:
-        for i in range(k):
-            sub_results = to_sum_k(n-1, k-i)
-            for sub in sub_results:
-                res.append(sub + [i])
-    cache[(n,k)] = res
-    return res 
-
 if __name__ == '__main__':
-    print(to_sum_k(4,4)) 
+    print(to_sum_k(3,100)) 
