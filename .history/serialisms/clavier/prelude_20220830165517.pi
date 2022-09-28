@@ -1,3 +1,0 @@
-require "matrix"
-require "~/dev/sonic-pi-projects/serialisms/clavier/measures.rb"
-require "~/dev/sonic-pi-projects/serialisms/modules.rb"

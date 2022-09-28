@@ -1,3 +1,0 @@
-
-
-Prime.new

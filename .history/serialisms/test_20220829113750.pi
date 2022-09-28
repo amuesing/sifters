@@ -1,8 +1,0 @@
-require "matrix"
-run_file "~/dev/sonic-pi-projects/serialisms/generate_matrix.rb"
-
-m = [60, 64, 67, 72, 76]
-
-
-play 60
-sleep 1

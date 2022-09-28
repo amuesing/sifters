@@ -1,6 +1,0 @@
-require "/workspaces/sonic-pi-projects/serialisms/modules/generate_fibonacci_matrix.rb"
-require "./modules/generate_fibonacci_sequence.rb"
-require "./modules/generate_overtone_matrix.rb"
-require "./modules/generate_serial_matrix.rb"
-require "./modules/midi_to_freq.rb"
-require "./modules/select_primes.rb"
