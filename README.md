@@ -9,3 +9,9 @@ learn to use midilib to generate midi plays
 
 Dir["../modules/*.rb"].each {|file| require file }
 require "./serialisms/test.rb"
+
+run `.venv/Scripts/Activate.ps1` in Powershell to start virtual environment
+run `deactivate` in Powershell to deactivate
+
+run venv and install package with `python pip install <package_name>`
+to install requirements run `-r requirements.txt`

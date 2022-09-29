@@ -1,10 +1,6 @@
 from modules import *
 
 def main():
-    x = sequence_generators.to_sum_k(2,10)
-    for i in x:
-        print(i)
-    
-    
+    print(sequence_generators.midi_to_freq([[45,45,67], [55, 44, 55]]))
     
 main()
