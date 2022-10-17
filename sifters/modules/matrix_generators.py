@@ -63,7 +63,7 @@ def overtones(fund, length):
 #and returns a transition matrix, M,
 #where M[i][j] is the probability of transitioning from i to j
 
-def transition_matrix(transitions):
+def transition(transitions):
     n = 1+ max(transitions) #number of states
 
     M = [[0]*n for _ in range(n)]
@@ -81,9 +81,10 @@ def transition_matrix(transitions):
 # https://stackoverflow.com/questions/46657221/generating-markov-transition-matrix-in-python
 
 def main(arg=None):
-    t = [ 0,0,1,0,2,0,3]
-    m = transition_matrix(t)
+    t = [ 0,2,0,4,0,6,2,4 ]
+    m = transition(t)
     for row in m: print(' '.join('{0:.2f}'.format(x) for x in row))
+    # print(m)
 
 if __name__ == '__main__':
     main()
