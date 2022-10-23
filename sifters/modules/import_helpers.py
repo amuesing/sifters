@@ -16,7 +16,7 @@ def string_to_int(input):
             matrix.append(res)
     else:
         res = [eval(i) for i in row]
-        matrix.attend(res)
+        matrix.append(res)
     return matrix
 
 #https://stackoverflow.com/questions/952914/how-do-i-make-a-flat-list-out-of-a-list-of-lists
