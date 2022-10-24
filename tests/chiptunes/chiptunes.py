@@ -74,53 +74,56 @@ def markov(s, sequence_length=6, output_length=250):
   # format the result into a string
   return ' '.join([' '.join(i) for i in l])
 
-def midi_to_nintendo_wav(midi_path, length=None, scalar=0.3):
-  # create a list of tones and the time each is free
-  tones = [Tone(0, name=n) for n in ['p1', 'p2', 'tr', 'no']]
-  for t in tones: t.free = 0
-  # get the start and end times of each note in `midi_path`
-  score = music21.converter.parse(midi_path)
-  for n in score.flat.notes[:length]:
-    for i in [n] if isinstance(n, Note) else n.notes:
-      start = n.offset * scalar
-      end = start + (n.seconds * scalar)
-      # identify the index position of the first free tone
-      tone_index = None
-      for index, t in enumerate(tones[:3]):
-        if t.free <= start:
-          if tone_index is None: tone_index = index
-          t.free = 0
-      if tone_index is None: continue
-      tones[tone_index].free = end
-      # play the midi note using the selected tone
-      tones[tone_index].notes.append(pretty_midi.Note(
-        velocity=10,
-        pitch=i.pitch.midi,
-        start=start,
-        end=end))
-  # add drums: 1 = kick, 8 = snare, 16 = high hats
-  for i in range(math.ceil(end * 8)):
-    note = tones[3].notes.append(pretty_midi.Note(
-      velocity=10,
-      pitch=1 if (i%4) == 0 else 8 if (i%4) == 2 else 16,
-      start=(i/2 * scalar),
-      end=(i/2 * scalar) + 0.1))
-  midi = pretty_midi.PrettyMIDI(resolution=22050)
-  midi.instruments.extend(tones)
-  # store midi length, convert to binary, and then to wav
-  time_signature = pretty_midi.TimeSignature(1, 1, end)
-  midi.time_signature_changes.append(time_signature)
-  midi.write('tests/chiptunes/chiptune.midi')
-  return midi_to_wav(open('tests/chiptunes/chiptune.midi', 'rb').read())
+# def midi_to_nintendo_wav(midi_path, length=None, scalar=0.3):
+#   # create a list of tones and the time each is free
+#   tones = [Tone(0, name=n) for n in ['p1', 'p2', 'tr', 'no']]
+#   for t in tones: t.free = 0
+#   # get the start and end times of each note in `midi_path`
+#   score = music21.converter.parse(midi_path)
+#   for n in score.flat.notes[:length]:
+#     for i in [n] if isinstance(n, Note) else n.notes:
+#       start = n.offset * scalar
+#       end = start + (n.seconds * scalar)
+#       # identify the index position of the first free tone
+#       tone_index = None
+#       for index, t in enumerate(tones[:3]):
+#         if t.free <= start:
+#           if tone_index is None: tone_index = index
+#           t.free = 0
+#       if tone_index is None: continue
+#       tones[tone_index].free = end
+#       # play the midi note using the selected tone
+#       tones[tone_index].notes.append(pretty_midi.Note(
+#         velocity=10,
+#         pitch=i.pitch.midi,
+#         start=start,
+#         end=end))
+#   # add drums: 1 = kick, 8 = snare, 16 = high hats
+#   for i in range(math.ceil(end * 8)):
+#     note = tones[3].notes.append(pretty_midi.Note(
+#       velocity=10,
+#       pitch=1 if (i%4) == 0 else 8 if (i%4) == 2 else 16,
+#       start=(i/2 * scalar),
+#       end=(i/2 * scalar) + 0.1))
+#   midi = pretty_midi.PrettyMIDI(resolution=22050)
+#   midi.instruments.extend(tones)
+#   # store midi length, convert to binary, and then to wav
+#   time_signature = pretty_midi.TimeSignature(1, 1, end)
+#   midi.time_signature_changes.append(time_signature)
+#   midi.write('tests/chiptunes/chiptune.midi')
+#   return midi_to_wav(open('tests/chiptunes/chiptune.midi', 'rb').read())
 
 
-s = midi_to_string('tests/chiptunes/ambrosia.midi')
+s = midi_to_string('tests/chiptunes/interlude.midi')
 # sample a new string from s then convert that string to midi
-generated_midi = string_to_midi(markov(s))
+# generated_midi = string_to_midi(markov(s))
 # save the midi data in "generated.midi"
-generated_midi.write('midi', 'tests/chiptunes/generated.midi')
-# convert our generated midi sequence to a numpy array
-wav = midi_to_nintendo_wav('tests/chiptunes/generated.midi')
-# save the numpy array as a wav file
-scipy.io.wavfile.write('tests/chiptunes/generated.wav', 44100, wav)
+# generated_midi.write('midi', 'tests/chiptunes/generated.midi')
+# # convert our generated midi sequence to a numpy array
+# wav = midi_to_nintendo_wav('tests\chiptunes\generated.midi')
+# # save the numpy array as a wav file
+# scipy.io.wavfile.write('tests\chiptunes\generated.wav', 44100, wav)
+# generated_midi.show()
+
+print(markov(s))
 
