@@ -1,5 +1,5 @@
 # transitions = ['60', '62', '54', '55', '60']
-transitions = ['A', 'B', 'C', 'A']
+transitions = ['A', 'T']
 
 
 def rank(c):
@@ -9,7 +9,7 @@ T = [rank(c) for c in transitions]
 
 print(T)
 
-# #create matrix of zeros
+#create matrix of zeros
 
 # M = [[0]*4 for _ in range(4)]
 

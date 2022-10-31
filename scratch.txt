@@ -1,6 +1,34 @@
+Thinking of pitch, duration, and probability on a spectrum
+
+Pitch, duration, probability can all be measured by integers between 0 and 1, which sum to 1.
+It is possible to represent pitch, duration, and probability with the same transition matrix
+where each integer represents a discreet pitch, duration, or probability value.
+
+Pitch can be measured by representing the relationship of fundamental and octave
+with 0 as the fundamental and 1 as the octave. Every row of a transition matrix 
+cooresponds to pitch based on the resulting frequency when transposed by the frequency of
+the fundamental and the octave (2f). It is also possible to use a variable as to what the 
+range of 0 to 1 cooresponds to (there can be other, non-octave orientated ways of maping the range).
+
+Duration can be measured by subdividing one cycle of a periodicity. The proportions of each subdivision
+can be mapped onto durations that sum to a specified unit of measurment (such as a beat, or measure, or section)
+
+-- Automatically generate tiktoks
+
 GENERATE MATERIALS
 ==================
 
-* Use sequence f
+* Instantiate a Generator Matrix
+    -- Transition Matrix as generator?
+        1) how to relate value of probibility to pitch/duration?
+* Pair pitch with duration 
+* Save materials to midi file
 
-GENERATE 
+
+GENERATE TRANSITION MATRIX
+==========================
+
+* Train data
+
+GENERATE FORMS
+==============
