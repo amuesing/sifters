@@ -116,9 +116,9 @@ def markov(s, sequence_length=6, output_length=250):
 
 s = midi_to_string('tests/chiptunes/interlude.midi')
 # sample a new string from s then convert that string to midi
-# generated_midi = string_to_midi(markov(s))
+generated_midi = string_to_midi(markov(s))
 # save the midi data in "generated.midi"
-# generated_midi.write('midi', 'tests/chiptunes/generated.midi')
+generated_midi.write('midi', 'tests/chiptunes/generated.midi')
 # # convert our generated midi sequence to a numpy array
 # wav = midi_to_nintendo_wav('tests\chiptunes\generated.midi')
 # # save the numpy array as a wav file
