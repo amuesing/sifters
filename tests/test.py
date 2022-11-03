@@ -1,13 +1,18 @@
-# transitions = ['60', '62', '54', '55', '60']
-transitions = ['A', 'T']
+a = 3
+
+print('{n}/8'.format(n=a))
 
 
-def rank(c):
-    return ord(c) - ord('A')
+# # transitions = ['60', '62', '54', '55', '60']
+# transitions = ['A', 'T']
 
-T = [rank(c) for c in transitions]
 
-print(T)
+# def rank(c):
+#     return ord(c) - ord('A')
+
+# T = [rank(c) for c in transitions]
+
+# print(T)
 
 #create matrix of zeros
 
