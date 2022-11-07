@@ -3,6 +3,13 @@ import re
 
 from music21 import *
 
+# def save(s):
+#     return s.write('midi', 'data/key/generate0.midi')
+
+# def play(midi):
+#     s = converter.parse(midi)
+#     s.show('midi')
+
 def find_period(siev):
     numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
     unique_numbers = list(set(numbers))
@@ -15,30 +22,52 @@ def initialize(siev):
     events = a.segment(segmentFormat='binary')
     return events
 
-def write_part(siev):
+#input: siev
+#output: pattern, midi_key, note_length
+def train(siev):
+    pattern = initialize(siev)
+    #write an extraction function which splits the siev object by where ')|(' occurs
+    numbers = re.findall(r'\)\|', siev)
+    # numbers = [int(s) for s in re.findall(r'\)\|', siev)]
+    # n = note.Note()
+    # s = siev
+    print(numbers)
+
+def generate_part(pattern, midi_key=76, note_length=0.5):
     part = stream.Part()
-    period = len(siev)
+    period = len(pattern)
     part.append(instrument.UnpitchedPercussion())
     part.append(meter.TimeSignature('{n}/8'.format(n=period)))
-    part.append(tempo.MetronomeMark('fast', 144, note.Note(type='quarter')))
-    for point in siev:
+    # make pattern
+    for point in pattern:
         if point == 0:
-            part.append(note.Note(midi=76, type='eighth'))
+            part.append(note.Note(midi=midi_key, quarterLength=note_length))
         else:
-            part.append(note.Note(midi=77, type='eighth'))
-    return part.write('midi', 'data/generated.midi')
-
-#stream of streams
-def generate_stream(sievs):
-    s = stream.Stream()
-    for siev in sievs:
-        s.append(write_part(siev))
-    return s
+            part.append(note.Note(midi=midi_key+1, quarterLength=note_length))
+    return part
     
-def play(midi):
-    s = converter.parse(midi)
-    s.show('midi')
+# def parse(sievs):
+#     s = stream.Stream()
+#     midi_key = [76, 47, 67]
+#     i = 0
+#     for siev in sievs:
+#         siev = initialize(siev)
+#         s.append(generate_part(siev, midi_key[i]))
+#         i += 1
+#     return s
 
-psappha_sieve = '(((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|8@3|8@4|(8@1&5@2)|(8@6&5@1))'
-siev = initialize(psappha_sieve)
-play(write_part(siev))
+def generate_stream(siev):
+    s = stream.Stream()
+    s.append(tempo.MetronomeMark('fast', 144, note.Note(type='quarter')))
+    train(siev)
+    # s.append(compose(siv))
+    # s.append(generate_part(siv))
+    # return s
+
+psappha_sieve = '(((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1))'
+
+# gen = generate_stream(psappha_sieve)
+
+s = psappha_sieve.split(')|')
+
+print(s)
