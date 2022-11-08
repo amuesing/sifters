@@ -28,7 +28,7 @@ def train(siev):
     pattern = initialize(siev)
     #write an extraction function which splits the siev object by where ')|(' occurs
     numbers = re.findall(r'\)\|', siev)
-    # numbers = [int(s) for s in re.findall(r'\)\|', siev)]
+    # numbers = [int(s) for s in re.findall(r'\)\|', siev)] 
     # n = note.Note()
     # s = siev
     print(numbers)
