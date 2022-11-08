@@ -22,8 +22,14 @@ def initialize(siev):
     events = a.segment(segmentFormat='binary')
     return events
 
+def parse(sievs):
+    s = []
+    for siev in sievs:
+        s.append(initialize(siev))
+    return s
+
 #input: siev
-#output: pattern, midi_key, note_length
+#output: sievs
 def train(siev):
     pattern = initialize(siev)
     #write an extraction function which splits the siev object by where ')|(' occurs
@@ -32,6 +38,11 @@ def train(siev):
     # n = note.Note()
     # s = siev
     print(numbers)
+
+#input: sievs
+#output: pattern, midi_key, note_length
+def assign(sievs):
+    print('hello world')
 
 def generate_part(pattern, midi_key=76, note_length=0.5):
     part = stream.Part()
@@ -65,9 +76,13 @@ def generate_stream(siev):
     # return s
 
 psappha_sieve = '(((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1))'
+sievs = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@3)', '(8@4)', '(8@1&5@2)', '(8@6&5@1)']
+
+print('|'.join(sievs))
+
 
 # gen = generate_stream(psappha_sieve)
 
 s = psappha_sieve.split(')|')
 
-print(s)
+# print(parse(sievs))
