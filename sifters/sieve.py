@@ -75,14 +75,18 @@ def generate_stream(siev):
     # s.append(generate_part(siv))
     # return s
 
-psappha_sieve = '(((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1))'
-sievs = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@3)', '(8@4)', '(8@1&5@2)', '(8@6&5@1)']
+psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
+sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@3)', '(8@4)', '(8@1&5@2)', '(8@6&5@1)'
 
-print('|'.join(sievs))
+a = str(('|'.join(sievs)))
 
+siv = sieve.Sieve(a)
+siev = sieve.Sieve(psappha_sieve)
 
+print(initialize(psappha_sieve))
+# print(siv)
 # gen = generate_stream(psappha_sieve)
 
-s = psappha_sieve.split(')|')
+# s = psappha_sieve.split(')|')
 
 # print(parse(sievs))
