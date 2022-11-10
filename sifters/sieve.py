@@ -3,12 +3,12 @@ import re
 
 from music21 import *
 
-# def save(s):
-#     return s.write('midi', 'data/key/generate0.midi')
+def save(s):
+    return s.write('midi', 'data/track/generate.midi')
 
-# def play(midi):
-#     s = converter.parse(midi)
-#     s.show('midi')
+def play(midi):
+    s = converter.parse(midi)
+    s.show('midi')
 
 def find_period(siev):
     numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
@@ -21,6 +21,11 @@ def initialize(siev):
     a.setZRange(0, find_period(siev))
     events = a.segment(segmentFormat='binary')
     return events
+
+def intersect(sievs):
+    s = '|'.join(sievs)
+    return s
+    
 
 def parse(sievs):
     s = []
@@ -44,7 +49,9 @@ def train(siev):
 def assign(sievs):
     print('hello world')
 
-def generate_part(pattern, midi_key=76, note_length=0.5):
+def generate_part(pattern):
+    midi_key=76
+    note_length=0.5
     part = stream.Part()
     period = len(pattern)
     part.append(instrument.UnpitchedPercussion())
@@ -70,23 +77,18 @@ def generate_part(pattern, midi_key=76, note_length=0.5):
 def generate_stream(siev):
     s = stream.Stream()
     s.append(tempo.MetronomeMark('fast', 144, note.Note(type='quarter')))
-    train(siev)
-    # s.append(compose(siv))
-    # s.append(generate_part(siv))
-    # return s
+    if len(siev) > 1:
+        sievs = parse(siev)
+        for siv in sievs:
+            s.append(generate_part(siv))
+    return s
 
-psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
-sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@3)', '(8@4)', '(8@1&5@2)', '(8@6&5@1)'
+# psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
+# when all have same period
+sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)' #'(8@3)', '(8@4)', '(8@1&5@2)', 
 
-a = str(('|'.join(sievs)))
+# parsed_sievs = parse(sievs)
 
-siv = sieve.Sieve(a)
-siev = sieve.Sieve(psappha_sieve)
-
-print(initialize(psappha_sieve))
-# print(siv)
-# gen = generate_stream(psappha_sieve)
-
-# s = psappha_sieve.split(')|')
-
-# print(parse(sievs))
+# instrument key (instrumentation)
+s = generate_stream(sievs)
+s.show()
