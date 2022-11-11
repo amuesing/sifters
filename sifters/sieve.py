@@ -4,7 +4,7 @@ import re
 from music21 import *
 
 def save(s):
-    return s.write('midi', 'data/track/generate.midi')
+    return s.write('midi', 'data/track/generated.midi')
 
 def play(midi):
     s = converter.parse(midi)
@@ -26,27 +26,15 @@ def intersect(sievs):
     s = '|'.join(sievs)
     return s
     
-
 def parse(sievs):
     s = []
     for siev in sievs:
         s.append(initialize(siev))
     return s
 
-#input: siev
-#output: sievs
-def train(siev):
-    pattern = initialize(siev)
-    #write an extraction function which splits the siev object by where ')|(' occurs
-    numbers = re.findall(r'\)\|', siev)
-    # numbers = [int(s) for s in re.findall(r'\)\|', siev)] 
-    # n = note.Note()
-    # s = siev
-    print(numbers)
-
-#input: sievs
+#input: pattern
 #output: pattern, midi_key, note_length
-def assign(sievs):
+def assign(pattern):
     print('hello world')
 
 def generate_part(pattern):
@@ -91,4 +79,6 @@ sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3
 
 # instrument key (instrumentation)
 s = generate_stream(sievs)
-s.show()
+# s.show()
+
+save(s)
