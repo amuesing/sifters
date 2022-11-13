@@ -44,20 +44,22 @@ def parse(sievs):
 def generate_part(pattern, midi_key, note_length):
     part = stream.Part()
     period = len(pattern)
-    repeats = 4
+    # repeats = 4
     part.append(instrument.UnpitchedPercussion())
     part.append(meter.TimeSignature('{n}/8'.format(n=period)))
-    for _ in range(repeats):
-        for point in pattern:
-            if point == 0:
-                part.append(note.Rest(quarterLength=note_length))
-                # part.append(note.Note(midi=midi_key, quarterLength=note_length))
-            else:
-                part.append(note.Note(midi=midi_key, quarterLength=note_length))
+    # for _ in range(repeats):
+    measure = stream.Measure()
+    for point in pattern:
+        if point == 0:
+            measure.append(note.Rest(quarterLength=note_length))
+            # part.append(note.Note(midi=midi_key, quarterLength=note_length))
+        else:
+            measure.append(note.Note(midi=midi_key, quarterLength=note_length))
+    part.append(measure)
     return part
 
 def generate_stream(siev):
-    s = stream.Stream()
+    s = stream.Score()
     s.append(tempo.MetronomeMark('fast', 144, note.Note(type='whole')))
     if len(siev) > 1:
         sievs = parse(siev)
@@ -65,7 +67,7 @@ def generate_stream(siev):
             pattern = siv[0]
             midi_key = siv[1]
             note_length = siv[2]
-            s.append(generate_part(pattern, midi_key, note_length))
+            s.insert(0, generate_part(pattern, midi_key, note_length))
     return s
 
 # psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
