@@ -6,8 +6,8 @@ from music21 import *
 def save(stream):
     return stream.write('midi', 'data/track/generated.midi')
 
-def play(midi):
-    stream = converter.parse(midi)
+def play(midi_file):
+    stream = converter.parse(midi_file)
     stream.show('midi')
 
 def find_period(siev):
@@ -43,6 +43,7 @@ def parse(sievs):
 
 def generate_measure(pattern, midi_key, note_length, measure_num):
     measure = stream.Measure(number=measure_num)
+    measure.append(meter.TimeSignature('{n}/8'.format(n=len(pattern))))
     for point in pattern:
         if point == 0:
             measure.append(note.Rest(quarterLength=note_length))
@@ -53,17 +54,21 @@ def generate_measure(pattern, midi_key, note_length, measure_num):
 def generate_part(pattern, midi_key, note_length, id):
     part = stream.Part(id='part{n}'.format(n=id))
     part.append(instrument.UnpitchedPercussion())
-    part.append(meter.TimeSignature('{n}/8'.format(n=len(pattern))))
     measure_num = 1
-    repeats = 4
-    for _ in range(repeats):
-        part.append(generate_measure(pattern, midi_key, note_length, measure_num))
-        measure_num += 1
+    repeat_pattern = 4
+    split_pattern = np.array_split(pattern, 8)
+    for _ in range(repeat_pattern):
+        for segment in split_pattern:
+            part.append(generate_measure(segment, midi_key, note_length, measure_num))
+            measure_num += 1
     return part
 
 def generate_stream(siev):
     s = stream.Score(id='mainScore')
-    s.append(tempo.MetronomeMark('fast', 144, note.Note(type='half')))
+    s.insert(0, metadata.Metadata())
+    s.metadata.title = 'Sifters'
+    s.metadata.composer = 'Aarib Moosey'
+    s.insert(0, tempo.MetronomeMark('fast', 144, note.Note(type='half')))
     id = 0
     if len(siev) > 1:
         sievs = parse(siev)
@@ -83,5 +88,5 @@ sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3
 s = generate_stream(sievs)
 # p = parse(sievs)
 # print(p)
-s.show('midi')
+s.show()
 
