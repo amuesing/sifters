@@ -43,8 +43,11 @@ def parse(sievs):
 
 def generate_measure(segment, midi_key, note_length, measure_num):
     measure = stream.Measure(number=measure_num)
-    measure.append(meter.TimeSignature('{n}/8'.format(n=len(segment))))
+    # first = True
     for point in segment:
+        # if first:
+        #     first = False
+        #     measure.append(tempo.MetronomeMark('fast', 144, note.Note(type='half')))
         if point == 0:
             measure.append(note.Rest(quarterLength=note_length))
         else:
@@ -61,16 +64,17 @@ def generate_part(pattern, midi_key, note_length, id):
     for _ in range(repeat_pattern):
         for segment in split_pattern:
             part.append(generate_measure(segment, midi_key, note_length, measure_num))
+            #insert MetronomeMark for first measure of first segment
             measure_num += 1
     return part
 
 def generate_stream(siev):
-    s = stream.Score(id='mainScore')
+    s = stream.Score()
+    # s.append(tempo.MetronomeMark('fast', 144, note.Note(type='half')))
     s.insert(0, metadata.Metadata())
     s.metadata.title = 'Sifters'
     s.metadata.composer = 'Aarib Moosey'
-    s.append(tempo.MetronomeMark('fast', 144, note.Note(type='half')))
-    id = 0
+    id = 1
     if len(siev) > 1:
         sievs = parse(siev)
         for siv in sievs:
@@ -90,4 +94,3 @@ s = generate_stream(sievs)
 # p = parse(sievs)
 # print(p)
 s.show('text')
-

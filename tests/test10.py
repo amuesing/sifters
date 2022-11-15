@@ -1,8 +1,24 @@
-import numpy as np
+from music21 import *
 
-lst = [0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,1,1,0,0,0,0,1]
+s = stream.Score(id='mainScore')
+s.append(tempo.MetronomeMark(144))
 
-print(*np.array_split(lst, 3))
+p0 = stream.Part(id='part0')
+p1 = stream.Part(id='part1')
 
-# https://stackoverflow.com/questions/2130016/splitting-a-list-into-n-parts-of-approximately-equal-length 
-# https://stackoverflow.com/questions/36901/what-does-double-star-asterisk-and-star-asterisk-do-for-parameters-in-p/36908#36908
+m01 = stream.Measure(number=1)
+m01.append(note.Note('C', type="whole"))
+m02 = stream.Measure(number=2)
+m02.append(note.Note('D', type="whole"))
+p0.append([m01, m02])
+
+# m11 = stream.Measure(number=1)
+# m11.append(note.Note('E', type="whole"))
+# m12 = stream.Measure(number=2)
+# m12.append(note.Note('F', type="whole"))
+# p1.append([m11, m12])
+
+s.insert(0, p0)
+# s.insert(0, p1)
+
+s.show('text')
