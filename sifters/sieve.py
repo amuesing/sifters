@@ -43,11 +43,7 @@ def parse(sievs):
 
 def generate_measure(segment, midi_key, note_length, measure_num):
     measure = stream.Measure(number=measure_num)
-    # first = True
     for point in segment:
-        # if first:
-        #     first = False
-        #     measure.append(tempo.MetronomeMark('fast', 144, note.Note(type='half')))
         if point == 0:
             measure.append(note.Rest(quarterLength=note_length))
         else:
@@ -59,30 +55,30 @@ def generate_part(pattern, midi_key, note_length, id):
     part.append(instrument.UnpitchedPercussion())
     measure_num = 1
     repeat_pattern = 4
-    # method for finding time signature denominator
+    period = 5
+    # method for finding time signature neumerator/denominator
+    part.append(meter.TimeSignature('{n}/8'.format(n=period)))
     split_pattern = np.array_split(pattern, 8)
     for _ in range(repeat_pattern):
         for segment in split_pattern:
             part.append(generate_measure(segment, midi_key, note_length, measure_num))
-            #insert MetronomeMark for first measure of first segment
             measure_num += 1
     return part
 
-def generate_stream(siev):
+def generate_score(siev):
     s = stream.Score()
-    # s.append(tempo.MetronomeMark('fast', 144, note.Note(type='half')))
-    s.insert(0, metadata.Metadata())
-    s.metadata.title = 'Sifters'
-    s.metadata.composer = 'Aarib Moosey'
     id = 1
     if len(siev) > 1:
         sievs = parse(siev)
         for siv in sievs:
-            pattern = siv[0]
-            midi_key = siv[1]
-            note_length = siv[2]
+            pattern, midi_key, note_length = siv[0], siv[1], siv[2]
             s.insert(0, generate_part(pattern, midi_key, note_length, id))
             id += 1
+    s.insert(0, metadata.Metadata())
+    s.metadata.title = 'Sifters'
+    s.metadata.composer = 'Aarib Moosey'
+    p1m1 = s.parts[0].measure(1)
+    p1m1.insert(0, tempo.MetronomeMark('fast', 144, note.Note(type='half')))
     return s
 
 # psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
@@ -90,7 +86,7 @@ def generate_stream(siev):
 sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)' #'(8@3)', '(8@4)', '(8@1&5@2)', 
 
 # instrument key (instrumentation)
-s = generate_stream(sievs)
+s = generate_score(sievs)
 # p = parse(sievs)
 # print(p)
-s.show('text')
+s.show()
