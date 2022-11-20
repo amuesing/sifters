@@ -3,48 +3,134 @@ import re
 
 from music21 import *
 
-def periodicity(siev):
+def save(stream):
+    return stream.write('midi', 'data/track/generated.midi')
+
+def play(midi_file):
+    stream = converter.parse(midi_file)
+    stream.show('midi')
+
+def initialize(siev):
+    events = sieve.Sieve(siev)
+    events.setZRange(0, find_period(siev) - 1)
+    pattern = events.segment(segmentFormat='binary')
+    return pattern
+
+def find_period(siev):
     numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
     unique_numbers = list(set(numbers))
     product = np.prod(unique_numbers)
-    return product - 1
+    return product
 
-def generate_midi(events):
-    period = len(events)
-    s = stream.Stream()
-    p0 = stream.Part(id='part0')
-    ts0 = meter.TimeSignature('{n}/8'.format(n=period))
-    p0.append(instrument.UnpitchedPercussion())
-    p0.append(ts0)
-    p0.append(tempo.MetronomeMark('fast', 144, note.Note(type='quarter')))
+def parse(sievs):
+    siv = []
+    index = 0
+    for siev in sievs:
+        pattern = initialize(siev)
+        assigned_pattern = assign(pattern, index)
+        siv.append(assigned_pattern)
+        index += 1
+    return siv
+
+def intersect(sievs):
+    intersection = '|'.join(sievs)
+    return intersection
+
+def assign(pattern, index):
+    midi_key = [35, 60, 76, 80]
+    note_length = 0.5
+    return [pattern, midi_key[index], note_length]
+
+def parse_modulo(siev):
+    if type(siev) == tuple:
+        modulo = []
+        for siv in siev:
+            modulo.append([int(s) for s in re.findall(r'(\d+)@', siv)])
+        return modulo
+    else:
+        modulo = [int(s) for s in re.findall(r'(\d+)@', siev)]
+        return modulo
+
+def find_lcm(modulo):
+    if type(modulo[0]) == list:
+        multiples = []
+        for mod in modulo:
+            multiples.append(np.lcm.reduce(mod))
+        return multiples
+    else:
+        return np.lcm.reduce(modulo)
     
-    for event in events:
-        if event == 0:
-            p0.append(note.Note(midi=76, type='eighth'))
+def find_repeats(period, lcm):
+    repeats = []
+    for m in lcm:
+        repeats.append(int(period/m))
+    return repeats
+
+def merge(list1, list2):
+    merged_list = [(list1[i], list2[i]) for i in range(0, len(list1))]
+    return merged_list
+# https://www.geeksforgeeks.org/python-merge-two-lists-into-list-of-tuples/
+
+def normalize_periodicity(sivs):
+    mod = parse_modulo(sivs)
+    lcm = find_lcm(mod)
+    period = find_lcm(lcm)
+    repeats = find_repeats(period, lcm)
+    multi = merge(sivs, repeats)
+    return multi
+
+def generate_measure(segment, midi_key, note_length, measure_num):
+    measure = stream.Measure(number=measure_num)
+    for point in segment:
+        if point == 0:
+            measure.append(note.Rest(quarterLength=note_length))
         else:
-            p0.append(note.Note(midi=77, type='eighth'))
-    
+            measure.append(note.Note(midi=midi_key, quarterLength=note_length))
+    return measure
 
-    s.append(p0)
+def generate_part(pattern, midi_key, note_length, id):
+    part = stream.Part(id='part{n}'.format(n=id))
+    part.append(instrument.UnpitchedPercussion())
+    part.append(clef.PercussionClef())
+    measure_num = 1
+    repeat_pattern = 4
+    period = 5
+    # method for finding time signature neumerator/denominator
+    part.append(meter.TimeSignature('{n}/8'.format(n=period)))
+    split_pattern = np.array_split(pattern, 8)
+    for _ in range(repeat_pattern):
+        for segment in split_pattern:
+            part.append(generate_measure(segment, midi_key, note_length, measure_num))
+            measure_num += 1
+    return part
 
-    s.write('midi', 'tests/generated.midi')
-    
-def play(midi):
-    s = converter.parse(midi)
-    s.show('midi')
+def generate_score(siev):
+    s = stream.Score()
+    id = 1
+    if len(siev) > 1:
+        sievs = parse(siev)
+        for siv in sievs:
+            pattern, midi_key, note_length = siv[0], siv[1], siv[2]
+            s.insert(0, generate_part(pattern, midi_key, note_length, id))
+            id += 1
+    else:
+        print('hello world')
+    s.insert(0, metadata.Metadata())
+    s.metadata.title = 'Sifters'
+    s.metadata.composer = 'Aarib Moosey'
+    p1m1 = s.parts[0].measure(1)
+    p1m1.insert(0, tempo.MetronomeMark('fast', 144, note.Note(type='half')))
+    return s
 
-psappha_sieve = '(((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|8@3|8@4|(8@1&5@2)|(8@6&5@1))'
-siev = '((3@1&2@1)|(4@2))'
-# initialize a stream and append the sieve??
-a = sieve.Sieve(psappha_sieve)
-a.setZRange(0, periodicity(psappha_sieve))
-events = a.segment(segmentFormat='binary')
-generate_midi(events)
+# psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
+# when all have same period
+# order sieves by LCM of modulo
+# find LCM of all LCM
+# find way to normalize all sieves so that they are equal lengths
+sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)' #'(8@3)', '(8@4)', '(8@1&5@2)', 
 
-
-play('tests/generated.midi')
-
-# print(events)
-
-# https://stackoverflow.com/questions/4289331/how-to-extract-numbers-from-a-string-in-python
-# https://web.mit.edu/music21/doc/moduleReference/moduleSieve.html#music21.sieve.Sieve
+# instrument key (instrumentation)
+s = generate_score(sievs)
+# p = parse(sievs)
+# print(p)
+s.show()

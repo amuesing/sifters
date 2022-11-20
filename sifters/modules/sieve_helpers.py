@@ -12,7 +12,7 @@ def play(midi_file):
 
 def initialize(siev):
     events = sieve.Sieve(siev)
-    events.setZRange(0, find_period(siev))
+    events.setZRange(0, find_period(siev) - 1)
     pattern = events.segment(segmentFormat='binary')
     return pattern
 
@@ -20,7 +20,7 @@ def find_period(siev):
     numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
     unique_numbers = list(set(numbers))
     product = np.prod(unique_numbers)
-    return product - 1
+    return product
 
 def parse(sievs):
     siv = []
@@ -41,6 +41,43 @@ def assign(pattern, index):
     note_length = 0.5
     return [pattern, midi_key[index], note_length]
 
+def parse_modulo(siev):
+    if type(siev) == tuple:
+        modulo = []
+        for siv in siev:
+            modulo.append([int(s) for s in re.findall(r'(\d+)@', siv)])
+        return modulo
+    else:
+        modulo = [int(s) for s in re.findall(r'(\d+)@', siev)]
+        return modulo
+
+def find_lcm(modulo):
+    if type(modulo[0]) == list:
+        multiples = []
+        for mod in modulo:
+            multiples.append(np.lcm.reduce(mod))
+        return multiples
+    else:
+        return np.lcm.reduce(modulo)
+    
+def find_repeats(period, lcm):
+    repeats = []
+    for m in lcm:
+        repeats.append(int(period/m))
+    return repeats
+
+def merge(list1, list2):
+    merged_list = [(list1[i], list2[i]) for i in range(0, len(list1))]
+    return merged_list
+# https://www.geeksforgeeks.org/python-merge-two-lists-into-list-of-tuples/
+
+def normalize_periodicity(sivs):
+    mod = parse_modulo(sivs)
+    lcm = find_lcm(mod)
+    period = find_lcm(lcm)
+    repeats = find_repeats(period, lcm)
+    multi = merge(sivs, repeats)
+    return multi
 
 def generate_measure(segment, midi_key, note_length, measure_num):
     measure = stream.Measure(number=measure_num)
@@ -85,15 +122,15 @@ def generate_score(siev):
     p1m1.insert(0, tempo.MetronomeMark('fast', 144, note.Note(type='half')))
     return s
 
-# psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
-# when all have same period
-# order sieves by LCM of modulo
-# find LCM of all LCM
-# find way to normalize all sieves so that they are equal lengths
-sievs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)' #'(8@3)', '(8@4)', '(8@1&5@2)', 
+psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
+sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
+siv = '((8@0|8@1|8@7)&(5@1|5@3))'
 
-# instrument key (instrumentation)
-s = generate_score(sievs)
-# p = parse(sievs)
-# print(p)
-s.show()
+# find LCM of each Siv
+
+# find LCM of each LCM
+
+# find number of repeats (multiples)
+
+if __name__ == '__main__':
+    print(normalize_periodicity(sivs))
