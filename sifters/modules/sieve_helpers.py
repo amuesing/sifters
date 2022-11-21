@@ -10,15 +10,18 @@ def play(midi_file):
     stream = converter.parse(midi_file)
     stream.show('midi')
 
-def find_period(siev):
-    numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
-    unique_numbers = list(set(numbers))
-    product = np.prod(unique_numbers)
-    return product
-
 def intersect(sievs):
     intersection = '|'.join(sievs)
     return intersection
+
+###################################################
+
+def Largest_Prime_Factor(n):
+    return next(n // i for i in range(1, n) if n % i == 0 and is_prime(n // i))
+
+def is_prime(m):
+    return all(m % i for i in range(2, m - 1))
+# https://www.w3resource.com/python-exercises/challenges/1/python-challenges-1-exercise-35.php
 
 ###################################################
 
@@ -55,6 +58,7 @@ def merge(list1, list2):
 def normalize_periodicity(sievs):
     mod = parse_modulo(sievs)
     lcm = find_lcm(mod)
+    # period if all note length are same
     period = find_lcm(lcm)
     repeats = find_repeats(period, lcm)
     # multi = merge(sivs, repeats)
@@ -63,9 +67,16 @@ def normalize_periodicity(sievs):
 
 ###################################################
 
+def find_period(siev):
+    numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
+    unique_numbers = list(set(numbers))
+    product = np.prod(unique_numbers)
+    return product
+
 def initialize(siev, rep):
     events = sieve.Sieve(siev)
-    events.setZRange(0, (rep * find_period(siev)) - 1)
+    period = find_period(siev)
+    events.setZRange(0, (rep * period) - 1)
     binary = events.segment(segmentFormat='binary')
     return binary
 
@@ -103,10 +114,11 @@ def generate_part(pattern, midi_key, note_length, id):
     part.append(clef.PercussionClef())
     measure_num = 1
     repeat_pattern = 10
-    period = 5
+    # to find denominator make dict to assign note length to with denominator
+    neumerator, denominator = Largest_Prime_Factor(len(pattern)), 8
     # method for finding time signature neumerator/denominator
-    part.append(meter.TimeSignature('{n}/8'.format(n=period)))
-    split_pattern = np.array_split(pattern, 8)
+    part.append(meter.TimeSignature('{n}/{d}'.format(n=neumerator, d=denominator)))
+    split_pattern = np.array_split(pattern, denominator)
     for _ in range(repeat_pattern):
         for segment in split_pattern:
             part.append(generate_measure(segment, midi_key, note_length, measure_num))
