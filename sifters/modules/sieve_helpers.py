@@ -10,36 +10,17 @@ def play(midi_file):
     stream = converter.parse(midi_file)
     stream.show('midi')
 
-def initialize(siev):
-    events = sieve.Sieve(siev)
-    events.setZRange(0, find_period(siev) - 1)
-    pattern = events.segment(segmentFormat='binary')
-    return pattern
-
 def find_period(siev):
     numbers = [int(s) for s in re.findall(r'(\d+)@', siev)]
     unique_numbers = list(set(numbers))
     product = np.prod(unique_numbers)
     return product
 
-def parse(sievs):
-    siv = []
-    index = 0
-    for siev in sievs:
-        pattern = initialize(siev)
-        assigned_pattern = assign(pattern, index)
-        siv.append(assigned_pattern)
-        index += 1
-    return siv
-
 def intersect(sievs):
     intersection = '|'.join(sievs)
     return intersection
 
-def assign(pattern, index):
-    midi_key = [35, 60, 76, 80]
-    note_length = 0.5
-    return [pattern, midi_key[index], note_length]
+###################################################
 
 def parse_modulo(siev):
     if type(siev) == tuple:
@@ -71,13 +52,41 @@ def merge(list1, list2):
     return merged_list
 # https://www.geeksforgeeks.org/python-merge-two-lists-into-list-of-tuples/
 
-def normalize_periodicity(sivs):
-    mod = parse_modulo(sivs)
+def normalize_periodicity(sievs):
+    mod = parse_modulo(sievs)
     lcm = find_lcm(mod)
     period = find_lcm(lcm)
     repeats = find_repeats(period, lcm)
-    multi = merge(sivs, repeats)
-    return multi
+    # multi = merge(sivs, repeats)
+    # return multi
+    return repeats
+
+###################################################
+
+def initialize(siev, rep):
+    events = sieve.Sieve(siev)
+    events.setZRange(0, (rep * find_period(siev)) - 1)
+    binary = events.segment(segmentFormat='binary')
+    return binary
+
+def assign(pattern, index):
+    # method for selecting midi key
+    midi_key = [35, 60, 76, 80, 80, 80 ,80]
+    note_length = 0.5
+    return [pattern, midi_key[index], note_length]
+
+def parse(sievs):
+    pattern = []
+    i = 0
+    rep = normalize_periodicity(sievs)
+    for siev in sievs:
+        binary = initialize(siev, rep[i])
+        assigned_pattern = assign(binary, i)
+        pattern.append(assigned_pattern)
+        i += 1
+    return pattern
+
+###################################################
 
 def generate_measure(segment, midi_key, note_length, measure_num):
     measure = stream.Measure(number=measure_num)
@@ -93,7 +102,7 @@ def generate_part(pattern, midi_key, note_length, id):
     part.append(instrument.UnpitchedPercussion())
     part.append(clef.PercussionClef())
     measure_num = 1
-    repeat_pattern = 4
+    repeat_pattern = 10
     period = 5
     # method for finding time signature neumerator/denominator
     part.append(meter.TimeSignature('{n}/8'.format(n=period)))
@@ -122,15 +131,6 @@ def generate_score(siev):
     p1m1.insert(0, tempo.MetronomeMark('fast', 144, note.Note(type='half')))
     return s
 
-psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
-sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-siv = '((8@0|8@1|8@7)&(5@1|5@3))'
-
-# find LCM of each Siv
-
-# find LCM of each LCM
-
-# find number of repeats (multiples)
-
 if __name__ == '__main__':
+    # norm = normalize_periodicity(sivs))
     print(normalize_periodicity(sivs))
