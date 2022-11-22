@@ -99,8 +99,14 @@ def parse(sievs):
 
 ###################################################
 
-def generate_measure(segment, midi_key, note_length, measure_num):
+def generate_measure(segment, midi_key, note_length, numerator, measure_num):
     measure = stream.Measure(number=measure_num)
+    # to find denominator make dict to assign note length to with denominator
+    # seperate note length and beat length variables
+    # denominator = beat length
+    # method for finding time signature neumerator/denominator
+    measure.append(meter.TimeSignature('{n}/{d}'.format(n=numerator, d=8)))
+    measure.append(clef.PercussionClef())
     for point in segment:
         if point == 0:
             measure.append(note.Rest(quarterLength=note_length))
@@ -111,17 +117,17 @@ def generate_measure(segment, midi_key, note_length, measure_num):
 def generate_part(pattern, midi_key, note_length, id):
     part = stream.Part(id='part{n}'.format(n=id))
     part.append(instrument.UnpitchedPercussion())
-    part.append(clef.PercussionClef())
-    measure_num = 1
-    repeat_pattern = 10
+    period = len(pattern)
     # to find denominator make dict to assign note length to with denominator
-    neumerator, denominator = Largest_Prime_Factor(len(pattern)), 8
-    # method for finding time signature neumerator/denominator
-    part.append(meter.TimeSignature('{n}/{d}'.format(n=neumerator, d=denominator)))
-    split_pattern = np.array_split(pattern, denominator)
+    # seperate note length and beat length variables
+    numerator = Largest_Prime_Factor(period)
+    measure_num = 1
+    repeat_pattern = 1
+    divisor = period/numerator
+    split_pattern = np.array_split(pattern, divisor)
     for _ in range(repeat_pattern):
         for segment in split_pattern:
-            part.append(generate_measure(segment, midi_key, note_length, measure_num))
+            part.append(generate_measure(segment, midi_key, note_length, numerator, measure_num))
             measure_num += 1
     return part
 

@@ -1,3 +1,6 @@
+Iannis Xenakis thought of using an 'out of time' logic object at a point of genisis
+for music composition. The sieve is way of ordering 
+
 My objective in composing Sifters is to develop tools which serve to portray
 nature in its function, and not in its form (cage). Namely by harnessing the power of
 ordered chaos, and especially to the extreme degree allowed by digital computing,
