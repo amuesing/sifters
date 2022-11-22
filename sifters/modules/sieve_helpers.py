@@ -16,7 +16,7 @@ def intersect(sievs):
 
 ###################################################
 
-def Largest_Prime_Factor(n):
+def largest_prime_factor(n):
     return next(n // i for i in range(1, n) if n % i == 0 and is_prime(n // i))
 
 def is_prime(m):
@@ -99,28 +99,37 @@ def parse(sievs):
 
 ###################################################
 
-def generate_measure(segment, midi_key, note_length, numerator, measure_num):
-    measure = stream.Measure(number=measure_num)
-    # to find denominator make dict to assign note length to with denominator
-    # seperate note length and beat length variables
-    # denominator = beat length
-    # method for finding time signature neumerator/denominator
-    measure.append(meter.TimeSignature('{n}/{d}'.format(n=numerator, d=8)))
-    measure.append(clef.PercussionClef())
+# to find denominator make dict to assign note length to with denominator
+# seperate note length and beat length variables
+# to find denominator make dict to assign note length to with denominator
+# seperate note length and beat length variables
+# denominator = beat length
+# method for finding time signature numerator/denominator
+# no it has to be note_length = denominator
+
+def segment_to_point(measure, segment, midi_key, note_length):
     for point in segment:
         if point == 0:
             measure.append(note.Rest(quarterLength=note_length))
         else:
             measure.append(note.Note(midi=midi_key, quarterLength=note_length))
-    return measure
+
+def generate_measure(segment, midi_key, note_length, numerator, measure_num):
+    measure = stream.Measure(number=measure_num)
+    if measure_num == 1:
+        measure.append(meter.TimeSignature('{n}/{d}'.format(n=numerator, d=8)))
+        measure.append(clef.PercussionClef())
+        segment_to_point(measure, segment, midi_key, note_length)
+        return measure
+    else:
+        segment_to_point(measure, segment, midi_key, note_length)
+        return measure
 
 def generate_part(pattern, midi_key, note_length, id):
     part = stream.Part(id='part{n}'.format(n=id))
     part.append(instrument.UnpitchedPercussion())
     period = len(pattern)
-    # to find denominator make dict to assign note length to with denominator
-    # seperate note length and beat length variables
-    numerator = Largest_Prime_Factor(period)
+    numerator = largest_prime_factor(period)
     measure_num = 1
     repeat_pattern = 1
     divisor = period/numerator
@@ -150,5 +159,4 @@ def generate_score(siev):
     return s
 
 if __name__ == '__main__':
-    # norm = normalize_periodicity(sivs))
-    print(normalize_periodicity(sivs))
+    print('hello world')
