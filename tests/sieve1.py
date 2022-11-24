@@ -3,6 +3,13 @@ import re
 
 from music21 import *
 
+def save(stream):
+    return stream.write('midi', 'data/track/generated.midi')
+
+def play(midi_file):
+    stream = converter.parse(midi_file)
+    stream.show('midi')
+
 def intersect(sievs):
     intersection = '|'.join(sievs)
     return intersection
@@ -92,21 +99,46 @@ def parse(sievs):
 
 ###################################################
 
+# to find denominator make dict to assign note length to with denominator
+# seperate note length and beat length variables
+# to find denominator make dict to assign note length to with denominator
+# seperate note length and beat length variables
+# denominator = beat length
+# method for finding time signature numerator/denominator
+# no it has to be note_length = denominator
+# how can I use the makeNotation function to 'smooth' out a time signature with its beat
+
+def segment_to_point(measure, segment, midi_key, note_length):
+    for point in segment:
+        if point == 0:
+            measure.append(note.Rest(quarterLength=note_length))
+        else:
+            measure.append(note.Note(midi=midi_key, quarterLength=note_length))
+
+def generate_measure(segment, midi_key, note_length, numerator, measure_num):
+    measure = stream.Measure(number=measure_num)
+    if measure_num == 1:
+        measure.append(meter.TimeSignature('{n}/{d}'.format(n=numerator, d=8)))
+        measure.append(clef.PercussionClef())
+        segment_to_point(measure, segment, midi_key, note_length)
+        return measure
+    else:
+        segment_to_point(measure, segment, midi_key, note_length)
+        return measure
+
 def generate_part(pattern, midi_key, note_length, id):
     part = stream.Part(id='part{n}'.format(n=id))
     part.append(instrument.UnpitchedPercussion())
-    i = 0
-    period, repeat_pattern = len(pattern), 10
-    numerator, denominator = largest_prime_factor(period), 4
+    period = len(pattern)
+    numerator = largest_prime_factor(period)
+    measure_num = 1
+    repeat_pattern = 1
+    divisor = period/numerator
+    split_pattern = np.array_split(pattern, divisor)
     for _ in range(repeat_pattern):
-        for point in pattern:
-            if point == 1:
-                part.insert(i*note_length, note.Note(midi=midi_key, quarterLength=note_length))
-            i += 1
-    part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=numerator, d=denominator)))
-    part.insert(0, clef.PercussionClef())
-    part.makeMeasures()
-    part.makeRests(fillGaps=True, inPlace=True)
+        for segment in split_pattern:
+            part.append(generate_measure(segment, midi_key, note_length, numerator, measure_num))
+            measure_num += 1
     return part
 
 def generate_score(siev):
@@ -121,16 +153,13 @@ def generate_score(siev):
     else:
         print('hello world')
     s.insert(0, metadata.Metadata())
-    p1 = s.parts[0]
-    p1.insert(0, tempo.MetronomeMark('fast', 288, note.Note(type='quarter')))
     s.metadata.title = 'Sifters'
     s.metadata.composer = 'Aarib Moosey'
+    p1m1 = s.parts[0].measure(1)
+    p1m1.insert(0, tempo.MetronomeMark('fast', 144, note.Note(type='half')))
     return s
-
-###################################################
 
 psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
 
 if __name__ == '__main__':
-    composition = generate_score(psappha_sieve)
-    composition.show('midi')
+    print(parse(psappha_sieve))
