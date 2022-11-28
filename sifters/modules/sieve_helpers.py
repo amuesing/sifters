@@ -76,7 +76,7 @@ def initialize(siev, rep):
 def assign(pattern, index):
     # method for selecting midi key
     midi_key = [35, 60, 76, 80, 80, 80 ,80]
-    note_length = 0.5
+    note_length = 0.25
     return [pattern, midi_key[index], note_length]
 
 def parse(sievs):
@@ -95,9 +95,11 @@ def parse(sievs):
 def generate_part(pattern, midi_key, note_length, id):
     part = stream.Part(id='part{n}'.format(n=id))
     part.append(instrument.UnpitchedPercussion())
-    i = 0
-    period, repeat_pattern = len(pattern), 10
+    period, repeat_pattern = len(pattern), 1
     numerator, denominator = largest_prime_factor(period), 4
+    i = 0
+    if id == 1:
+            part.append(tempo.MetronomeMark('fast', 144, note.Note(type='quarter')))
     for _ in range(repeat_pattern):
         for point in pattern:
             if point == 1:
@@ -105,24 +107,19 @@ def generate_part(pattern, midi_key, note_length, id):
             i += 1
     part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=numerator, d=denominator)))
     part.insert(0, clef.PercussionClef())
-    part.makeMeasures()
+    part.makeMeasures(inPlace=True)
     part.makeRests(fillGaps=True, inPlace=True)
     return part
 
 def generate_score(siev):
     s = stream.Score()
     id = 1
-    if len(siev) > 1:
-        sievs = parse(siev)
-        for siv in sievs:
-            pattern, midi_key, note_length = siv[0], siv[1], siv[2]
-            s.insert(0, generate_part(pattern, midi_key, note_length, id))
-            id += 1
-    else:
-        print('hello world')
+    sievs = parse(siev)
+    for siv in sievs:
+        pattern, midi_key, note_length = siv[0], siv[1], siv[2]
+        s.insert(0, generate_part(pattern, midi_key, note_length, id))
+        id += 1
     s.insert(0, metadata.Metadata())
-    p1 = s.parts[0]
-    p1.insert(0, tempo.MetronomeMark('fast', 288, note.Note(type='quarter')))
     s.metadata.title = 'Sifters'
     s.metadata.composer = 'Aarib Moosey'
     return s
@@ -133,4 +130,4 @@ psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&
 
 if __name__ == '__main__':
     composition = generate_score(psappha_sieve)
-    composition.show('midi')
+    composition.show()

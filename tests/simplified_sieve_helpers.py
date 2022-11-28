@@ -135,7 +135,7 @@ def generate_part(pattern):
                 p.insert(i*beat_length, note.Note(midi=76, quarterLength=beat_length))
             i += 1
     p.insert(0, meter.TimeSignature('5/8'))
-    p.makeMeasures()
+    p.makeMeasures(inPlace=True)
     p.makeRests(fillGaps=True, inPlace=True)
     return p
 
@@ -145,10 +145,25 @@ def generate_score(siev):
         sievs = parse(siev)
         for pattern in sievs:
             s.insert(0, generate_part(pattern))
+    else:
+        print('hello world')
     return s
 
-psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', #'(8@3)', '(8@4)', '(8@1&5@2)'
+psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
+
+siev = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)'], #'(8@3)', '(8@4)', '(8@1&5@2)'
+siv = ['((8@0|8@1|8@7)&(5@1|5@3))']
 
 if __name__ == '__main__':
-    s = generate_score(psappha_sieve)
-    s.show()
+    # s = generate_score(psappha_sieve)
+    # s.show()
+    # print(len(siv))
+    results = re.split(r'\)\|\(', psappha_sieve)
+    # print(sieve.Sieve('8@6&5@1)'))
+    delta = results[0][1:]
+    # new_results = [item.replace(results[0], delta)
+    #                if results[0] in item else item
+    #                for item in results]
+    # print(new_results)
+    res = results[0]
+    new_res = re.sub()
