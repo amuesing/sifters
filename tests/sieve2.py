@@ -19,17 +19,17 @@ def is_prime(m):
 ###################################################
 
 def parse_modulo(siev):
-    if type(siev) == tuple:
-        modulo = []
-        for siv in siev:
-            modulo.append([int(s) for s in re.findall(r'(\d+)@', siv)])
-        return modulo
-    else:
-        modulo = [int(s) for s in re.findall(r'(\d+)@', siev)]
-        return modulo
+    # if type(siev) == list:
+    modulo = []
+    for siv in siev:
+        modulo.append([int(s) for s in re.findall(r'(\d+)@', siv)])
+    return modulo
+    # else:
+    #     modulo = [int(s) for s in re.findall(r'(\d+)@', siev)]
+    # return modulo
 
 def find_lcm(modulo):
-    if all(isinstance(i, list) for i in modulo):
+    if type(modulo[0]) == list:
         multiples = []
         for mod in modulo:
             multiples.append(np.lcm.reduce(mod))
@@ -66,34 +66,36 @@ def find_period(siev):
     product = np.prod(unique_numbers)
     return product
 
-def initialize(siev, rep=1):
+def initialize(siev, rep):
     events = sieve.Sieve(siev)
     period = find_period(siev)
     events.setZRange(0, (rep * period) - 1)
     binary = events.segment(segmentFormat='binary')
     return binary
 
-def assign(pattern, index=0):
+def assign(pattern, index):
     # method for selecting midi key
     midi_key = [35, 60, 76, 80, 80, 80 ,80]
     note_length = 0.25
     return [pattern, midi_key[index], note_length]
 
-def parse(siev):
+def parse(sievs):
     pattern = []
-    if type(siev) == tuple:
-        i = 0
-        rep = normalize_periodicity(siev)
-        for siv in siev:
-            binary = initialize(siv, rep[i])
+    # if len(sievs) > 1:
+    i = 0
+    rep = normalize_periodicity(sievs)
+    if len(sievs) > 1:
+        for siev in sievs:
+            binary = initialize(siev, rep[i])
             assigned_pattern = assign(binary, i)
             pattern.append(assigned_pattern)
+            pattern = assigned_pattern
             i += 1
     else:
-        binary = initialize(siev)
-        assigned_pattern = assign(binary)
-        pattern.append(assigned_pattern)
-    return pattern
+        print('hello world')
+        # binary = initialize(sievs, rep)
+        # pattern = assign(binary, i)
+    # return pattern
 
 ###################################################
 
@@ -131,15 +133,10 @@ def generate_score(siev):
 
 ###################################################
 
-sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-siv = '((8@0|8@1|8@7)&(5@1|5@3))'
+psappha_sieve = ['((8@0|8@1|8@7)&(5@1|5@3))']
 
 if __name__ == '__main__':
     # composition = generate_score(psappha_sieve)
     # composition.show()
-    # res = parse(siv)
-    # res1 = parse(sivs)
-    # print(res)
-    # print(res1)
-    c = generate_score(siv)
-    c.show()
+    res = parse(psappha_sieve)
+    print(res)

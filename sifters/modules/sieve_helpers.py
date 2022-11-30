@@ -29,7 +29,7 @@ def parse_modulo(siev):
         return modulo
 
 def find_lcm(modulo):
-    if type(modulo[0]) == list:
+    if all(isinstance(i, list) for i in modulo):
         multiples = []
         for mod in modulo:
             multiples.append(np.lcm.reduce(mod))
@@ -66,28 +66,33 @@ def find_period(siev):
     product = np.prod(unique_numbers)
     return product
 
-def initialize(siev, rep):
+def initialize(siev, rep=1):
     events = sieve.Sieve(siev)
     period = find_period(siev)
     events.setZRange(0, (rep * period) - 1)
     binary = events.segment(segmentFormat='binary')
     return binary
 
-def assign(pattern, index):
+def assign(pattern, index=0):
     # method for selecting midi key
-    midi_key = [35, 60, 76, 80, 80, 80 ,80]
+    midi_key = [35, 60, 76, 80, 80, 80 ,80, 80]
     note_length = 0.25
     return [pattern, midi_key[index], note_length]
 
-def parse(sievs):
+def parse(siev):
     pattern = []
-    i = 0
-    rep = normalize_periodicity(sievs)
-    for siev in sievs:
-        binary = initialize(siev, rep[i])
-        assigned_pattern = assign(binary, i)
+    if type(siev) == tuple:
+        i = 0
+        rep = normalize_periodicity(siev)
+        for siv in siev:
+            binary = initialize(siv, rep[i])
+            assigned_pattern = assign(binary, i)
+            pattern.append(assigned_pattern)
+            i += 1
+    else:
+        binary = initialize(siev)
+        assigned_pattern = assign(binary)
         pattern.append(assigned_pattern)
-        i += 1
     return pattern
 
 ###################################################
@@ -95,7 +100,7 @@ def parse(sievs):
 def generate_part(pattern, midi_key, note_length, id):
     part = stream.Part(id='part{n}'.format(n=id))
     part.append(instrument.UnpitchedPercussion())
-    period, repeat_pattern = len(pattern), 1
+    period, repeat_pattern = len(pattern), 10
     numerator, denominator = largest_prime_factor(period), 4
     i = 0
     if id == 1:
@@ -126,8 +131,10 @@ def generate_score(siev):
 
 ###################################################
 
-psappha_sieve = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
+p_s = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)', '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
+psappha = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)'
+sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
 
 if __name__ == '__main__':
-    composition = generate_score(psappha_sieve)
-    composition.show()
+    composition = generate_score(psappha)
+    composition.show('midi')
