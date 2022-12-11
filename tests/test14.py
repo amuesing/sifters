@@ -1,20 +1,15 @@
-rep = 4
-i = 1
+from music21 import *
 
+aStream = stream.Stream()
+src = list(range(12)) # cheate a list of integers 0 through 11
+# src = src[2:4] + src[0:2] + src[8:9] + src[4:8] + src[9:12] # recombine
+for i in range(0, 12, 3):
+    # aStream.append(chord.Chord(src[i:i + 3]))
+    print(src[i:i+3])
 
-for _ in range(rep):
-    y = i/2
-    print(y)
-    i += 1
-    
-def find_lcm(modulo):
-    # check if *every* element in a list is a list
-    if all(isinstance(i, list) for i in modulo):
-        multiples = []
-        for mod in modulo:
-            multiples.append(np.lcm.reduce(mod))
-        # find_lcm(multiples)
-        return find_lcm(multiples)
-    else:
-        return np.lcm.reduce(modulo)
-    
+# aStream.show()
+# print(src[4:8])
+# print(range(0, 12, 3))
+# print(src)
+
+# print(src[i:i+3])

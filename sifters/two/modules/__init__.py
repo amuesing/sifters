@@ -3,5 +3,5 @@ __all__ = [
     'sequence_generators',
     'import_helpers',
     'sieve_helpers',
-    'midi_helpers'
+    'midi_helpers',
     ]
