@@ -1,4 +1,4 @@
 __all__ = [
     'constructor',
-    'utilities'
+    'utilities',
     ]
