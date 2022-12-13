@@ -1,4 +1,5 @@
 __all__ = [
-    'constructor',
+    'initialize',
     'utilities',
+    'generate'
     ]

@@ -1,7 +1,7 @@
 from music21 import *
 import numpy as np
 
-def find_binary(siev):
+def binary(siev):
     bin = []
     if type(siev) == tuple:
         i = 0
@@ -22,7 +22,7 @@ def find_binary(siev):
         bin.append(obj.segment(segmentFormat='binary'))
     return bin
 
-def find_pitch_set(siev):
+def pitch_set(siev):
     # what if there are multiple sieves?
     set = sieve.PitchSieve(siev[0])
     period = set.sieveObject.period()
@@ -42,5 +42,5 @@ def find_pitch_set(siev):
 
 if __name__ == '__main__':
     p_s = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)', '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    form = find_pitch_set(p_s)
+    form = pitch_set(p_s)
     print(form)
