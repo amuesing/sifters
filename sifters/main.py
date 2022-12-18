@@ -2,53 +2,54 @@ from music21 import *
 from modules import *
 
 def main():
-    p_s = utilities.load_pickle('sifters/mod5,8/data/p_s.p')
+    p_s = utilities.load_pickle('sifters/data/p_s.p')
     c = generate_score(p_s)
     c.show()
-    
+
 def generate_score(siev):
     score = stream.Score()
-    part1 = stream.Part()
-    part2 = stream.Part()
-    part3 = stream.Part()
-    part4 = stream.Part()
-    binary = initialize.binary(siev)
-    intervals = initialize.pitch_set(siev)
-    note_length = 0.25
-    id = 1
-    num, den = utilities.largest_prime_factor(len(binary[0])), 2
-    part1.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
-    part1.insert(0, clef.PercussionClef())
-    part1.append(instrument.UnpitchedPercussion())
-    part1.append(tempo.MetronomeMark('fast', 144, note.Note(type='quarter')))
-    part2.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
-    part2.append(instrument.Piano())
-    part3.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
-    part3.append(instrument.Piano())
-    part4.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
-    part4.append(instrument.Piano())
-    for bin in binary:
-        p1 = generate.part1(bin, note_length, id)
-        p2 = generate.part2(bin, intervals, note_length, id)
-        p3 = generate.part3(bin, intervals, note_length, id)
-        p4 = generate.part4(bin, intervals, note_length, id)
-        for n in p1:
-            part1.insert(n.offset, n)
-        for n in p2:
-            part2.insert(n.offset, n)
-        for n in p3:
-            part3.insert(n.offset, n)
-        for n in p4:
-            part4.insert(n.offset, n)
-        id += 1
-    score.insert(0, part1)
-    score.insert(0, part2)
-    score.insert(0, part3)
-    score.insert(0, part4)
     score.insert(0, metadata.Metadata())
     score.metadata.title = 'Sifters'
     score.metadata.composer = 'Aarib Moosey'
+    binary = initialize.binary(siev)
+    period = len(binary[0])
+    intervals = initialize.pitch_set(siev)
+    factors = utilities.factorize(period)
+    num, den = utilities.largest_prime_factor(len(binary[0])), 2
+    index = -1
+    voices = len(binary)
+    parts = stream.Stream()
+    for _ in range(voices):
+        part = stream.Stream()
+        p = stream.Stream()
+        for bin in binary:
+            p.insert(0, generate_part(bin, intervals, factors[index]))
+        for i in p:
+            for n in i:
+                part.insert(n.offset, n)
+        parts.insert(0, part)
+        index += -1
+    for part in parts:
+        part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
+        score.insert(0, part)
     return score
+
+def generate_part(bin, intervals, id):
+    part = stream.Part()
+    period = len(bin)
+    pattern = bin * id
+    duration = 0.25 * (period/id)
+    # smallest duration set to 0.25, or one 16th note
+    inter = intervals * 100
+    # what if there are more events than intervals, how to cycle?
+    index = id - 1
+    i = 0
+    for bit in pattern:
+        if bit == 1:
+            part.insert(i * duration, note.Note(midi=60+(inter[index]), quarterLength=duration))
+            index += 1
+        i += 1
+    return part
 
 if __name__ == '__main__':
     main()

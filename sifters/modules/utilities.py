@@ -9,3 +9,7 @@ def is_prime(m):
 
 def load_pickle(path):
     return pickle.load(open(path, 'rb'))
+
+def factorize(num):
+    return [n for n in range(1, num + 1) if num % n == 0]
+# https://stackoverflow.com/questions/47064885/list-all-factors-of-number

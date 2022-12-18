@@ -25,8 +25,7 @@ def binary(siev):
 def pitch_set(siev):
     # what if there are multiple sieves?
     set = sieve.PitchSieve(siev[0])
-    period = set.sieveObject.period()
-    set.sieveObject.setZRange(0, period - 1)
+    set.sieveObject.setZRange(0, set.sieveObject.period() - 1)
     intervals = set.sieveObject.segment()
     return intervals
 
