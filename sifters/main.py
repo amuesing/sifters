@@ -1,10 +1,11 @@
-from music21 import *
+from music21 import metadata, stream, note, instrument, clef, meter
+from itertools import cycle
 from modules import *
 
 def main():
     p_s = utilities.load_pickle('sifters/data/p_s.p')
     c = generate_score(p_s)
-    c.show()
+    # c.show()
 
 def generate_score(siev):
     score = stream.Score()
@@ -15,39 +16,48 @@ def generate_score(siev):
     period = len(binary[0])
     intervals = initialize.pitch_set(siev)
     factors = utilities.factorize(period)
+    factors.reverse()
     num, den = utilities.largest_prime_factor(len(binary[0])), 2
-    index = -1
+    part_number = 1
     voices = len(binary)
     parts = stream.Stream()
     for _ in range(voices):
         part = stream.Stream()
         p = stream.Stream()
+        if part_number == 1:
+            part.append(instrument.UnpitchedPercussion())
+            part.insert(0, clef.PercussionClef())
+        if part_number > 1:
+            part.append(instrument.Piano())
         for bin in binary:
-            p.insert(0, generate_part(bin, intervals, factors[index]))
+            p.insert(0, generate_part(bin, intervals, factors[part_number - 1], part_number))
         for i in p:
             for n in i:
                 part.insert(n.offset, n)
         parts.insert(0, part)
-        index += -1
+        part_number += 1
     for part in parts:
         part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
         score.insert(0, part)
     return score
 
-def generate_part(bin, intervals, id):
+def generate_part(bin, intervals, factor, part_number):
     part = stream.Part()
     period = len(bin)
-    pattern = bin * id
-    duration = 0.25 * (period/id)
-    # smallest duration set to 0.25, or one 16th note
-    inter = intervals * 100
-    # what if there are more events than intervals, how to cycle?
-    index = id - 1
+    pattern = bin * factor
+    duration = 0.25 * (period/factor)
+    midi_key = cycle([44, 60, 76, 80, 80, 80, 35, 35])
+    inter = cycle(intervals)
+    fund= 60
     i = 0
+    if part_number == 1:
+        for bit in pattern:
+            if bit == 1:
+                part.insert(i * duration, note.Note(midi=next(midi_key), quarterLength=duration))
+            i += 1
     for bit in pattern:
         if bit == 1:
-            part.insert(i * duration, note.Note(midi=60+(inter[index]), quarterLength=duration))
-            index += 1
+            part.insert(i * duration, note.Note(midi=fund + (next(inter)), quarterLength=duration))
         i += 1
     return part
 
