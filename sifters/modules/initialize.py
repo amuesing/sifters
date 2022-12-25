@@ -22,11 +22,12 @@ def binary(siev):
         bin.append(obj.segment(segmentFormat='binary'))
     return bin
 
-def pitch_set(siev):
-    # what if there are multiple sieves?
-    set = sieve.PitchSieve(siev[0])
-    set.sieveObject.setZRange(0, set.sieveObject.period() - 1)
-    intervals = set.sieveObject.segment()
+def intervals(siev):
+    intervals = []
+    for siv in siev:
+        set = sieve.Sieve(siv)
+        set.setZRange(0, set.period() - 1)
+        intervals.append(set.segment())
     return intervals
 
 # def formalize(bin, elem=1, index=0):
@@ -41,5 +42,9 @@ def pitch_set(siev):
 
 if __name__ == '__main__':
     p_s = '((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@3)|(8@4)|(8@1&5@2)|(8@6&5@1)', '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    form = pitch_set(p_s)
-    print(form)
+    arr = intervals(p_s)[0]
+    sum = 0
+    for i in arr:
+        sum = sum + i
+    
+    print(sum)
