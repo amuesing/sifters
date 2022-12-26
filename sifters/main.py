@@ -1,20 +1,22 @@
 from music21 import *
 from itertools import *
 from modules import *
+import pandas as pd
 
 def main():
     p_s = utilities.load_pickle('sifters/data/p_s.p')
     c = generate_score(p_s)
-    c.write('midi', 'sifters/data/generated.mid')
-    # c.write
+    # c.write('midi', 'sifters/data/score.mid')
+    # c.show('text')
+    df = utilities.generate_df(c)
+    df.to_csv("sifters/data/exported_data.csv", index=False)
+    # # c.show('midi')
     # c.show()
     # print(c)
 
 # introduce metric-modulation through tempo changes -- augment/diminiute duration values relative to each part 
 def generate_score(siev):
-    score = stream.Stream()
-    percussion = stream.Stream()
-    parts = []
+    score = stream.Score()
     score.insert(0, metadata.Metadata())
     score.insert(0, tempo.MetronomeMark('mid', 69, note.Note(type='quarter')))
     score.metadata.title = 'Sifters'
@@ -24,33 +26,31 @@ def generate_score(siev):
     period = len(binary[0])
     factors = utilities.factorize(period)
     factors.reverse()
+    #number of voices equals number of factors since what is being represented is each factoral of the period
     voices = len(factors)
     num, den = utilities.largest_prime_factor(len(binary[0])), 4
+    parts = []
     part_number = 1
     for _ in range(voices):
-        part = stream.Part()
-        p = stream.Part()
+        part = stream.Stream()
+        p = stream.Stream()
+        part.append(instrument.UnpitchedPercussion())
+        part.insert(0, clef.PercussionClef())
+        part.append(instrument.Piano())
         for bin in binary:
-            p.insert(0, generate_percussion_part(bin, factors[part_number - 1]))
+            p.insert(0, generate_percussion_part(bin, factors[part_number - 1], part_number))
         for i in p:
-            for n in i:
-                part.insert(n.offset, n)
-        parts.append(part)
+            parts.insert(0, i)
         part_number += 1
-    # how do I merge all midi layers into a single layer?
-    # if finale is only able to display 4 layers per stave, then any iteration in excess of 4 will be left out
     # flatten the streams, render as text, remove duplicate elements, recombine into a single midi layer
     for part in parts:
         part.insert(0, instrument.UnpitchedPercussion())
         part.insert(0, clef.PercussionClef())
         part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
         score.insert(0, part)
-    # for part in parts:
-        # for n in part:
-        #     percussion.insert(n.offset, n)
     return score
 
-def generate_percussion_part(bin, factor):
+def generate_percussion_part(bin, factor, part_number):
     part = stream.Part()
     period = len(bin)
     repeat = 1
