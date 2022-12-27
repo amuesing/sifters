@@ -5,26 +5,23 @@ import pandas as pd
 
 def main():
     p_s = utilities.load_pickle('sifters/data/p_s.p')
-    c = generate_score(p_s)
-    # c.write('midi', 'sifters/data/score.mid')
-    # c.show('text')
-    df = utilities.generate_df(c)
-    remove_dups = df.drop_duplicates()
-    sorted_part = remove_dups.sort_values(by = 'Offset')
-    test.csv_to_midi(sorted_part)
-    sorted_part.to_csv("sifters/data/exported_data.csv", index=False)
-    # # c.show('midi')
-    # c.show()
-    # print(c)
-    # p.show()
+    composition = generate_score(p_s)
+    dataframe = utilities.generate_df(composition)
+    remove_dups = utilities.remove_duplicates(dataframe)
+    combined_part = utilities.csv_to_midi(remove_dups)
+    combined_part.insert(0, tempo.MetronomeMark('mid', 92, note.Note(type='quarter')))
+    combined_part.append(instrument.UnpitchedPercussion())
+    combined_part.insert(0, clef.PercussionClef())
+    combined_part.insert(0, meter.TimeSignature('5/4'))
+    combined_part.write('midi', 'sifters/data/percussion.mid')
 
 # introduce metric-modulation through tempo changes -- augment/diminiute duration values relative to each part 
 def generate_score(siev):
     score = stream.Score()
-    score.insert(0, metadata.Metadata())
-    score.insert(0, tempo.MetronomeMark('mid', 69, note.Note(type='quarter')))
-    score.metadata.title = 'Sifters'
-    score.metadata.composer = 'Aarib Moosey'
+    # score.insert(0, metadata.Metadata())
+    # score.insert(0, tempo.MetronomeMark('mid', 69, note.Note(type='quarter')))
+    # score.metadata.title = 'Sifters'
+    # score.metadata.composer = 'Aarib Moosey'
     binary = initialize.binary(siev)
     intervals = initialize.intervals(siev)[0]
     period = len(binary[0])
@@ -38,9 +35,9 @@ def generate_score(siev):
     for _ in range(voices):
         part = stream.Stream()
         p = stream.Stream()
-        part.append(instrument.UnpitchedPercussion())
-        part.insert(0, clef.PercussionClef())
-        part.append(instrument.Piano())
+        # part.append(instrument.UnpitchedPercussion())
+        # part.insert(0, clef.PercussionClef())
+        # part.append(instrument.Piano())
         for bin in binary:
             p.insert(0, generate_percussion_part(bin, factors[part_number - 1]))
         for i in p:
@@ -48,9 +45,9 @@ def generate_score(siev):
         part_number += 1
     # flatten the streams, render as text, remove duplicate elements, recombine into a single midi layer
     for part in parts:
-        part.insert(0, instrument.UnpitchedPercussion())
-        part.insert(0, clef.PercussionClef())
-        part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
+        # part.insert(0, instrument.UnpitchedPercussion())
+        # part.insert(0, clef.PercussionClef())
+        # part.insert(0, meter.TimeSignature('{n}/{d}'.format(n=num, d=den)))
         score.insert(0, part)
     return score
 

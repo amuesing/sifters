@@ -1,3 +1,4 @@
+from music21 import instrument, clef
 from modules import utilities
 from itertools import cycle
 
@@ -10,3 +11,10 @@ def midi_pool(bin):
     for _ in range(events):
         midi_pool.append(next(instruments))
     return midi_pool
+
+# def tempo(p):
+#     part = p
+#     part.append(instrument.UnpitchedPercussion())
+#     part.insert(0, clef.PercussionClef())
+#     part.append(instrument.Piano())
+#     return part

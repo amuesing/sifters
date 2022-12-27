@@ -6,6 +6,32 @@ from music21 import *
 def load_pickle(path):
     return pickle.load(open(path, 'rb'))
 
+def remove_duplicates(df):
+    return df.drop_duplicates()
+
+def sort_values(df, column_name):
+    return df.sort_values(by = column_name)
+    
+def csv_to_midi(df):
+    elem = []
+    result = {}
+    part = stream.Stream()
+    for _, row in df.iterrows():
+        offset = row['Offset']
+        mid = row['Midi']
+        elem.append([offset, int(mid)])
+    for sublist in elem:
+        if sublist[0] in result:
+            result[sublist[0]].append(sublist[1])
+        else:
+            result[sublist[0]] = [sublist[1]]
+    for offset, mid in result.items():
+        if len(mid) > 1:
+            part.insert(offset, chord.Chord(mid, quarterLength=0.25))
+        else:
+            part.insert(offset, note.Note(mid[0], quarterLength=0.25))
+    return part
+
 # https://medium.com/swlh/music21-pandas-and-condensing-sequential-data-1251515857a6
 def generate_row(mus_object, part, midi=np.nan):
     d = {}
@@ -44,8 +70,5 @@ def factorize(num):
     return [n for n in range(1, num + 1) if num % n == 0]
 
 if __name__ == '__main__':
-    # f = factorize(400)
-    # f.reverse()
-    # print(f)
     lpf = largest_prime_factor(50)
     print(lpf)
