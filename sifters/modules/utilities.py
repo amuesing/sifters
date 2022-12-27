@@ -7,28 +7,24 @@ def load_pickle(path):
     return pickle.load(open(path, 'rb'))
 
 # https://medium.com/swlh/music21-pandas-and-condensing-sequential-data-1251515857a6
-def generate_row(mus_object, part, pitch_class=np.nan):
+def generate_row(mus_object, part, midi=np.nan):
     d = {}
-    d.update({'id': mus_object.id,
-              'Part Name': part.partName,
-              'Offset': mus_object.offset,
-              'Duration': mus_object.duration.quarterLength,
-              'Type': type(mus_object),
-              'Pitch Class': pitch_class})
+    d.update({'Offset': mus_object.offset,
+            'Midi': midi})
     return d
 
 def generate_df(score):
     parts = score.parts
     rows_list = []
     for part in parts:
-        for index, elt in enumerate(part.flat
+        for _, elt in enumerate(part.flat
                 .stripTies()
                 .getElementsByClass(
             [note.Note, note.Rest, chord.Chord, bar.Barline])):
             if hasattr(elt, 'pitches'):
                 pitches = elt.pitches
                 for pitch in pitches:
-                    rows_list.append(generate_row(elt, part, pitch.pitchClass))
+                    rows_list.append(generate_row(elt, part, pitch.midi))
             else:
                 rows_list.append(generate_row(elt, part))
     return pd.DataFrame(rows_list)

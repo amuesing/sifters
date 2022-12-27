@@ -9,10 +9,14 @@ def main():
     # c.write('midi', 'sifters/data/score.mid')
     # c.show('text')
     df = utilities.generate_df(c)
-    df.to_csv("sifters/data/exported_data.csv", index=False)
+    remove_dups = df.drop_duplicates()
+    sorted_part = remove_dups.sort_values(by = 'Offset')
+    test.csv_to_midi(sorted_part)
+    sorted_part.to_csv("sifters/data/exported_data.csv", index=False)
     # # c.show('midi')
     # c.show()
     # print(c)
+    # p.show()
 
 # introduce metric-modulation through tempo changes -- augment/diminiute duration values relative to each part 
 def generate_score(siev):
@@ -38,7 +42,7 @@ def generate_score(siev):
         part.insert(0, clef.PercussionClef())
         part.append(instrument.Piano())
         for bin in binary:
-            p.insert(0, generate_percussion_part(bin, factors[part_number - 1], part_number))
+            p.insert(0, generate_percussion_part(bin, factors[part_number - 1]))
         for i in p:
             parts.insert(0, i)
         part_number += 1
@@ -50,7 +54,7 @@ def generate_score(siev):
         score.insert(0, part)
     return score
 
-def generate_percussion_part(bin, factor, part_number):
+def generate_percussion_part(bin, factor):
     part = stream.Part()
     period = len(bin)
     repeat = 1

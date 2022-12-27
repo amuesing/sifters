@@ -1,5 +1,6 @@
 __all__ = [
     'initialize',
     'utilities',
-    'formalize'
+    'formalize',
+    'test'
     ]
