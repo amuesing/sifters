@@ -1,6 +1,4 @@
 import pickle
-import pandas as pd
-import numpy as np
 from music21 import *
 
 def load_pickle(path):
