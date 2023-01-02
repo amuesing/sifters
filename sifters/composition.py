@@ -11,8 +11,9 @@ class Composition:
         self.factors = self.get_factors(self.period)
         self.voices = len(self.factors)
         self.grid = 1
-        
-    def get_binary(self, sivs):
+    
+    @staticmethod
+    def get_binary(sivs):
         bin = []
         if isinstance(sivs, tuple):
             per = []
@@ -31,7 +32,8 @@ class Composition:
             bin.append(obj.segment(segmentFormat='binary'))
         return bin
     
-    def get_intervals(self, sivs):
+    @staticmethod
+    def get_intervals(sivs):
         intervals = []
         for siv in sivs:
             set = music21.sieve.Sieve(siv)
@@ -39,7 +41,8 @@ class Composition:
             intervals.append(set.segment())
         return intervals
     
-    def get_factors(self, num):
+    @staticmethod
+    def get_factors(num):
         factors = []
         i = 1
         while i <= num:
@@ -48,19 +51,15 @@ class Composition:
             i += 1
         return factors
     
-    def get_largest_prime_factor(self, n):
-        for i in range(n, 1, -1):
-            if n % i == 0 and all(i % j for j in range(2, i)):
+    @staticmethod
+    def get_largest_prime_factor(num):
+        for i in range(num, 1, -1):
+            if num % i == 0 and all(i % j for j in range(2, i)):
                 return i
         return 1
     
-    def construct_score(self, part):
-            df = self.generate_dataframe(part)
-            form = self.csv_to_midi(df, self.grid)
-            comp = self.set_measure_zero(form)
-            comp.write('midi', 'sifters/tracks/percussion.mid')
-            
-    def generate_dataframe(self, score):
+    @staticmethod
+    def generate_dataframe(score):
         parts = score.parts
         rows_list = []
         for part in parts:
@@ -71,19 +70,20 @@ class Composition:
                 rows_list.append(d)
         return pandas.DataFrame(rows_list).drop_duplicates()
     
-    def csv_to_midi(self, df, grid):
+    def csv_to_midi(self, dataframe):
         part = music21.stream.Score()
         result = {}
-        for _, row in df.iterrows():
+        for _, row in dataframe.iterrows():
             offset = row['Offset']
             mid = int(row['Midi'])
             result[offset] = result.get(offset, []) + [mid]
         for offset, mid in result.items():
-            notes = [music21.note.Note(m, quarterLength=grid) for m in mid]
+            notes = [music21.note.Note(m, quarterLength=self.grid) for m in mid]
             part.insert(offset, music21.chord.Chord(notes) if len(notes) > 1 else notes[0])
         return part.makeRests(fillGaps=True)
     
-    def set_measure_zero(self, score):
+    @staticmethod
+    def set_measure_zero(score):
         score.insert(0, music21.metadata.Metadata())
         score.metadata.title = 'Sifters'
         score.metadata.composer = 'Ari Müsing'
@@ -92,10 +92,18 @@ class Composition:
         score.insert(0, music21.meter.TimeSignature('5/4'))
         score.insert(0, music21.tempo.MetronomeMark('fast', 144, music21.note.Note(type='quarter')))
         return score
-
+    
+    def construct_score(self, part):
+        df = self.generate_dataframe(part)
+        form = self.csv_to_midi(df)
+        comp = self.set_measure_zero(form)
+        comp.write('midi', f'sifters/data/midi/{self.name}.mid')
+        sorted = df.sort_values(by = 'Offset')
+        sorted.to_csv(f'sifters/data/csv/{self.name}.csv', index=False)
+        
 class Percussion(Composition):
     def __init__(self, composition):
-        self.composition = composition
+        self.name = 'Percussion'
         self.voices = composition.voices
         self.bin = composition.bin
         self.factors = composition.factors
@@ -116,8 +124,7 @@ class Percussion(Composition):
             
     def create_notes(self, bin, factor):
         part = music21.stream.Part()
-        repeat = 1
-        pattern = (bin * factor) * repeat
+        pattern = bin * factor
         dur = self.grid * (self.period / factor)
         events = self.midi_pool(bin)
         midi_pool = itertools.cycle(events)
