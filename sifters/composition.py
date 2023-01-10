@@ -7,9 +7,6 @@ class Composition:
     def __init__(self, sivs):
         self.intervals = self.get_intervals(sivs)
         self.bin = self.get_binary(sivs)
-        self.period = len(self.bin[0])
-        self.factors = self.get_factors(self.period)
-        self.voices = len(self.factors)
         self.grid = 0.5
     
     @staticmethod
@@ -76,12 +73,16 @@ class Percussion(Composition):
         super().__init__(sivs)
         self.stream = music21.stream.Score()
         self.name = 'Percussion'
+        self.ratio = 1
+        self.grid = self.grid
+        self.period = len(self.bin[0]) / self.ratio
+        self.factors = Composition.get_factors(self.period)
         self.create_notes()
         
     def create_notes(self):
         for b in self.bin:
             midi_pool = itertools.cycle(self.midi_pool(b))
-            for i in range(self.voices):
+            for i in range(len(self.factors)):
                 pattern = b * self.factors[i]
                 dur = self.grid * (self.period / self.factors[i])
                 part = music21.stream.Part()
@@ -106,33 +107,25 @@ class Bass(Composition):
         self.stream = music21.stream.Score()
         self.name = 'Bass'
         self.ratio = 1 + 1/3
-        self.inner_grid = self.grid * self.ratio
-        self.inner_period = self.period / self.ratio
+        self.grid = self.grid * self.ratio
+        self.period = len(self.bin[0]) / self.ratio
+        self.factors = Composition.get_factors(self.period)
         self.create_parts()
         
-    # def create_notes(self):
-    #     for i, b in enumerate(self.bin):
-    #         part = music21.stream.Part()
-    #         pattern = b * int(self.inner_period)
-    #         midi_pool = itertools.cycle(self.midi_pool(i))
-    #         for i, bit in enumerate(pattern):
-    #             if bit == 1:
-    #                 note = music21.note.Note(midi=next(midi_pool), quarterLength=self.inner_grid)
-    #                 part.insert(i * self.inner_grid, note)
-    #         self.stream.insert(0, part)
-        
     def create_parts(self):
-        for _ in range(self.voices):
+        for _ in range(len(self.factors)):
             for i, b in enumerate(self.bin):
                 self.stream.insert(0, self.create_notes(i, b))
             
     def create_notes(self, index, bin):
         part = music21.stream.Part()
-        pattern = bin * int(self.inner_period)
+        # pattern = bin * int(self.period)
+        pattern = bin * self.factors[index]
+        dur = self.grid * (self.period / self.factors[index])
         midi_pool = itertools.cycle(self.midi_pool(index))
         for i, bit in enumerate(pattern):
             if bit == 1:
-                part.insert(i * self.inner_grid, music21.note.Note(midi=next(midi_pool), quarterLength=self.inner_grid))
+                part.insert(i * self.grid, music21.note.Note(midi=next(midi_pool), quarterLength=self.grid))
         return part
     
     def midi_pool(self, index):
@@ -215,7 +208,7 @@ class Score():
     
     @staticmethod
     def set_measure_zero(score, arg, part_num):
-        # score.insert(0, music21.meter.TimeSignature('5/4'))
+        score.insert(0, music21.meter.TimeSignature('5/4'))
         if arg.name == 'Percussion':
             score.insert(0, music21.instrument.UnpitchedPercussion())
             score.insert(0, music21.clef.PercussionClef())
@@ -240,9 +233,9 @@ class Score():
             df = self.generate_dataframe(arg.stream)
             form = self.csv_to_midi(df, arg)
             comp = self.set_measure_zero(form, arg, part_num)
-            comp.write('midi', f'sifters/data/midi/{arg.name}.mid')
+            comp.write('midi', f'sifters/data/midi/.{arg.name}.mid')
             sorted = df.sort_values(by = 'Offset')
-            sorted.to_csv(f'sifters/data/csv/{arg.name}.csv', index=False)
+            sorted.to_csv(f'sifters/data/csv/.{arg.name}.csv', index=False)
             score.insert(0, comp)
             part_num += 1
         return score
@@ -255,3 +248,4 @@ if __name__ == '__main__':
     score = Score(perc, bass)
     score = score.construct_score()
     score.show()
+    print(bass.period)
