@@ -61,35 +61,35 @@ class Composition:
         return 1
     
     @staticmethod
-    def get_least_common_multiple(a, b):
-        return (a * b) // math.gcd(a, b)
-    
-    @staticmethod
-    def get_least_common_denominator(grid_history):
-        denominators = [fraction.denominator for fraction in grid_history]
-        return functools.reduce(lambda a, b: a*b // math.gcd(a, b), denominators)
-        # lcm = functools.reduce(lambda a, b: a*b // math.gcd(a, b), denominators)
-        # return [lcm // fraction.denominator for fraction in grid_history]
+    def get_least_common_multiple(numbers):
+        lcm = numbers[0]
+        for i in range(1, len(numbers)):
+            lcm = lcm * numbers[i] // math.gcd(lcm, numbers[i])
+        return lcm
+        
+    # @staticmethod
+    # def get_least_common_multiple(a, b):
+    #     return (a * b) // math.gcd(a, b)
         
 class Percussion(Composition):
     grid_history = []
+    next_id = 0
+    
     def __init__(self, sivs, grid=None):
         super().__init__(sivs)
         self.stream = music21.stream.Score()
         self.name = 'Percussion'
         self.grid = fractions.Fraction(grid) if grid is not None else self.grid
         self.grid_history.append(self.grid)
+        self.id = Percussion.next_id
+        Percussion.next_id += 1
         self.create_notes()
-        
-    def test(self):
-        lcd = Composition.get_least_common_denominator(self.grid_history)
-        return [lcd // fraction.denominator for fraction in perc1.grid_history]
         
     def create_notes(self):
         for b in self.bin:
             midi_pool = itertools.cycle(self.midi_pool(b))
             for i in range(len(self.factors)):
-                pattern = b * self.factors[i]
+                pattern = (b * self.factors[i]) 
                 dur = self.grid * (self.period / self.factors[i])
                 part = music21.stream.Part()
                 for j, bit in enumerate(pattern):
@@ -108,12 +108,30 @@ class Percussion(Composition):
         Composition.construct_part(self, self.stream)
 
 class Score():
+    normalized_numerators = []
+    normalized_denominators = []
+    multipliers = []
+    
     def __init__(self, *args):
         self.args = args
-        
+    
     @staticmethod
-    def generate_dataframe(score):
-        parts = score.parts
+    def get_multiplier(arg):
+        lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
+        return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id]
+    
+    @staticmethod
+    def normalize_numerator(arg, mult):
+        return arg.grid_history[arg.id].numerator * mult
+    
+    @staticmethod
+    def normalize_denominator(arg, mult):
+        # Score.normalized_numerators.append(mult * arg.grid_history[arg.id].numerator)
+        return arg.grid_history[arg.id].denominator * mult
+
+    @staticmethod
+    def generate_dataframe(arg):
+        parts = arg.stream.parts
         rows_list = []
         for part in parts:
             for elt in part.getElementsByClass([music21.note.Note]):
@@ -124,6 +142,17 @@ class Score():
         return pandas.DataFrame(rows_list).drop_duplicates()
     
     @staticmethod
+    def duplicate_dataframe(arg, df, n):
+        frames = [df]
+        delta = 0
+        for _ in range(1, n):
+            df["Offset"] += delta * arg.grid_history[arg.id]
+            frames.append(df)
+            print(delta * arg.grid_history[arg.id])
+            delta += math.pow(arg.period, 2)
+        return pandas.concat(frames)
+        
+    @staticmethod
     def csv_to_midi(dataframe, arg):
         part = music21.stream.Part()
         result = {}
@@ -132,7 +161,7 @@ class Score():
             mid = int(row['Midi'])
             result[offset] = result.get(offset, []) + [mid]
         for offset, mid in result.items():
-            notes = [music21.note.Note(m, quarterLength=arg.grid) for m in mid]
+            notes = [music21.note.Note(m, quarterLength=arg.grid) for m in mid] 
             part.insert(offset, music21.chord.Chord(notes) if len(notes) > 1 else notes[0])
         return part.makeRests(fillGaps=True)
     
@@ -159,26 +188,29 @@ class Score():
         score.metadata.composer = 'Ari Müsing'
         part_num = 1
         for arg in self.args:
+            mult = self.get_multiplier(arg)
+            self.normalized_numerators.append(self.normalize_numerator(arg, mult))
+            self.normalized_denominators.append(self.normalize_denominator(arg, mult))
+        lcm = arg.get_least_common_multiple(self.normalized_numerators)
+        for arg in self.args:
+            self.multipliers.append(lcm // self.normalized_numerators[arg.id])
+        for arg in self.args:
             print(f'Constructing {arg.name} Part')
-            df = self.generate_dataframe(arg.stream)
+            df = self.generate_dataframe(arg)
+            # dup = self.duplicate_dataframe(arg, df, self.multipliers[arg.id])
             form = self.csv_to_midi(df, arg)
             comp = self.set_measure_zero(form, arg, part_num)
-            comp.write('midi', f'sifters/data/midi/.{arg.name}.mid')
+            comp.write('midi', f'sifters/data/midi/.{arg.name}_{arg.id}.mid')
             sorted = df.sort_values(by = 'Offset')
-            sorted.to_csv(f'sifters/data/csv/.{arg.name}.csv', index=False)
+            sorted.to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}.csv', index=False)
             score.insert(0, comp)
-            lcm = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
             part_num += 1
         return score
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Percussion(sivs)
-    perc2 = Percussion(sivs, ('2/3'))
+    perc2 = Percussion(sivs, '2/3')
     perc3 = Percussion(sivs, '6/5')
     score = Score(perc1, perc2, perc3)
     score = score.construct_score()
-    # lcd = Composition.get_least_common_denominator(perc1.grid_history)
-    # print([lcd // fraction.denominator for fraction in perc1.grid_history])
-    # print(perc1.grid_history)
-    print(perc1.test())
