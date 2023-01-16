@@ -5,6 +5,7 @@ import pandas
 import fractions
 import math
 import functools
+import copy
 
 class Composition:
     def __init__(self, sivs):
@@ -73,7 +74,7 @@ class Composition:
         
 class Percussion(Composition):
     grid_history = []
-    next_id = 0
+    next_id = 1
     
     def __init__(self, sivs, grid=None):
         super().__init__(sivs)
@@ -118,16 +119,15 @@ class Score():
     @staticmethod
     def get_multiplier(arg):
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
-        return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id]
+        return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id-1]
     
     @staticmethod
     def normalize_numerator(arg, mult):
-        return arg.grid_history[arg.id].numerator * mult
+        return arg.grid_history[arg.id-1].numerator * mult
     
     @staticmethod
     def normalize_denominator(arg, mult):
-        # Score.normalized_numerators.append(mult * arg.grid_history[arg.id].numerator)
-        return arg.grid_history[arg.id].denominator * mult
+        return arg.grid_history[arg.id-1].denominator * mult
 
     @staticmethod
     def generate_dataframe(arg):
@@ -142,18 +142,24 @@ class Score():
         return pandas.DataFrame(rows_list).drop_duplicates()
     
     @staticmethod
-    def duplicate_dataframe(arg, df, n):
-        frames = [df]
-        delta = 0
-        for _ in range(1, n):
-            df["Offset"] += delta * arg.grid_history[arg.id]
-            frames.append(df)
-            print(delta * arg.grid_history[arg.id])
-            delta += math.pow(arg.period, 2)
-        return pandas.concat(frames)
-        
+    def normalize_periodicity(arg, df, num):
+        duplicates = [df.copy()]
+        inner_period = math.pow(arg.period, 2)
+        if num > 1:
+            for i in range(num):
+                df_copy = df.copy()
+                df_copy['Offset'] = df_copy['Offset'] + ((inner_period * arg.grid) * i)
+                duplicates.append(df_copy)
+                print(inner_period * arg.grid * i)
+                # print(float(arg.period * arg.grid))
+            result = pandas.concat(duplicates)
+            result.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_df.csv', index=False)
+            return result.drop_duplicates()
+        else:
+            return df
+    
     @staticmethod
-    def csv_to_midi(dataframe, arg):
+    def csv_to_midi(dataframe, arg, num):
         part = music21.stream.Part()
         result = {}
         for _, row in dataframe.iterrows():
@@ -164,7 +170,7 @@ class Score():
             notes = [music21.note.Note(m, quarterLength=arg.grid) for m in mid] 
             part.insert(offset, music21.chord.Chord(notes) if len(notes) > 1 else notes[0])
         return part.makeRests(fillGaps=True)
-    
+
     @staticmethod
     def set_measure_zero(score, arg, part_num):
         score.insert(0, music21.meter.TimeSignature('5/4'))
@@ -193,12 +199,12 @@ class Score():
             self.normalized_denominators.append(self.normalize_denominator(arg, mult))
         lcm = arg.get_least_common_multiple(self.normalized_numerators)
         for arg in self.args:
-            self.multipliers.append(lcm // self.normalized_numerators[arg.id])
+            self.multipliers.append(lcm // self.normalized_numerators[arg.id-1])
         for arg in self.args:
-            print(f'Constructing {arg.name} Part')
+            print(f'Constructing {arg.name} {arg.id} Part')
             df = self.generate_dataframe(arg)
-            # dup = self.duplicate_dataframe(arg, df, self.multipliers[arg.id])
-            form = self.csv_to_midi(df, arg)
+            norm = self.normalize_periodicity(arg, df, self.multipliers[arg.id-1])
+            form = self.csv_to_midi(norm, arg, self.multipliers[arg.id-1])
             comp = self.set_measure_zero(form, arg, part_num)
             comp.write('midi', f'sifters/data/midi/.{arg.name}_{arg.id}.mid')
             sorted = df.sort_values(by = 'Offset')
@@ -211,6 +217,7 @@ if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Percussion(sivs)
     perc2 = Percussion(sivs, '2/3')
-    perc3 = Percussion(sivs, '6/5')
-    score = Score(perc1, perc2, perc3)
+    # perc3 = Percussion(sivs, '6/5')
+    score = Score(perc1, perc2)
     score = score.construct_score()
+    score.show()
