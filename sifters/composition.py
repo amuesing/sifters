@@ -5,7 +5,6 @@ import pandas
 import fractions
 import math
 import functools
-import copy
 
 class Composition:
     def __init__(self, sivs):
@@ -68,10 +67,6 @@ class Composition:
             lcm = lcm * numbers[i] // math.gcd(lcm, numbers[i])
         return lcm
         
-    # @staticmethod
-    # def get_least_common_multiple(a, b):
-    #     return (a * b) // math.gcd(a, b)
-        
 class Percussion(Composition):
     grid_history = []
     next_id = 1
@@ -104,9 +99,6 @@ class Percussion(Composition):
         lpf_slice = slice(0, self.get_largest_prime_factor(events))
         instrument_pool = itertools.cycle([60,61,62,63,64][lpf_slice])
         return [next(instrument_pool) for _ in range(events)]
-    
-    def construct_part(self):
-        Composition.construct_part(self, self.stream)
 
 class Score():
     normalized_numerators = []
@@ -135,31 +127,27 @@ class Score():
         rows_list = []
         for part in parts:
             for elt in part.getElementsByClass([music21.note.Note]):
-                d = {'Offset': elt.offset}
+                # offset must be float so that the drop_duplicate method address fractions and floats equally
+                d = {'Offset': float(elt.offset)}
                 if hasattr(elt, 'pitches'):
                     d.update({'Midi': pitch.midi for pitch in elt.pitches})
                 rows_list.append(d)
+                print(float(elt.offset))
         return pandas.DataFrame(rows_list).drop_duplicates()
     
     @staticmethod
     def normalize_periodicity(arg, df, num):
         duplicates = [df.copy()]
         inner_period = math.pow(arg.period, 2)
-        if num > 1:
-            for i in range(num):
-                df_copy = df.copy()
-                df_copy['Offset'] = df_copy['Offset'] + ((inner_period * arg.grid) * i)
-                duplicates.append(df_copy)
-                print(inner_period * arg.grid * i)
-                # print(float(arg.period * arg.grid))
-            result = pandas.concat(duplicates)
-            result.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_df.csv', index=False)
-            return result.drop_duplicates()
-        else:
-            return df
+        for i in range(num):
+            df_copy = df.copy()
+            df_copy['Offset'] = df_copy['Offset'] + (inner_period * arg.grid) * i
+            duplicates.append(df_copy)
+        result = pandas.concat(duplicates)
+        return result.drop_duplicates()
     
     @staticmethod
-    def csv_to_midi(dataframe, arg, num):
+    def csv_to_midi(dataframe, arg):
         part = music21.stream.Part()
         result = {}
         for _, row in dataframe.iterrows():
@@ -184,7 +172,7 @@ class Score():
             score.insert(0, music21.instrument.Piano())
             score.insert(0, music21.clef.TrebleClef())
         if part_num == 1:
-            score.insert(0, music21.tempo.MetronomeMark('fast', 144, music21.note.Note(type='quarter')))
+            score.insert(0, music21.tempo.MetronomeMark('fast', 102, music21.note.Note(type='half')))
         return score
     
     def construct_score(self):
@@ -204,11 +192,11 @@ class Score():
             print(f'Constructing {arg.name} {arg.id} Part')
             df = self.generate_dataframe(arg)
             norm = self.normalize_periodicity(arg, df, self.multipliers[arg.id-1])
-            form = self.csv_to_midi(norm, arg, self.multipliers[arg.id-1])
+            form = self.csv_to_midi(norm, arg)
             comp = self.set_measure_zero(form, arg, part_num)
             comp.write('midi', f'sifters/data/midi/.{arg.name}_{arg.id}.mid')
-            sorted = df.sort_values(by = 'Offset')
-            sorted.to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}.csv', index=False)
+            df.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_df.csv', index=False)
+            norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_norm.csv', index=False)
             score.insert(0, comp)
             part_num += 1
         return score
@@ -220,4 +208,5 @@ if __name__ == '__main__':
     # perc3 = Percussion(sivs, '6/5')
     score = Score(perc1, perc2)
     score = score.construct_score()
+    # score.show('midi')
     score.show()
