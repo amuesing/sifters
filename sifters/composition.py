@@ -85,7 +85,7 @@ class Percussion(Composition):
         for b in self.bin:
             midi_pool = itertools.cycle(self.midi_pool(b))
             for i in range(len(self.factors)):
-                pattern = (b * self.factors[i]) 
+                pattern = b * self.factors[i]
                 dur = self.grid * (self.period / self.factors[i])
                 part = music21.stream.Part()
                 for j, bit in enumerate(pattern):
@@ -96,8 +96,42 @@ class Percussion(Composition):
                 
     def midi_pool(self, bin):
         events = bin.count(1)
-        lpf_slice = slice(0, self.get_largest_prime_factor(events))
-        instrument_pool = itertools.cycle([60,61,62,63,64][lpf_slice])
+        largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
+        instrument_pool = itertools.cycle([60,61,62,63,64][largest_prime_slice])
+        return [next(instrument_pool) for _ in range(events)]
+    
+class Bass(Composition):
+    grid_history = []
+    next_id = 1
+    
+    def __init__(self, sivs, grid=None):
+        super().__init__(sivs)
+        self.stream = music21.stream.Score()
+        self.name = 'Bass'
+        self.grid = fractions.Fraction(grid) if grid is not None else self.grid
+        self.grid_history.append(self.grid)
+        self.id = Bass.next_id
+        Bass.next_id += 1
+        self.create_notes()
+        
+    def create_notes(self):
+        for i,_ in enumerate(self.bin):
+            midi_pool = itertools.cycle(self.midi_pool(i))
+            for j in range(len(self.factors)):
+                pattern = self.bin[i] * self.factors[j]
+                dur = self.grid * (self.period / self.factors[j])
+                part = music21.stream.Part()
+                for k, bit in enumerate(pattern):
+                    if bit == 1:
+                        note = music21.note.Note(midi=next(midi_pool), quarterLength=self.grid)
+                        part.insert(k * dur, note)
+                self.stream.insert(0, part)
+                
+    def midi_pool(self, index):
+        tonality = 40
+        events = self.bin[index].count(1)
+        largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
+        instrument_pool = itertools.cycle([inter + tonality for inter in self.intervals[index]][largest_prime_slice])
         return [next(instrument_pool) for _ in range(events)]
 
 class Score():
@@ -132,7 +166,6 @@ class Score():
                 if hasattr(elt, 'pitches'):
                     d.update({'Midi': pitch.midi for pitch in elt.pitches})
                 rows_list.append(d)
-                print(float(elt.offset))
         return pandas.DataFrame(rows_list).drop_duplicates()
     
     @staticmethod
@@ -179,7 +212,7 @@ class Score():
         score = music21.stream.Score()
         score.insert(0, music21.metadata.Metadata())
         score.metadata.title = 'Sifters'
-        score.metadata.composer = 'Ari Müsing'
+        score.metadata.composer = 'Aaron Muesing'
         part_num = 1
         for arg in self.args:
             mult = self.get_multiplier(arg)
@@ -194,19 +227,20 @@ class Score():
             norm = self.normalize_periodicity(arg, df, self.multipliers[arg.id-1])
             form = self.csv_to_midi(norm, arg)
             comp = self.set_measure_zero(form, arg, part_num)
-            comp.write('midi', f'sifters/data/midi/.{arg.name}_{arg.id}.mid')
-            df.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_df.csv', index=False)
-            norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_norm.csv', index=False)
+            # comp.write('midi', f'sifters/data/midi/.{arg.name}_{arg.id}.mid')
+            # df.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_df.csv', index=False)
+            # norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_norm.csv', index=False)
             score.insert(0, comp)
             part_num += 1
         return score
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    perc1 = Percussion(sivs)
-    perc2 = Percussion(sivs, '2/3')
+    # perc1 = Percussion(sivs)
+    bass1 = Bass(sivs, '2/3')
+    # perc2 = Percussion(sivs, '2/3')
     # perc3 = Percussion(sivs, '6/5')
-    score = Score(perc1, perc2)
+    score = Score(bass1)
     score = score.construct_score()
     # score.show('midi')
     score.show()
