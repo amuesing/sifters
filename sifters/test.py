@@ -7,17 +7,41 @@ import math
 import functools
 
 class Composition:
-    def __init__(self, sivs):
-        self.intervals = self.get_intervals(sivs)
-        self.bin = self.get_binary(sivs)
-        self.period = len(self.bin[0])
-        self.factors = self.get_factors(self.period)
+    def init(self, sivs):
+        self._intervals = None
+        self._bin = None
+        self._period = None
+        self._factors = None
+        self.sivs = sivs
         self.grid = fractions.Fraction(1, 1)
-    
+        
+    @property
+    def intervals(self):
+        if self._intervals is None:
+            self._intervals = self.get_intervals(self.sivs)
+        return self._intervals
+
+    @property
+    def bin(self):
+        if self._bin is None:
+            self._bin = self.get_binary(self.sivs)
+        return self._bin
+
+    @property
+    def period(self):
+        if self._period is None:
+            self._period = len(self.bin[0])
+        return self._period
+
+    @property
+    def factors(self):
+        if self._factors is None:
+            self._factors = self.get_factors(self.period)
+        return self._factors
+
     @staticmethod
     def get_binary(sivs):
         bin = []
-        # find if there is one sieve or multiple based on if tuple or string
         if isinstance(sivs, tuple):
             per = []
             obj = []
@@ -34,7 +58,7 @@ class Composition:
             obj.setZRange(0, obj.period() - 1)
             bin.append(obj.segment(segmentFormat='binary'))
         return bin
-    
+
     @staticmethod
     def get_intervals(sivs):
         intervals = []
@@ -43,7 +67,7 @@ class Composition:
             set.setZRange(0, set.period() - 1)
             intervals.append(set.segment())
         return intervals
-    
+
     @staticmethod
     def get_factors(num):
         factors = []
@@ -53,14 +77,14 @@ class Composition:
                 factors.append(i)
             i += 1
         return factors
-    
+
     @staticmethod
     def get_largest_prime_factor(num):
         for i in range(num, 1, -1):
             if num % i == 0 and all(i % j for j in range(2, i)):
                 return i
         return 1
-    
+
     @staticmethod
     def get_least_common_multiple(numbers):
         lcm = numbers[0]

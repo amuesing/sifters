@@ -1,10 +1,10 @@
 import music21
 import numpy
 import itertools
-import pandas
 import fractions
-import math
 import functools
+import math
+import pandas
 
 class Composition:
     def __init__(self, sivs):
@@ -13,11 +13,10 @@ class Composition:
         self.period = len(self.bin[0])
         self.factors = self.get_factors(self.period)
         self.grid = fractions.Fraction(1, 1)
-    
-    @staticmethod
-    def get_binary(sivs):
+        
+    @functools.lru_cache()
+    def get_binary(self, sivs):
         bin = []
-        # find if there is one sieve or multiple based on if tuple or string
         if isinstance(sivs, tuple):
             per = []
             obj = []
@@ -35,8 +34,8 @@ class Composition:
             bin.append(obj.segment(segmentFormat='binary'))
         return bin
     
-    @staticmethod
-    def get_intervals(sivs):
+    @functools.lru_cache()
+    def get_intervals(self, sivs):
         intervals = []
         for siv in sivs:
             set = music21.sieve.Sieve(siv)
@@ -44,8 +43,8 @@ class Composition:
             intervals.append(set.segment())
         return intervals
     
-    @staticmethod
-    def get_factors(num):
+    @functools.lru_cache()
+    def get_factors(self, num):
         factors = []
         i = 1
         while i <= num:
@@ -55,11 +54,24 @@ class Composition:
         return factors
     
     @staticmethod
+    def is_prime(num):
+        if num < 2:
+            return False
+        for i in range(2, num):
+            if num % i == 0:
+                return False
+        return True
+
+    @staticmethod
     def get_largest_prime_factor(num):
-        for i in range(num, 1, -1):
-            if num % i == 0 and all(i % j for j in range(2, i)):
-                return i
-        return 1
+        for i in range(1, int(num ** 0.5) + 1):
+            if num % i == 0:
+                factor = num // i
+                if Composition.is_prime(factor):
+                    return factor
+                elif Composition.is_prime(i):
+                    return i
+        return num
     
     @staticmethod
     def get_least_common_multiple(numbers):
@@ -67,7 +79,7 @@ class Composition:
         for i in range(1, len(numbers)):
             lcm = lcm * numbers[i] // math.gcd(lcm, numbers[i])
         return lcm
-
+        
 class Percussion(Composition):
     grid_history = []
     next_id = 1
@@ -83,16 +95,16 @@ class Percussion(Composition):
         self.create_notes()
         
     def create_notes(self):
-        for i,_ in enumerate(self.bin):
+        for i, _ in enumerate(self.bin):
             midi_pool = itertools.cycle(self.midi_pool(i))
             for j in range(len(self.factors)):
                 pattern = self.bin[i] * self.factors[j]
+                indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 part = music21.stream.Part()
-                for k, bit in enumerate(pattern):
-                    if bit == 1:
-                        note = music21.note.Note(midi=next(midi_pool), quarterLength=self.grid)
-                        part.insert(k * dur, note)
+                for k in indices:
+                    note = music21.note.Note(midi=next(midi_pool), quarterLength=self.grid)
+                    part.insert(k * dur, note)
                 self.stream.insert(0, part)
                 
     def midi_pool(self, index):
@@ -100,35 +112,36 @@ class Percussion(Composition):
         largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
         instrument_pool = itertools.cycle([60,61,62,63,64][largest_prime_slice])
         return [next(instrument_pool) for _ in range(events)]
-
-class Score():
-    normalized_numerators = []
-    normalized_denominators = []
-    multipliers = []
     
-    def __init__(self, *args):
+class Score:
+    def __init__(self, args):
         self.args = args
-    
+        self.normalized_numerators = []
+        self.normalized_denominators = []
+        self.multipliers = []
+        
     @staticmethod
     def get_multiplier(arg):
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
         return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id-1]
     
     @staticmethod
+    @functools.lru_cache()
     def normalize_numerator(arg, mult):
         return arg.grid_history[arg.id-1].numerator * mult
     
     @staticmethod
+    @functools.lru_cache()
     def normalize_denominator(arg, mult):
         return arg.grid_history[arg.id-1].denominator * mult
-
+    
     @staticmethod
+    @functools.lru_cache()
     def generate_dataframe(arg):
         parts = arg.stream.parts
         rows_list = []
         for part in parts:
             for elt in part.getElementsByClass([music21.note.Note]):
-                # offset must be float so that the drop_duplicate method address fractions and floats equally
                 d = {'Offset': float(elt.offset)}
                 if hasattr(elt, 'pitches'):
                     d.update({'Midi': pitch.midi for pitch in elt.pitches})
@@ -153,24 +166,28 @@ class Score():
         for _, row in dataframe.iterrows():
             offset = row['Offset']
             mid = int(row['Midi'])
-            result[offset] = result.get(offset, []) + [mid]
+            result.setdefault(offset, []).append(mid)
         for offset, mid in result.items():
             notes = [music21.note.Note(m, quarterLength=arg.grid) for m in mid] 
             part.insert(offset, music21.chord.Chord(notes) if len(notes) > 1 else notes[0])
         return part.makeRests(fillGaps=True)
-
+    
+    instruments = {
+        'Percussion': music21.instrument.UnpitchedPercussion(),
+        'Bass': music21.instrument.Bass(),
+        'Keyboard': music21.instrument.Piano()
+    }
+    clefs = {
+        'Percussion': music21.clef.PercussionClef(),
+        'Bass': music21.clef.BassClef(),
+        'Keyboard': music21.clef.TrebleClef()
+    }
+    
     @staticmethod
     def set_measure_zero(score, arg, part_num):
         score.insert(0, music21.meter.TimeSignature('5/4'))
-        if arg.name == 'Percussion':
-            score.insert(0, music21.instrument.UnpitchedPercussion())
-            score.insert(0, music21.clef.PercussionClef())
-        if arg.name == 'Bass':
-            score.insert(0, music21.instrument.Bass())
-            score.insert(0, music21.clef.BassClef())
-        if arg.name == 'Keyboard':
-            score.insert(0, music21.instrument.Piano())
-            score.insert(0, music21.clef.TrebleClef())
+        score.insert(0, Score.instruments[arg.name])
+        score.insert(0, Score.clefs[arg.name])
         if part_num == 1:
             score.insert(0, music21.tempo.MetronomeMark('fast', 112, music21.note.Note(type='half')))
         return score
@@ -181,22 +198,19 @@ class Score():
         score.metadata.title = 'Sifters'
         score.metadata.composer = 'Aaron Muesing'
         part_num = 1
-        for arg in self.args:
+        for arg in [self.args]:
             mult = self.get_multiplier(arg)
             self.normalized_numerators.append(self.normalize_numerator(arg, mult))
             self.normalized_denominators.append(self.normalize_denominator(arg, mult))
         lcm = arg.get_least_common_multiple(self.normalized_numerators)
-        for arg in self.args:
+        for arg in [self.args]:
             self.multipliers.append(lcm // self.normalized_numerators[arg.id-1])
-        for arg in self.args:
+        for arg in [self.args]:
             print(f'Constructing {arg.name} {arg.id} Part')
             df = self.generate_dataframe(arg)
             norm = self.normalize_periodicity(arg, df, self.multipliers[arg.id-1])
             form = self.csv_to_midi(norm, arg)
             comp = self.set_measure_zero(form, arg, part_num)
-            # comp.write('midi', f'sifters/data/midi/.{arg.name}_{arg.id}.mid')
-            # df.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_df.csv', index=False)
-            # norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}_norm.csv', index=False)
             score.insert(0, comp)
             part_num += 1
         return score
@@ -212,5 +226,4 @@ if __name__ == '__main__':
     # perc3 = Percussion(sivs, '6/5')
     score = Score(perc1)
     score = score.construct_score()
-    score.show('midi')
     score.show()
