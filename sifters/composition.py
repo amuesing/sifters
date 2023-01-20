@@ -73,12 +73,16 @@ class Composition:
                     return i
         return num
     
-    @staticmethod
-    def get_least_common_multiple(numbers):
-        lcm = numbers[0]
-        for i in range(1, len(numbers)):
-            lcm = lcm * numbers[i] // math.gcd(lcm, numbers[i])
-        return lcm
+    def get_least_common_multiple(self, numbers):
+        if len(numbers) == 2:
+            return numbers[0] * numbers[1] // math.gcd(numbers[0], numbers[1])
+        elif len(numbers) > 2:
+            middle = len(numbers) // 2
+            left_lcm = self.get_least_common_multiple(numbers[:middle])
+            right_lcm = self.get_least_common_multiple(numbers[middle:])
+            return left_lcm * right_lcm // math.gcd(left_lcm, right_lcm)
+        else:
+            return numbers[0]
 
 class Percussion(Composition):
     grid_history = []
@@ -86,35 +90,33 @@ class Percussion(Composition):
     
     def __init__(self, sivs, grid=None):
         super().__init__(sivs)
-        self.stream = music21.stream.Score()
         self.name = 'Percussion'
         self.grid = fractions.Fraction(grid) if grid is not None else self.grid
         self.grid_history.append(self.grid)
         self.id = Percussion.next_id
         Percussion.next_id += 1
-        self.create_notes()
         
     def create_notes(self):
-        for i, _ in enumerate(self.bin):
+        notes_data = []
+        for i in range(len(self.bin)):
             midi_pool = itertools.cycle(self.midi_pool(i))
             for j in range(len(self.factors)):
-                pattern = self.bin[i] * self.factors[j]
+                pattern = numpy.tile(self.bin[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
-                # anytime I am using a part to hold values it may be more efficient to save within a dataframe
-                part = music21.stream.Part()
                 for k in indices:
-                    note = music21.note.Note(midi=next(midi_pool), quarterLength=self.grid)
-                    part.insert(k * dur, note)
-                self.stream.insert(0, part)
-                
+                    notes_data.append([k*dur, next(midi_pool)])
+        # how to make the rounding work for other fractions
+        notes_data = [ [round(x[0], 6), x[1]] for x in notes_data]
+        self.notes_df = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).drop_duplicates()
+        
     def midi_pool(self, index):
         events = self.bin[index].count(1)
         largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
         instrument_pool = itertools.cycle([60,61,62,63,64][largest_prime_slice])
         return [next(instrument_pool) for _ in range(events)]
-
-class Score():
+    
+class Score:
     def __init__(self, *args):
         self.args = args
         self.normalized_numerators = []
@@ -137,24 +139,12 @@ class Score():
         return arg.grid_history[arg.id-1].denominator * mult
     
     @staticmethod
-    @functools.lru_cache()
-    def generate_dataframe(arg):
-        parts = arg.stream.parts
-        rows_list = []
-        for part in parts:
-            for elt in part.getElementsByClass([music21.note.Note]):
-                d = {'Offset': float(elt.offset)}
-                if hasattr(elt, 'pitches'):
-                    d.update({'Midi': pitch.midi for pitch in elt.pitches})
-                rows_list.append(d)
-        return pandas.DataFrame(rows_list).drop_duplicates()
-    
-    @staticmethod
-    def normalize_periodicity(arg, df, num):
-        duplicates = [df.copy()]
+    def normalize_periodicity(arg, num):
+        arg.create_notes()
+        duplicates = [arg.notes_df.copy()]
         inner_period = math.pow(arg.period, 2)
         for i in range(num):
-            df_copy = df.copy()
+            df_copy = arg.notes_df.copy()
             df_copy['Offset'] = df_copy['Offset'] + (inner_period * arg.grid) * i
             duplicates.append(df_copy)
         result = pandas.concat(duplicates)
@@ -166,7 +156,7 @@ class Score():
         result = {}
         for _, row in dataframe.iterrows():
             offset = row['Offset']
-            mid = int(row['Midi'])
+            mid = int(row['MIDI'])
             result.setdefault(offset, []).append(mid)
         for offset, mid in result.items():
             notes = [music21.note.Note(m, quarterLength=arg.grid) for m in mid] 
@@ -202,10 +192,11 @@ class Score():
             self.multipliers.append(lcm // self.normalized_numerators[arg.id-1])
         for arg in self.args:
             print(f'Constructing {arg.name} {arg.id} Part')
-            df = self.generate_dataframe(arg)
-            norm = self.normalize_periodicity(arg, df, self.multipliers[arg.id-1])
+            norm = self.normalize_periodicity(arg, self.multipliers[arg.id-1])
             form = self.csv_to_midi(norm, arg)
             comp = self.set_measure_zero(form, arg, part_num)
+            arg.notes_df.sort_values(by = 'Offset').drop_duplicates().to_csv(f'sifters/data/csv/.df_{arg.name}_{arg.id}.csv', index=False)
+            norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/norm_{arg.name}_{arg.id}.csv', index=False)
             score.insert(0, comp)
             part_num += 1
         return score
@@ -213,13 +204,14 @@ class Score():
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     siv = '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)'
-    perc1 = Percussion(sivs)
-    # perc2 = Percussion(sivs, '2/3')
+    # perc1 = Percussion(sivs)
+    perc2 = Percussion(sivs, '2/3')
     # bass1 = Bass(siv, '5/3')
     # bass2 = Bass(siv, '4/5')
     # perc2 = Percussion(sivs, '2/3')
     # perc3 = Percussion(sivs, '6/5')
-    score = Score(perc1)
+    score = Score(perc2)
     score = score.construct_score()
     # score.show('midi')
-    score.show()
+    score.show('text')
+    # print(perc1.notes_df)
