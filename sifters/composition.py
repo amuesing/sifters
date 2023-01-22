@@ -23,7 +23,7 @@ class Composition:
             per = []
             obj = []
             for siv in sivs:
-                # remove music21 sieve libary
+                # remove music21 sieve libary, use numpy boolean indexing instead
                 objects = music21.sieve.Sieve(siv)
                 obj.append(objects)
                 per.append(objects.period())
@@ -155,23 +155,45 @@ class Score:
         self.normalized_denominators = []
         self.multipliers = []
     
+    def construct_score(self):
+        score = pretty_midi.PrettyMIDI()
+        score.time_signature_changes.append(pretty_midi.TimeSignature(5,4,0))
+        score.resolution = 440
+        self.normalized_numerators = numpy.array([self._normalize_numerator(arg, self._get_multiplier(arg)) for arg in self.args])
+        lcm = self.args[-1].get_least_common_multiple(self.normalized_numerators)
+        self.multipliers = lcm // self.normalized_numerators
+        notes_list = []
+        instruments = []
+        for arg, multiplier in zip(self.args, self.multipliers):
+                print(f'Constructing {arg.name} {arg.id} Part')
+                norm = self._normalize_periodicity(arg, multiplier)
+                norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/comp5_norm_{arg.name}_{arg.id}.csv', index=False)
+                notes = self._csv_to_midi(norm, arg)
+                notes_list.append(notes)
+                instruments.append(pretty_midi.Instrument(program=9, is_drum=True, name='Percussion'))
+        for i,arg in enumerate(self.args):
+            instruments[i].notes = notes_list[i]
+            score.instruments.append(instruments[i])
+        print('Build Complete')
+        return score
+    
     @staticmethod
-    def get_multiplier(arg):
+    def _get_multiplier(arg):
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
         return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id-1]
     
     @staticmethod
     @functools.lru_cache()
-    def normalize_numerator(arg, mult):
+    def _normalize_numerator(arg, mult):
         return arg.grid_history[arg.id-1].numerator * mult
     
     @staticmethod
     @functools.lru_cache()
-    def normalize_denominator(arg, mult):
+    def _normalize_denominator(arg, mult):
         return arg.grid_history[arg.id-1].denominator * mult
     
     @staticmethod
-    def normalize_periodicity(arg, num):
+    def _normalize_periodicity(arg, num):
         arg.create_notes()
         duplicates = [arg.dataframe.copy()]
         inner_period = math.pow(arg.period, 2)
@@ -183,52 +205,17 @@ class Score:
         return result.drop_duplicates()
     
     @staticmethod
-    def csv_to_midi(dataframe, arg):
-        notes = []
-        offsets = []
-        for _, row in dataframe.iterrows():
-            offset = row['Offset']
-            offsets.append(offset)
-            mid = int(row['MIDI'])
-            note = pretty_midi.Note(velocity=100, pitch=mid, start=offset, end=offset+arg.grid)
-            notes.append(note)
-        return notes
-    
-    # @staticmethod
-    # def set_measure_zero(score, arg):
-    #     time_signature = pretty_midi.TimeSignature(5,4,0)
-    #     score.time_signature = time_signature
-    #     return score
-    
-    def construct_score(self):
-        score = pretty_midi.PrettyMIDI()
-        # why does pretty_midi default to resolution of 220? check installation and docs
-        score.resolution = 440
-        # time_signature = pretty_midi.TimeSignature(5,4,0)5
-        # score.time_signature = time_signature
-        for arg in self.args:
-            mult = self.get_multiplier(arg)
-            self.normalized_numerators.append(self.normalize_numerator(arg, mult))
-            self.normalized_denominators.append(self.normalize_denominator(arg, mult))
-        lcm = arg.get_least_common_multiple(self.normalized_numerators)
-        for arg in self.args:
-            self.multipliers.append(lcm // self.normalized_numerators[arg.id-1])
-        for arg in self.args:
-            print(f'Constructing {arg.name} {arg.id} Part')
-            norm = self.normalize_periodicity(arg, self.multipliers[arg.id-1])
-            notes = self.csv_to_midi(norm, arg)
-            instrument = pretty_midi.Instrument(program=9)
-            norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/comp5_norm_{arg.name}_{arg.id}.csv', index=False)
-            instrument.notes = notes
-            score.instruments.append(instrument)
-        return score
-        
+    def _csv_to_midi(dataframe, arg):
+        dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(start=x.Offset, end=x.Offset + arg.grid))
+        return [pretty_midi.Note(velocity=100, pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
+
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Percussion(sivs)
-    perc2 = Percussion(sivs, '4/3')
-    # perc3 = Percussion(sivs, '4/3')
-    score = Score(perc1, perc2)
+    perc2 = Percussion(sivs, '2/3')
+    # how to quantize to fifths?
+    perc3 = Percussion(sivs, '4/5')
+    score = Score(perc1, perc2, perc3)
     score = score.construct_score()
     # score.show()
     score.write('sifters/data/midi/score.mid')
