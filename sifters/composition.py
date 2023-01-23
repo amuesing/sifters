@@ -1,12 +1,11 @@
 import music21
-import numpy
-import pandas
-import math
+import pretty_midi
 import fractions
 import itertools
 import functools
-import pretty_midi
-from modules import *
+import pandas
+import numpy
+import math
 
 class Composition:
     def __init__(self, sivs):
@@ -23,7 +22,6 @@ class Composition:
             per = []
             obj = []
             for siv in sivs:
-                # remove music21 sieve libary, use numpy boolean indexing instead
                 objects = music21.sieve.Sieve(siv)
                 obj.append(objects)
                 per.append(objects.period())
@@ -76,81 +74,51 @@ class Composition:
                     return i
         return num
     
-    def get_least_common_multiple(self, numbers):
-        if len(numbers) == 2:
-            return numbers[0] * numbers[1] // math.gcd(numbers[0], numbers[1])
-        elif len(numbers) > 2:
-            middle = len(numbers) // 2
-            left_lcm = self.get_least_common_multiple(numbers[:middle])
-            right_lcm = self.get_least_common_multiple(numbers[middle:])
+    def get_least_common_multiple(self, nums):
+        if len(nums) == 2:
+            return nums[0] * nums[1] // math.gcd(nums[0], nums[1])
+        elif len(nums) > 2:
+            middle = len(nums) // 2
+            left_lcm = self.get_least_common_multiple(nums[:middle])
+            right_lcm = self.get_least_common_multiple(nums[middle:])
             return left_lcm * right_lcm // math.gcd(left_lcm, right_lcm)
         else:
-            return numbers[0]
-
-class Percussion(Composition):
+            return nums[0]
+        
+class Part(Composition):
     grid_history = []
     next_id = 1
     
-    def __init__(self, sivs, grid=None):
+    def __init__(self, sivs, name, grid=None):
         super().__init__(sivs)
-        self.name = 'Percussion'
+        self.name = name
         self.grid = fractions.Fraction(grid) if grid is not None else self.grid
         self.grid_history.append(self.grid)
-        self.id = Percussion.next_id
-        Percussion.next_id += 1
+        self.id = Part.next_id
+        Part.next_id += 1
         
     def create_notes(self):
         notes_data = []
         for i in range(len(self.bin)):
-            midi_pool = itertools.cycle(self.midi_pool(i))
+            midi_pool = itertools.cycle(self._midi_pool(i))
             for j in range(len(self.factors)):
                 pattern = numpy.tile(self.bin[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
-                    notes_data.append([k*dur, next(midi_pool)])        # how to make the rounding work for other fractions
-        notes_data = [ [round(x[0], 6), x[1]] for x in notes_data]
+                    notes_data.append([k*dur, next(midi_pool)])
+        notes_data = [[round(x[0], 6), x[1]] for x in notes_data]
         self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).sort_values(by = 'Offset').drop_duplicates()
         
-    def midi_pool(self, index):
+    def _midi_pool(self, index):
         events = self.bin[index].count(1)
         largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
-        instrument_pool = itertools.cycle([60,61,62,63,64][largest_prime_slice])
+        instrument_pool = itertools.cycle([45, 46, 47, 48, 49][largest_prime_slice])
         return [next(instrument_pool) for _ in range(events)]
-
-class Bass(Composition):
-    grid_history = []
-    next_id = 1
     
-    def __init__(self, sivs, grid=None):
-        super().__init__(sivs)
-        self.name = 'Bass'
-        self.grid = fractions.Fraction(grid) if grid is not None else self.grid
-        self.grid_history.append(self.grid)
-        self.id = Bass.next_id
-        Bass.next_id += 1
-        
-    def create_notes(self):
-        notes_data = []
-        for i in range(len(self.bin)):
-            midi_pool = itertools.cycle(self.midi_pool(i))
-            for j in range(len(self.factors)):
-                pattern = numpy.tile(self.bin[i], self.factors[j])
-                indices = numpy.nonzero(pattern)[0]
-                dur = self.grid * (self.period / self.factors[j])
-                for k in indices:
-                    notes_data.append([k*dur, next(midi_pool)])        # how to make the rounding work for other fractions
-        notes_data = [ [round(x[0], 6), x[1]] for x in notes_data]
-        self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).drop_duplicates()
-        
-    def midi_pool(self, index):
-        tonality = 40
-        pool = [inter + tonality for inter in self.intervals[index]]
-        return pool
 class Score:
     def __init__(self, *args):
         self.args = args
-        self.title = 'Sifters'
         self.normalized_numerators = []
         self.normalized_denominators = []
         self.multipliers = []
@@ -163,14 +131,15 @@ class Score:
         lcm = self.args[-1].get_least_common_multiple(self.normalized_numerators)
         self.multipliers = lcm // self.normalized_numerators
         notes_list = []
+        #move instrument object to Part class
         instruments = []
         for arg, multiplier in zip(self.args, self.multipliers):
-                print(f'Constructing {arg.name} {arg.id} Part')
+                print(f'Constructing {arg.name} {arg.id} Composition')
                 norm = self._normalize_periodicity(arg, multiplier)
-                norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/comp5_norm_{arg.name}_{arg.id}.csv', index=False)
+                norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}.csv', index=False)
                 notes = self._csv_to_midi(norm, arg)
                 notes_list.append(notes)
-                instruments.append(pretty_midi.Instrument(program=9, is_drum=True, name='Percussion'))
+                instruments.append(pretty_midi.Instrument(program=0, name=arg.name))
         for i,arg in enumerate(self.args):
             instruments[i].notes = notes_list[i]
             score.instruments.append(instruments[i])
@@ -208,15 +177,15 @@ class Score:
     def _csv_to_midi(dataframe, arg):
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(start=x.Offset, end=x.Offset + arg.grid))
         return [pretty_midi.Note(velocity=100, pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
+    
 
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    perc1 = Percussion(sivs)
-    perc2 = Percussion(sivs, '2/3')
-    # how to quantize to fifths?
-    perc3 = Percussion(sivs, '4/5')
-    score = Score(perc1, perc2, perc3)
+    perc1 = Part(sivs, 'Percussion', '4/3')
+    # perc2 = Instrument(sivs, '3/4')
+    # perc3 = Instrument(sivs, '4/5')
+    score = Score(perc1)
     score = score.construct_score()
-    # score.show()
-    score.write('sifters/data/midi/score.mid')
+    # write a method to convert midi to musicxml file
+    score.write('sifters/data/midi/.score.mid')
     
