@@ -99,23 +99,55 @@ class Part(Composition):
         
     def create_notes(self):
         notes_data = []
-        for i in range(len(self.bin)):
-            midi_pool = itertools.cycle(self._midi_pool(i))
-            for j in range(len(self.factors)):
-                pattern = numpy.tile(self.bin[i], self.factors[j])
-                indices = numpy.nonzero(pattern)[0]
-                dur = self.grid * (self.period / self.factors[j])
-                for k in indices:
-                    notes_data.append([k*dur, next(midi_pool)])
-        notes_data = [[round(x[0], 6), x[1]] for x in notes_data]
-        self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).sort_values(by = 'Offset').drop_duplicates()
+        if self.name == 'Percussion':
+            for i in range(len(self.bin)):
+                midi_pool = itertools.cycle(self._midi_pool(i))
+                for j in range(len(self.factors)):
+                    pattern = numpy.tile(self.bin[i], self.factors[j])
+                    indices = numpy.nonzero(pattern)[0]
+                    dur = self.grid * (self.period / self.factors[j])
+                    for k in indices:
+                        notes_data.append([k*dur, next(midi_pool)])
+            notes_data = [[round(x[0], 6), x[1]] for x in notes_data]
+            self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).sort_values(by = 'Offset').drop_duplicates()
+        if self.name == 'Bass':
+            for i in range(len(self.bin)):
+                midi_pool = itertools.cycle(self._midi_pool(i))
+                for j in range(len(self.factors)):
+                    pattern = numpy.tile([1 for _ in range(len(self.bin[i]))], self.factors[j])
+                    indices = numpy.nonzero(pattern)[0]
+                    dur = self.grid * (self.period / self.factors[j])
+                    for k in indices:
+                        notes_data.append([k*dur, next(midi_pool)])
+            notes_data = [[round(x[0], 6), x[1]] for x in notes_data]
+            self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).sort_values(by = 'Offset').drop_duplicates()
+        if self.name == 'Keyboard':
+            for i in range(len(self.bin)):
+                midi_pool = itertools.cycle(self._midi_pool(i))
+                for j in range(len(self.factors)):
+                    pattern = numpy.tile([1 for _ in range(len(self.bin[i]))], self.factors[j])
+                    indices = numpy.nonzero(pattern)[0]
+                    dur = self.grid * (self.period / self.factors[j])
+                    for k in indices:
+                        notes_data.append([k*dur, next(midi_pool)])
+            notes_data = [[round(x[0], 6), x[1]] for x in notes_data]
+            self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).sort_values(by = 'Offset').drop_duplicates()
+        group = Utility.group_events(self.dataframe)
+        Utility.save_as_csv(group, f'{self.name} {self.id}.csv')
         
     def _midi_pool(self, index):
-        events = self.bin[index].count(1)
-        largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
-        instrument_pool = itertools.cycle([45, 46, 47, 48, 49][largest_prime_slice])
-        return [next(instrument_pool) for _ in range(events)]
-    
+        if self.name == 'Percussion':
+            events = self.bin[index].count(1)
+            largest_prime_slice = slice(0, self.get_largest_prime_factor(events))
+            instrument_pool = itertools.cycle([45, 46, 47, 48, 49][largest_prime_slice])
+            return [next(instrument_pool) for _ in range(events)]
+        if self.name == 'Bass':
+            tonality = 40
+            return [inter + tonality for inter in self.intervals[index]]
+        if self.name == 'Keyboard':
+            tonality = 40
+            return [inter + tonality for inter in self.intervals[index]]
+               
 class Score:
     def __init__(self, *args):
         self.args = args
@@ -136,7 +168,6 @@ class Score:
         for arg, multiplier in zip(self.args, self.multipliers):
                 print(f'Constructing {arg.name} {arg.id} Composition')
                 norm = self._normalize_periodicity(arg, multiplier)
-                norm.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{arg.name}_{arg.id}.csv', index=False)
                 notes = self._csv_to_midi(norm, arg)
                 notes_list.append(notes)
                 instruments.append(pretty_midi.Instrument(program=0, name=arg.name))
@@ -165,10 +196,10 @@ class Score:
     def _normalize_periodicity(arg, num):
         arg.create_notes()
         duplicates = [arg.dataframe.copy()]
-        inner_period = math.pow(arg.period, 2)
+        lenth_of_one_rep = math.pow(arg.period, 2)
         for i in range(num):
             df_copy = arg.dataframe.copy()
-            df_copy['Offset'] = df_copy['Offset'] + (inner_period * arg.grid) * i
+            df_copy['Offset'] = df_copy['Offset'] + (lenth_of_one_rep * arg.grid) * i
             duplicates.append(df_copy)
         result = pandas.concat(duplicates)
         return result.drop_duplicates()
@@ -178,13 +209,25 @@ class Score:
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(start=x.Offset, end=x.Offset + arg.grid))
         return [pretty_midi.Note(velocity=100, pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
     
+class Utility:
+    @staticmethod
+    # this method first groups all midi notes that share the same offset value, then groups all of the offset values that share that group of midi notes
+    def group_events(dataframe):
+        grouped_by_offset = dataframe.groupby('Offset')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
+        grouped_by_offset['MIDI'] = grouped_by_offset['MIDI'].apply(tuple)
+        return grouped_by_offset.groupby('MIDI')['Offset'].agg(lambda x: list(x)).reset_index()
+    
+    @staticmethod
+    def save_as_csv(dataframe, filename):
+        dataframe.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/{filename}.csv', index=False)
 
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Part(sivs, 'Percussion', '4/3')
+    bass1 = Part(sivs, 'Bass')
     # perc2 = Instrument(sivs, '3/4')
     # perc3 = Instrument(sivs, '4/5')
-    score = Score(perc1)
+    score = Score(perc1, bass1)
     score = score.construct_score()
     # write a method to convert midi to musicxml file
     score.write('sifters/data/midi/.score.mid')
