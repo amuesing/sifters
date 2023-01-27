@@ -7,20 +7,13 @@ import pandas
 import numpy
 import math
 
-class Composition:
-    @staticmethod
-    def _distribute_grid(arg, mult):
-        total = arg.grid.numerator * mult
-        print(total)
-        print(arg.grid.denominator)
-
 class Score:
     def __init__(self, *args):
         self.args = args
         self.normalized_numerators = []
         self.normalized_denominators = []
         self.multipliers = []
-    
+            
     # data is generated in Part class, and manipulated in Score class. Utility class holds methods used outside of the code's core functionality
     def create_score(self):
         score = pretty_midi.PrettyMIDI()
@@ -37,12 +30,10 @@ class Score:
                 notes = self._csv_to_midi(norm, arg)
                 notes_list.append(notes)
                 instruments.append(pretty_midi.Instrument(program=0, name=f'{arg.name}'))
-                Composition._distribute_grid(arg, multiplier)
         for i,arg in enumerate(self.args):
             instruments[i].notes = notes_list[i]
             score.instruments.append(instruments[i])
         print('Build Complete')
-        print(score)
         return score
     
     @staticmethod
@@ -212,10 +203,42 @@ class Utility:
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    perc1 = Percussion(sivs)
+    perc1 = Percussion(sivs, '4/5')
     perc2 = Percussion(sivs, '4/3')
     # perc3 = Part(sivs, 'Percussion', '3/4')
-    comp = Score(perc1, perc2)
-    comp = comp.create_score()
-    # write a method to convert midi to musicxml file
-    Utility.save_as_midi(comp, 'score')
+    score = Score(perc1, perc2)
+    score.create_score()
+    
+    def distribute_grid(*args, multipliers):
+        normalized_grid = []
+        for arg, multiplier in zip(args, multipliers):
+            total = arg.grid.numerator * multiplier
+            combinations = find_combinations(range(total), total, multiplier)
+            min_range_tuple = find_min_range_tuple(combinations)
+            normalized_grid.append((distribute_numerator(arg, min_range_tuple)))
+        return normalized_grid
+    
+    def find_combinations(numbers, total, length):
+        # Find all combinations of the given length within the set of numbers
+        combinations = [c for c in itertools.combinations(numbers, length)]
+        # Filter the combinations that add up to the given total and that don't contain 0
+        return [c for c in combinations if sum(c) == total and 0 not in c]
+
+    def find_min_range_tuple(tuples):
+        min_range = float("inf")
+        min_tuple = None
+        for tup in tuples:
+            range = max(tup) - min(tup)
+            if range < min_range:
+                min_range = range
+                min_tuple = tup
+        return min_tuple
+    
+    def distribute_numerator(arg, tuple):
+        normalized_fractions = []
+        for num in tuple:
+            normalized_fractions.append(fractions.Fraction(num, arg.grid.denominator))
+        return normalized_fractions
+    
+    distributed = distribute_grid(perc1, perc2, multipliers=score.multipliers)
+    print(distributed)
