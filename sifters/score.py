@@ -162,7 +162,7 @@ class Percussion(Part):
     def __init__(self, sivs, grid=None, midi=None):
         super().__init__(sivs, grid)
         self.name = 'Percussion'
-    
+        
     def create_part(self):
         notes_data = []
         for i in range(len(self.bin)):
@@ -195,18 +195,22 @@ class Utility:
     
     @staticmethod
     def save_as_csv(dataframe, filename):
-        dataframe.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/{filename}.csv', index=False)
+        dataframe.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{filename}.csv', index=False)
         
     @staticmethod
     def save_as_midi(pretty_midi_obj, filename):
-        pretty_midi_obj.write(f'sifters/data/midi/.score.mid')
+        pretty_midi_obj.write(f'sifters/data/midi/.{filename}.mid')
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    perc1 = Percussion(sivs, '4/5')
-    perc2 = Percussion(sivs, '4/3')
+    perc1 = Percussion(sivs, '15/15')
+    perc2 = Percussion(sivs, '12/15')
+    perc3 = Percussion(sivs, '10/15')
+    # perc1 = Percussion(sivs)
+    # perc2 = Percussion(sivs, '2/3')
     # perc3 = Part(sivs, 'Percussion', '3/4')
-    score = Score(perc1, perc2)
+    # score = Score(perc1, perc2, perc3)
+    score = Score(perc1, perc2, perc3)
     score.create_score()
     
     def distribute_grid(*args, multipliers):
@@ -214,16 +218,43 @@ if __name__ == '__main__':
         for arg, multiplier in zip(args, multipliers):
             total = arg.grid.numerator * multiplier
             combinations = find_combinations(range(total), total, multiplier)
+            # print(arg.grid)
+            # print(f'combinations: {combinations}')
+            # print(f'range: {range(total)}')
+            # print(f'total: {total}')
+            # print(f'mult: {multiplier}')
             min_range_tuple = find_min_range_tuple(combinations)
-            normalized_grid.append((distribute_numerator(arg, min_range_tuple)))
-        return normalized_grid
+            # print(min_range_tuple)
+            lcd = find_least_common_denominator(arg)
+            normalize_fractions(arg, lcd, multiplier)
+        #     normalized_grid.append((distribute_numerator(arg, min_range_tuple)))
+        # return normalized_grid
+        
+    def find_least_common_denominator(arg):
+        lcd = 1
+        for frac in arg.grid_history:
+            lcd = math.lcm(lcd, frac.denominator)
+        return lcd
+        
+    def normalize_fractions(arg, lcd, mult):
+        m = lcd // arg.grid.denominator
+        print((arg.grid.numerator * m) * mult)
+        # print(mult * arg.grid.numerator)
+        # print(m)
+        
+    
+    # def find_combinations(numbers, total, length):
+    #     # Find all combinations of the given length within the set of numbers
+    #     combinations = [c for c in itertools.combinations_with_replacement(numbers, length)]
+    #     # Filter the combinations that add up to the given total and that don't contain 0
+    #     return [c for c in combinations if sum(c) == total and 0 not in c]
     
     def find_combinations(numbers, total, length):
         # Find all combinations of the given length within the set of numbers
         combinations = [c for c in itertools.combinations(numbers, length)]
         # Filter the combinations that add up to the given total and that don't contain 0
         return [c for c in combinations if sum(c) == total and 0 not in c]
-
+    
     def find_min_range_tuple(tuples):
         min_range = float("inf")
         min_tuple = None
@@ -240,5 +271,28 @@ if __name__ == '__main__':
             normalized_fractions.append(fractions.Fraction(num, arg.grid.denominator))
         return normalized_fractions
     
-    distributed = distribute_grid(perc1, perc2, multipliers=score.multipliers)
-    print(distributed)
+    def create_distributed_segment(distributed_grid):
+        parts = []
+        for part in distributed_grid:
+            segment = []
+            for grid in part:
+                perc = Percussion(sivs=sivs, grid=grid)
+                segment.append(perc)
+            parts.append(segment)
+        return parts
+    
+    def combine_segments(parts):
+        offset_history = []
+        for part in parts:
+            offset = []
+            for i, segment in enumerate(part):
+                length_of_one_rep = math.pow(segment.period, 2)
+                # print(segment.dataframe['Offset'] + (length_of_one_rep * segment.grid) * i)
+                offset.append((length_of_one_rep * segment.grid) * i)
+            offset_history.append(offset)
+        return offset_history
+                    
+    distributed = distribute_grid(perc1, perc2, perc3, multipliers=score.multipliers)
+    # parts = create_distributed_segment(distributed)
+    # df = parts[0][3].dataframe
+    # print(combine_segments(parts))
