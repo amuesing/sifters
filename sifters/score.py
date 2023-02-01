@@ -14,7 +14,6 @@ class Score:
         self.normalized_denominators = []
         self.multipliers = []
             
-    # data is generated in Part class, and manipulated in Score class. Utility class holds methods used outside of the code's core functionality
     def create_score(self):
         score = pretty_midi.PrettyMIDI()
         score.time_signature_changes.append(pretty_midi.TimeSignature(5,4,0))
@@ -25,9 +24,10 @@ class Score:
         notes_list = []
         instruments = []
         for arg, multiplier in zip(self.args, self.multipliers):
-                print(f'Constructing {arg.id} Part')
+                print(f'Constructing Part {arg.id}')
                 norm = self._normalize_periodicity(arg, multiplier)
-                notes = self._csv_to_midi(norm, arg)
+                Utility.save_as_csv(Utility.grouped_by_offset(norm), f'part {arg.id}')
+                notes = self._csv_to_midi(norm)
                 notes_list.append(notes)
                 instruments.append(pretty_midi.Instrument(program=0, name=f'{arg.name}'))
         for i,arg in enumerate(self.args):
@@ -43,14 +43,13 @@ class Score:
         for i in range(mult):
             # Put everything that needs to be done on every repeitition within this for loop
             df_copy = arg.dataframe.copy()
-            df_copy['Offset'] = df_copy['Offset'] + (length_of_one_rep * arg.grid) * i
+            df_copy['Start'] = df_copy['Start'] + (length_of_one_rep * arg.grid) * i
+            df_copy['End'] = df_copy['End'] + (length_of_one_rep * arg.grid) * i
             df_copy['MIDI'] = df_copy['MIDI'] + i
             duplicates.append(df_copy)
         result = pandas.concat(duplicates)
         result = result.drop_duplicates()
-        Utility.save_as_csv(result, f'norm {arg.name} {arg.id}')
-        group = Utility.grouped_by_offset(result)
-        Utility.save_as_csv(group, f'grouped norm {arg.name} {arg.id}')
+        print(result)
         return result
     
     @staticmethod
@@ -69,8 +68,8 @@ class Score:
         return arg.grid_history[arg.id-1].denominator * mult
     
     @staticmethod
-    def _csv_to_midi(dataframe, arg):
-        dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(start=x.Offset, end=x.Offset + arg.grid))
+    def _csv_to_midi(dataframe):
+        dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(start=x.Start, end=x.End))
         return [pretty_midi.Note(velocity=100, pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
     
 class Part:
@@ -140,6 +139,26 @@ class Part:
         return num
     
     @staticmethod
+    def _get_lowest_midi(dataframe):
+        dataframe['MIDI'] = dataframe['MIDI'].apply(min)
+        return dataframe[['Start', 'MIDI']]
+    
+    @staticmethod
+    def _grouped_by_offset(dataframe):
+        return dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
+    
+    @staticmethod
+    def _octave_interpolation(intervals):
+        set = []
+        mod12 = list(range(12))
+        for i in intervals:
+            siv = []
+            for j in i:
+                siv.append(mod12[j % len(mod12)])
+            set.append(siv)
+        return set
+    
+    @staticmethod
     def _is_prime(num):
         if num < 2:
             return False
@@ -158,9 +177,10 @@ class Part:
             i += 1
         return factors
     
+    # Include start and end data in dataframe so that you can aggregate repeated notes in bass part
 class Percussion(Part):
     def __init__(self, sivs, grid=None, midi=None):
-        super().__init__(sivs, grid)
+        super().__init__(sivs, grid, midi)
         self.name = 'Percussion'
         
     def create_part(self):
@@ -172,9 +192,9 @@ class Percussion(Part):
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
-                    notes_data.append([k*dur, next(midi_pool)])
-        notes_data = [[round(x[0], 6), x[1]] for x in notes_data]
-        self.dataframe = pandas.DataFrame(notes_data, columns=['Offset', 'MIDI']).sort_values(by = 'Offset').drop_duplicates()
+                    notes_data.append([k * dur, k * dur + self.grid, next(midi_pool)])
+        notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
+        self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
         
     def _midi_pool(self, index):
         events = self.bin[index].count(1)
@@ -182,117 +202,95 @@ class Percussion(Part):
         instrument_pool = itertools.cycle(self.midi[largest_prime_slice])
         return [next(instrument_pool) for _ in range(events)]
     
+class Bass(Part):
+    def __init__(self, sivs, grid=None, midi=None):
+        super().__init__(sivs, grid, midi)
+        self.name = 'Bass'
+        
+    def create_part(self):
+        notes_data = []
+        for i in range(len(self.bin)):
+            midi_pool = itertools.cycle(self._midi_pool(i))
+            for j in range(len(self.factors)):
+                pattern = numpy.tile(self.bin[i], self.factors[j])
+                indices = numpy.nonzero(pattern)[0]
+                dur = self.grid * (self.period / self.factors[j])
+                for k in indices:
+                    notes_data.append([k * dur, k * dur + self.grid, next(midi_pool)])
+        notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
+        self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
+        self.dataframe = self._grouped_by_offset(self.dataframe)
+        self.dataframe = self._get_lowest_midi(self.dataframe)
+        
+    def _midi_pool(self, index):
+        pitch_class = self._octave_interpolation(self.intervals)
+        tonality = 40
+        pool = [pitch + tonality for pitch in pitch_class[index]]
+        return pool
+    
+# Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
+class Keyboard(Part):
+    def __init__(self, sivs, grid=None, midi=None):
+        super().__init__(sivs, grid, midi)
+        self.name = 'Keyboard'
+        
+    def create_part(self):
+        notes_data = []
+        for i in range(len(self.bin)):
+            midi_pool = itertools.cycle(self._midi_pool(i))
+            for j in range(len(self.factors)):
+                pattern = numpy.tile(self.bin[i], self.factors[j])
+                indices = numpy.nonzero(pattern)[0]
+                dur = self.grid * (self.period / self.factors[j])
+                for k in indices:
+                    notes_data.append([k * dur, k * dur + self.grid, next(midi_pool)])
+        notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
+        self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
+        
+    def _midi_pool(self, index):
+        pitch_class = self._octave_interpolation(self.intervals)
+        tonality = 40
+        pool = [pitch + tonality for pitch in pitch_class[index]]
+        return pool
+    
 class Utility:
     @staticmethod
-    # this method first groups all midi notes that share the same offset value, then groups all of the offset values that share that group of midi notes
     def grouped_by_offset(dataframe):
-        return dataframe.groupby('Offset')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
+        grouped = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(x)))
+        result = grouped.reset_index().rename(columns={'MIDI': 'MIDI'})
+        result.insert(1, 'End', dataframe.groupby('Start')['End'].apply(lambda x: x.iloc[0]))
+        return result
     
     def grouped_by_offset_and_midi(dataframe):
         grouped_by_offset = dataframe.groupby('Offset')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
         grouped_by_offset['MIDI'] = grouped_by_offset['MIDI'].apply(tuple)
-        return grouped_by_offset.groupby('MIDI')['Offset'].agg(lambda x: list(x)).reset_index()
+        return grouped_by_offset.groupby('MIDI')['Start'].agg(lambda x: list(x)).reset_index()
+    
+    def aggregate_rows(dataframe):
+        groups = dataframe.groupby('MIDI')
+        result = pandas.DataFrame(columns=['Start', 'End', 'MIDI'])
+        for name, group in groups:
+            start = group['Start'].iloc[0]
+            end = group['End'].iloc[-1] if group['End'].iloc[-1] is not pandas.NA else group['Start'].iloc[-1] + 1
+            result = result.append({'Start': start, 'End': end, 'MIDI': name}, ignore_index=True)
+        return result
+
+
     
     @staticmethod
     def save_as_csv(dataframe, filename):
-        dataframe.sort_values(by = 'Offset').to_csv(f'sifters/data/csv/.{filename}.csv', index=False)
+        dataframe.sort_values(by = 'Start').to_csv(f'sifters/.{filename}.csv', index=False)
         
     @staticmethod
     def save_as_midi(pretty_midi_obj, filename):
-        pretty_midi_obj.write(f'sifters/data/midi/.{filename}.mid')
+        pretty_midi_obj.write(f'sifters/.{filename}.mid')
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    perc1 = Percussion(sivs, '15/15')
-    perc2 = Percussion(sivs, '12/15')
-    perc3 = Percussion(sivs, '10/15')
-    # perc1 = Percussion(sivs)
-    # perc2 = Percussion(sivs, '2/3')
-    # perc3 = Part(sivs, 'Percussion', '3/4')
-    # score = Score(perc1, perc2, perc3)
-    score = Score(perc1, perc2, perc3)
-    score.create_score()
-    
-    def distribute_grid(*args, multipliers):
-        normalized_grid = []
-        for arg, multiplier in zip(args, multipliers):
-            total = arg.grid.numerator * multiplier
-            combinations = find_combinations(range(total), total, multiplier)
-            # print(arg.grid)
-            # print(f'combinations: {combinations}')
-            # print(f'range: {range(total)}')
-            # print(f'total: {total}')
-            # print(f'mult: {multiplier}')
-            min_range_tuple = find_min_range_tuple(combinations)
-            # print(min_range_tuple)
-            lcd = find_least_common_denominator(arg)
-            normalize_fractions(arg, lcd, multiplier)
-        #     normalized_grid.append((distribute_numerator(arg, min_range_tuple)))
-        # return normalized_grid
-        
-    def find_least_common_denominator(arg):
-        lcd = 1
-        for frac in arg.grid_history:
-            lcd = math.lcm(lcd, frac.denominator)
-        return lcd
-        
-    def normalize_fractions(arg, lcd, mult):
-        m = lcd // arg.grid.denominator
-        print((arg.grid.numerator * m) * mult)
-        # print(mult * arg.grid.numerator)
-        # print(m)
-        
-    
-    # def find_combinations(numbers, total, length):
-    #     # Find all combinations of the given length within the set of numbers
-    #     combinations = [c for c in itertools.combinations_with_replacement(numbers, length)]
-    #     # Filter the combinations that add up to the given total and that don't contain 0
-    #     return [c for c in combinations if sum(c) == total and 0 not in c]
-    
-    def find_combinations(numbers, total, length):
-        # Find all combinations of the given length within the set of numbers
-        combinations = [c for c in itertools.combinations(numbers, length)]
-        # Filter the combinations that add up to the given total and that don't contain 0
-        return [c for c in combinations if sum(c) == total and 0 not in c]
-    
-    def find_min_range_tuple(tuples):
-        min_range = float("inf")
-        min_tuple = None
-        for tup in tuples:
-            range = max(tup) - min(tup)
-            if range < min_range:
-                min_range = range
-                min_tuple = tup
-        return min_tuple
-    
-    def distribute_numerator(arg, tuple):
-        normalized_fractions = []
-        for num in tuple:
-            normalized_fractions.append(fractions.Fraction(num, arg.grid.denominator))
-        return normalized_fractions
-    
-    def create_distributed_segment(distributed_grid):
-        parts = []
-        for part in distributed_grid:
-            segment = []
-            for grid in part:
-                perc = Percussion(sivs=sivs, grid=grid)
-                segment.append(perc)
-            parts.append(segment)
-        return parts
-    
-    def combine_segments(parts):
-        offset_history = []
-        for part in parts:
-            offset = []
-            for i, segment in enumerate(part):
-                length_of_one_rep = math.pow(segment.period, 2)
-                # print(segment.dataframe['Offset'] + (length_of_one_rep * segment.grid) * i)
-                offset.append((length_of_one_rep * segment.grid) * i)
-            offset_history.append(offset)
-        return offset_history
-                    
-    distributed = distribute_grid(perc1, perc2, perc3, multipliers=score.multipliers)
-    # parts = create_distributed_segment(distributed)
-    # df = parts[0][3].dataframe
-    # print(combine_segments(parts))
+    perc1 = Percussion(sivs)
+    perc2 = Percussion(sivs, '4/3')
+    bass1 = Bass(sivs, '3')
+    # score = Score(perc1)
+    # score = score.create_score()
+    # Utility.save_as_midi(score, 'score')
+    print(Utility.aggregate_rows(perc1.dataframe))
