@@ -26,7 +26,6 @@ class Score:
         for arg, multiplier in zip(self.args, self.multipliers):
                 print(f'Constructing Part {arg.id}')
                 norm = self._normalize_periodicity(arg, multiplier)
-                Utility.save_as_csv(Utility.grouped_by_offset(norm), f'part {arg.id}')
                 notes = self._csv_to_midi(norm)
                 notes_list.append(notes)
                 instruments.append(pretty_midi.Instrument(program=0, name=f'{arg.name}'))
@@ -49,7 +48,7 @@ class Score:
             duplicates.append(df_copy)
         result = pandas.concat(duplicates)
         result = result.drop_duplicates()
-        print(result)
+        Utility.save_as_csv(arg._grouped_by_start(result), f'norm part {arg.id}')     
         return result
     
     @staticmethod
@@ -139,15 +138,6 @@ class Part:
         return num
     
     @staticmethod
-    def _get_lowest_midi(dataframe):
-        dataframe['MIDI'] = dataframe['MIDI'].apply(min)
-        return dataframe[['Start', 'MIDI']]
-    
-    @staticmethod
-    def _grouped_by_offset(dataframe):
-        return dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
-    
-    @staticmethod
     def _octave_interpolation(intervals):
         set = []
         mod12 = list(range(12))
@@ -157,6 +147,38 @@ class Part:
                 siv.append(mod12[j % len(mod12)])
             set.append(siv)
         return set
+    
+    @staticmethod
+    def _grouped_by_start(dataframe):
+        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: x.iloc[0])
+        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(x)))
+        result = pandas.concat([grouped_end, grouped_midi], axis=1).reset_index()
+        result.columns = ['Start', 'End', 'MIDI']
+        return result
+    
+    @staticmethod
+    def _get_lowest_midi(dataframe):
+        dataframe['MIDI'] = dataframe['MIDI'].apply(lambda x: min(x) if x else None)
+        dataframe = dataframe.dropna(subset=['MIDI'])
+        return dataframe[['Start', 'End', 'MIDI']]
+    
+    @staticmethod
+    def _combine_consecutive_midi_values(dataframe):
+        result = []
+        current_start = None
+        current_end = None
+        current_midi = None
+        for _, row in dataframe.iterrows():
+            if current_midi == row['MIDI']:
+                current_end = row['End']
+            else:
+                if current_midi is not None:
+                    result.append([current_start, current_end, current_midi])
+                current_start = row['Start']
+                current_end = row['End']
+                current_midi = row['MIDI']
+        result.append([current_start, current_end, current_midi])
+        return pandas.DataFrame(result, columns=['Start', 'End', 'MIDI'])
     
     @staticmethod
     def _is_prime(num):
@@ -192,9 +214,11 @@ class Percussion(Part):
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
-                    notes_data.append([k * dur, k * dur + self.grid, next(midi_pool)])
+                    offset = k * dur
+                    notes_data.append([offset, offset + self.grid, next(midi_pool)])
         notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
         self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
+        Utility.save_as_csv(self.dataframe, f'part {self.id}')
         
     def _midi_pool(self, index):
         events = self.bin[index].count(1)
@@ -216,11 +240,14 @@ class Bass(Part):
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
-                    notes_data.append([k * dur, k * dur + self.grid, next(midi_pool)])
+                    offset = k * dur
+                    notes_data.append([offset, offset + self.grid, next(midi_pool)])
         notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
         self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
-        self.dataframe = self._grouped_by_offset(self.dataframe)
+        self.dataframe = self._grouped_by_start(self.dataframe)
         self.dataframe = self._get_lowest_midi(self.dataframe)
+        self.dataframe = self._combine_consecutive_midi_values(self.dataframe)
+        Utility.save_as_csv(self.dataframe, f'part {self.id}')
         
     def _midi_pool(self, index):
         pitch_class = self._octave_interpolation(self.intervals)
@@ -243,7 +270,8 @@ class Keyboard(Part):
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
-                    notes_data.append([k * dur, k * dur + self.grid, next(midi_pool)])
+                    offset = k * dur
+                    notes_data.append([offset, offset + self.grid, next(midi_pool)])
         notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
         self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
         
@@ -254,13 +282,6 @@ class Keyboard(Part):
         return pool
     
 class Utility:
-    @staticmethod
-    def grouped_by_offset(dataframe):
-        grouped = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(x)))
-        result = grouped.reset_index().rename(columns={'MIDI': 'MIDI'})
-        result.insert(1, 'End', dataframe.groupby('Start')['End'].apply(lambda x: x.iloc[0]))
-        return result
-    
     def grouped_by_offset_and_midi(dataframe):
         grouped_by_offset = dataframe.groupby('Offset')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
         grouped_by_offset['MIDI'] = grouped_by_offset['MIDI'].apply(tuple)
@@ -274,8 +295,6 @@ class Utility:
             end = group['End'].iloc[-1] if group['End'].iloc[-1] is not pandas.NA else group['Start'].iloc[-1] + 1
             result = result.append({'Start': start, 'End': end, 'MIDI': name}, ignore_index=True)
         return result
-
-
     
     @staticmethod
     def save_as_csv(dataframe, filename):
@@ -287,10 +306,10 @@ class Utility:
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    perc1 = Percussion(sivs)
-    perc2 = Percussion(sivs, '4/3')
-    bass1 = Bass(sivs, '3')
-    # score = Score(perc1)
-    # score = score.create_score()
-    # Utility.save_as_midi(score, 'score')
-    print(Utility.aggregate_rows(perc1.dataframe))
+    # perc1 = Percussion(sivs)
+    # perc2 = Percussion(sivs, '4/3')
+    bass1 = Bass(sivs)
+    score = Score(bass1)
+    score = score.create_score()
+    Utility.save_as_midi(score, 'score')
+    # print(Utility.aggregate_rows(bass1.dataframe))
