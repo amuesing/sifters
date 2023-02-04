@@ -44,11 +44,11 @@ class Score:
             df_copy = arg.dataframe.copy()
             df_copy['Start'] = df_copy['Start'] + (length_of_one_rep * arg.grid) * i
             df_copy['End'] = df_copy['End'] + (length_of_one_rep * arg.grid) * i
-            df_copy['MIDI'] = df_copy['MIDI'] + i
+            # df_copy['MIDI'] = df_copy['MIDI'] + i
             duplicates.append(df_copy)
         result = pandas.concat(duplicates)
         result = result.drop_duplicates()
-        Utility.save_as_csv(arg._grouped_by_start(result), f'norm part {arg.id}')     
+        Utility.save_as_csv(arg._group_by_start(result), f'norm part {arg.id}')     
         return result
     
     @staticmethod
@@ -75,19 +75,28 @@ class Part:
     grid_history = []
     next_id = 1
         
-    def __init__(self, sivs, grid=None, midi=None):
-        self.intervals = self._get_intervals(sivs)
-        self.bin = self._get_binary(sivs)
-        self.period = len(self.bin[0])
-        self.factors = self._get_factors(self.period)
-        self.midi = midi if midi is not None else [45, 46, 47, 48, 49]
+    def __init__(self, sivs, grid=None, midi=None, form=None):
         self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
+        self.midi = midi if midi is not None else [45, 46, 47, 48, 49]
+        self.form = self._select_form(sivs, form if form is not None else 'Prime')
+        self.intervals = self._find_indices(self.form, 1)
+        self.period = len(self.form[0])
+        self.factors = self._get_factors(self.period) 
         self.grid_history.append(self.grid)
         self.id = Part.next_id
-        self.create_part()
         Part.next_id += 1
         
     @functools.lru_cache()
+    def _select_form(self, sivs, form):
+        binary = self._get_binary(sivs)
+        forms = {
+            'Prime': lambda bin: bin,
+            'Inversion': lambda bin: [1 if x == 0 else 0 for x in bin],
+            'Retrograde': lambda bin: bin[::-1],
+            'Retrograde-Inversion': lambda bin: [1 if x == 0 else 0 for x in bin][::-1]
+        }
+        return [forms[form](bin) for bin in binary]
+        
     def _get_binary(self, sivs):
         bin = []
         if isinstance(sivs, tuple):
@@ -107,14 +116,16 @@ class Part:
             bin.append(obj.segment(segmentFormat='binary'))
         return bin
     
-    @functools.lru_cache()
-    def _get_intervals(self, sivs):
-        intervals = []
-        for siv in sivs:
-            set = music21.sieve.Sieve(siv)
-            set.setZRange(0, set.period() - 1)
-            intervals.append(set.segment())
-        return intervals
+    @staticmethod
+    def _find_indices(binary_lists, target):
+        indexes = []
+        for i in range(len(binary_lists)):
+            ind = []
+            for j in range(len(binary_lists[i])):
+                if binary_lists[i][j] == target:
+                    ind.append(j)
+            indexes.append(ind)
+        return indexes
     
     def _get_least_common_multiple(self, nums):
         if len(nums) == 2:
@@ -149,36 +160,60 @@ class Part:
         return set
     
     @staticmethod
-    def _grouped_by_start(dataframe):
-        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: x.iloc[0])
+    def _group_by_start(dataframe):
+        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: x.iloc[0])
         grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(x)))
-        result = pandas.concat([grouped_end, grouped_midi], axis=1).reset_index()
-        result.columns = ['Start', 'End', 'MIDI']
+        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: x.iloc[0])
+        result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
+        result = result[['Velocity', 'MIDI', 'Start', 'End']]
         return result
     
+    @staticmethod
+    def _group_by_midi(dataframe):
+        result = {}
+        for _, row in dataframe.iterrows():
+            velo = row['Velocity']
+            midi = row['MIDI']
+            start = row['Start']
+            end = row['End']
+            midi_str = str(midi)
+            if midi_str in result:
+                result[midi_str]['Velocity'].append(velo)
+                result[midi_str]['Start'].append(start)
+                result[midi_str]['End'].append(end)
+            else:
+                result[midi_str] = {'Velocity': [velo], 'Start': [start], 'End': [end]}
+        result = pandas.DataFrame(result).transpose()
+        result['MIDI'] = result.index
+        result.reset_index(drop=True, inplace=True)
+        result = result[['Velocity', 'MIDI', 'Start', 'End']]
+        return result
+        
     @staticmethod
     def _get_lowest_midi(dataframe):
         dataframe['MIDI'] = dataframe['MIDI'].apply(lambda x: min(x) if x else None)
         dataframe = dataframe.dropna(subset=['MIDI'])
-        return dataframe[['Start', 'End', 'MIDI']]
+        return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
     
     @staticmethod
     def _combine_consecutive_midi_values(dataframe):
         result = []
+        current_velo = None
+        current_midi = None
         current_start = None
         current_end = None
-        current_midi = None
         for _, row in dataframe.iterrows():
             if current_midi == row['MIDI']:
                 current_end = row['End']
             else:
                 if current_midi is not None:
-                    result.append([current_start, current_end, current_midi])
+                    result.append([current_velo, current_midi, current_start, current_end])
+                current_velo = row['Velocity']
+                current_midi = row['MIDI']
                 current_start = row['Start']
                 current_end = row['End']
-                current_midi = row['MIDI']
-        result.append([current_start, current_end, current_midi])
-        return pandas.DataFrame(result, columns=['Start', 'End', 'MIDI'])
+        result.append([current_velo, current_midi, current_start, current_end,])
+        return pandas.DataFrame(result, columns=['Velocity', 'MIDI', 'Start', 'End'])
     
     @staticmethod
     def _is_prime(num):
@@ -199,54 +234,59 @@ class Part:
             i += 1
         return factors
     
-    # Include start and end data in dataframe so that you can aggregate repeated notes in bass part
 class Percussion(Part):
-    def __init__(self, sivs, grid=None, midi=None):
-        super().__init__(sivs, grid, midi)
+    def __init__(self, sivs, grid=None, midi=None, form=None):
+        super().__init__(sivs, grid, midi, form)
         self.name = 'Percussion'
+        self._create_part()
         
-    def create_part(self):
+    def _create_part(self):
         notes_data = []
-        for i in range(len(self.bin)):
+        for i in range(len(self.form)):
             midi_pool = itertools.cycle(self._midi_pool(i))
             for j in range(len(self.factors)):
-                pattern = numpy.tile(self.bin[i], self.factors[j])
+                pattern = numpy.tile(self.form[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
+                    velocity = 127
                     offset = k * dur
-                    notes_data.append([offset, offset + self.grid, next(midi_pool)])
-        notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
-        self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
+                    notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
+        notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
+        self.dataframe = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
         Utility.save_as_csv(self.dataframe, f'part {self.id}')
         
     def _midi_pool(self, index):
-        events = self.bin[index].count(1)
+        events = self.form[index].count(1)
         largest_prime_slice = slice(0, self._get_largest_prime_factor(events))
         instrument_pool = itertools.cycle(self.midi[largest_prime_slice])
         return [next(instrument_pool) for _ in range(events)]
     
 class Bass(Part):
-    def __init__(self, sivs, grid=None, midi=None):
-        super().__init__(sivs, grid, midi)
+    def __init__(self, sivs, grid=None, midi=None, form=None):
+        super().__init__(sivs, grid, midi, form)
         self.name = 'Bass'
+        self._create_part()
         
-    def create_part(self):
+    def _create_part(self):
         notes_data = []
-        for i in range(len(self.bin)):
+        for i in range(len(self.form)):
             midi_pool = itertools.cycle(self._midi_pool(i))
             for j in range(len(self.factors)):
-                pattern = numpy.tile(self.bin[i], self.factors[j])
+                pattern = numpy.tile(self.form[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
+                    velocity = 127
                     offset = k * dur
-                    notes_data.append([offset, offset + self.grid, next(midi_pool)])
-        notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
-        self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
-        self.dataframe = self._grouped_by_start(self.dataframe)
-        self.dataframe = self._get_lowest_midi(self.dataframe)
+                    notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
+        notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
+        self.dataframe = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
+        # self.dataframe = self._group_by_start(self.dataframe)
         self.dataframe = self._combine_consecutive_midi_values(self.dataframe)
+        # self.dataframe = self._get_lowest_midi(self.dataframe)
+        # self.dataframe = self._group_by_midi(self.dataframe)
+        self.dataframe = Utility.rearrange_columns(self.dataframe, 'Start', 'End', 'MIDI', 'Velocity')
         Utility.save_as_csv(self.dataframe, f'part {self.id}')
         
     def _midi_pool(self, index):
@@ -256,24 +296,27 @@ class Bass(Part):
         return pool
     
 # Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
+# A better solution may be to utilize the approach to consolidating datapoints as in the Bass class to create a counterpoint
 class Keyboard(Part):
-    def __init__(self, sivs, grid=None, midi=None):
-        super().__init__(sivs, grid, midi)
+    def __init__(self, sivs, grid=None, midi=None, form=None):
+        super().__init__(sivs, grid, midi, form)
         self.name = 'Keyboard'
+        self._create_part()
         
-    def create_part(self):
+    def _create_part(self):
         notes_data = []
-        for i in range(len(self.bin)):
+        for i in range(len(self.form)):
             midi_pool = itertools.cycle(self._midi_pool(i))
             for j in range(len(self.factors)):
-                pattern = numpy.tile(self.bin[i], self.factors[j])
+                pattern = numpy.tile(self.form[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
                 dur = self.grid * (self.period / self.factors[j])
                 for k in indices:
+                    velocity = 127
                     offset = k * dur
-                    notes_data.append([offset, offset + self.grid, next(midi_pool)])
-        notes_data = [[round(data[0], 6), round(data[1], 6), data[2]] for data in notes_data]
-        self.dataframe = pandas.DataFrame(notes_data, columns=['Start', 'End', 'MIDI']).sort_values(by = 'Start').drop_duplicates()
+                    notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
+        notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
+        self.dataframe = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
         
     def _midi_pool(self, index):
         pitch_class = self._octave_interpolation(self.intervals)
@@ -282,19 +325,9 @@ class Keyboard(Part):
         return pool
     
 class Utility:
-    def grouped_by_offset_and_midi(dataframe):
-        grouped_by_offset = dataframe.groupby('Offset')['MIDI'].apply(lambda x: sorted([i for i in x])).reset_index()
-        grouped_by_offset['MIDI'] = grouped_by_offset['MIDI'].apply(tuple)
-        return grouped_by_offset.groupby('MIDI')['Start'].agg(lambda x: list(x)).reset_index()
-    
-    def aggregate_rows(dataframe):
-        groups = dataframe.groupby('MIDI')
-        result = pandas.DataFrame(columns=['Start', 'End', 'MIDI'])
-        for name, group in groups:
-            start = group['Start'].iloc[0]
-            end = group['End'].iloc[-1] if group['End'].iloc[-1] is not pandas.NA else group['Start'].iloc[-1] + 1
-            result = result.append({'Start': start, 'End': end, 'MIDI': name}, ignore_index=True)
-        return result
+    @staticmethod
+    def rearrange_columns(dataframe, *column_names):
+        return dataframe[list(column_names)]
     
     @staticmethod
     def save_as_csv(dataframe, filename):
@@ -307,9 +340,11 @@ class Utility:
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     # perc1 = Percussion(sivs)
-    # perc2 = Percussion(sivs, '4/3')
+    # perc1 = Percussion(sivs, '4/3')
     bass1 = Bass(sivs)
+    # bass1 = Bass(sivs, midi=[60,51], form='Retrograde-Inversion')
     score = Score(bass1)
     score = score.create_score()
     Utility.save_as_midi(score, 'score')
     # print(Utility.aggregate_rows(bass1.dataframe))
+    # print(perc1.dataframe)
