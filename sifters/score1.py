@@ -74,7 +74,8 @@ class Score:
 class Part:
     grid_history = []
         
-    def __init__(self, sivs, grid=None, midi=None, form=None):
+    def __init__(self, sivs, *grids, midi=None, form=None):
+        grid = grids[0] if grids else None
         self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
         self.midi = midi if midi is not None else [45, 46, 47, 48, 49]
         self.form = self._select_form(sivs, form if form is not None else 'Prime')
@@ -232,13 +233,12 @@ class Part:
                 dataframe.loc[i, 'End'] = dataframe.loc[i + 1, 'Start']
         return dataframe
     
-    def combine_parts(self, *objects):
-            dataframes = [object.notes_data for object in objects]
-            part = pandas.concat(dataframes)
-            # part = self._get_max_end_value(part)
-            # part = self._update_end_value(part)
-            return part
-            print(part)
+    # def combine_parts(*objects):
+    #     dataframes = [object.notes_data for object in objects]
+    #     part = pandas.concat(dataframes)
+    #     part = self._get_max_end_value(part)
+    #     part = self._update_end_value(part)
+    #     return part
     
     @staticmethod
     def _is_prime(num):
@@ -380,9 +380,10 @@ if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Percussion(sivs)
     perc2 = Percussion(sivs, '4/3')
+    # Part.combine_parts(perc1, perc2)
     perc = Part._combine_dataframes(perc1.notes_data, perc2.notes_data)
     perc = Part._group_by_start(perc)
     perc = Part._get_max_end_value(perc)
     perc = Part._update_end_value(perc)
-    # perc = Part.combine_parts(perc1, perc2)
+    print(perc.grid)
     Utility.save_as_csv(perc, 'combined df')
