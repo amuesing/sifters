@@ -18,18 +18,20 @@ class Score:
         score = pretty_midi.PrettyMIDI()
         score.time_signature_changes.append(pretty_midi.TimeSignature(5,4,0))
         score.resolution = score.resolution * 2
+        # Create a get_multiplier method
         self.normalized_numerators = numpy.array([self._normalize_numerator(arg, self._get_multiplier(arg)) for arg in self.args])
         lcm = self.args[-1]._get_least_common_multiple(self.normalized_numerators)
         self.multipliers = lcm // self.normalized_numerators
         notes_list = []
         instruments = []
+        self.combine_parts()
         for arg, multiplier in zip(self.args, self.multipliers):
                 print(f'Constructing {arg.name} Part {arg.id}')
                 norm = self._normalize_periodicity(arg, multiplier)
                 notes = self._csv_to_midi(norm)
                 notes_list.append(notes)
                 instruments.append(pretty_midi.Instrument(program=0, name=f'{arg.name}'))
-        for i,arg in enumerate(self.args):
+        for i, arg in enumerate(self.args):
             instruments[i].notes = notes_list[i]
             score.instruments.append(instruments[i])
         print('Build Complete')
@@ -50,6 +52,42 @@ class Score:
         result = result.drop_duplicates()
         # Utility.save_as_csv(arg._group_by_start(result), f'Normalized {arg.name} Part {arg.id}')     
         return result
+    
+    # You will need to pass the normalized dataframe to the combined part
+    def combine_parts(self):
+        dataframes = []
+        for arg in self.args:
+            dataframes.append(arg.notes_data)
+        part = pandas.concat(dataframes)
+        part = self._group_by_start(part)
+        part = self._get_max_end_value(part)
+        part = self._update_end_value(part)
+        Utility.save_as_csv(part, f'Combine {arg.name} Part')
+        return part
+        
+    @staticmethod
+    def _group_by_start(dataframe):
+        # Set is used to automatically remove duplicate values from the list
+        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(list(set(x))))
+        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(set(x))))
+        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(list(set(x))))
+        result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
+        result = result[['Velocity', 'MIDI', 'Start', 'End']]
+        return result
+    
+    @staticmethod
+    def _get_max_end_value(dataframe):
+        dataframe = dataframe.copy()
+        dataframe['End'] = dataframe['End'].apply(lambda x: max(x) if type(x) == list else x)
+        return dataframe
+    
+    @staticmethod
+    def _update_end_value(dataframe):
+        dataframe = dataframe.copy()
+        for i in range(len(dataframe) - 1):
+            if dataframe.loc[i + 1, 'Start'] < dataframe.loc[i, 'End']:
+                dataframe.loc[i, 'End'] = dataframe.loc[i + 1, 'Start']
+        return dataframe
     
     @staticmethod
     def _get_multiplier(arg):
@@ -157,37 +195,6 @@ class Part:
         return set
     
     @staticmethod
-    def _group_by_start(dataframe):
-        # Set is used to automatically remove duplicate values from the list
-        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(list(set(x))))
-        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(set(x))))
-        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(list(set(x))))
-        result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
-        result = result[['Velocity', 'MIDI', 'Start', 'End']]
-        return result
-    
-    @staticmethod
-    def _group_by_midi(dataframe):
-        result = {}
-        for _, row in dataframe.iterrows():
-            velocity = row['Velocity']
-            midi = row['MIDI']
-            start = row['Start']
-            end = row['End']
-            midi_str = str(midi)
-            if midi_str in result:
-                result[midi_str]['Velocity'].append(velocity)
-                result[midi_str]['Start'].append(start)
-                result[midi_str]['End'].append(end)
-            else:
-                result[midi_str] = {'Velocity': [velocity], 'Start': [start], 'End': [end]}
-        result = pandas.DataFrame(result).transpose()
-        result['MIDI'] = result.index
-        result.reset_index(drop=True, inplace=True)
-        result = result[['Velocity', 'MIDI', 'Start', 'End']]
-        return result
-    
-    @staticmethod
     def _combine_consecutive_midi_values(dataframe):
         result = []
         current_velocity = None
@@ -207,38 +214,11 @@ class Part:
         result.append([current_velocity, current_midi, current_start, current_end,])
         return pandas.DataFrame(result, columns=['Velocity', 'MIDI', 'Start', 'End'])
     
-    @staticmethod    
-    def _combine_dataframes(*dataframes):
-        df_combined = pandas.concat(dataframes)
-        return df_combined
-    
     @staticmethod
     def _get_lowest_midi(dataframe):
         dataframe['MIDI'] = dataframe['MIDI'].apply(lambda x: min(x) if x else None)
         dataframe = dataframe.dropna(subset=['MIDI'])
         return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
-    
-    @staticmethod
-    def _get_max_end_value(dataframe):
-        dataframe = dataframe.copy()
-        dataframe['End'] = dataframe['End'].apply(lambda x: max(x) if type(x) == list else x)
-        return dataframe
-    
-    @staticmethod
-    def _update_end_value(dataframe):
-        dataframe = dataframe.copy()
-        for i in range(len(dataframe) - 1):
-            if dataframe.loc[i + 1, 'Start'] < dataframe.loc[i, 'End']:
-                dataframe.loc[i, 'End'] = dataframe.loc[i + 1, 'Start']
-        return dataframe
-    
-    def combine_parts(self, *objects):
-            dataframes = [object.notes_data for object in objects]
-            part = pandas.concat(dataframes)
-            # part = self._get_max_end_value(part)
-            # part = self._update_end_value(part)
-            return part
-            print(part)
     
     @staticmethod
     def _is_prime(num):
@@ -316,7 +296,7 @@ class Bass(Part):
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
-        # self.notes_data = self._group_by_midi(self.notes_data)
+        # self.notes_data = Utility._group_by_midi(self.notes_data)
         self.notes_data = self._group_by_start(self.notes_data)
         self.notes_data = self._combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self._get_lowest_midi(self.notes_data)
@@ -364,6 +344,27 @@ class Keyboard(Part):
     
 class Utility:
     @staticmethod
+    def _group_by_midi(dataframe):
+        result = {}
+        for _, row in dataframe.iterrows():
+            velocity = row['Velocity']
+            midi = row['MIDI']
+            start = row['Start']
+            end = row['End']
+            midi_str = str(midi)
+            if midi_str in result:
+                result[midi_str]['Velocity'].append(velocity)
+                result[midi_str]['Start'].append(start)
+                result[midi_str]['End'].append(end)
+            else:
+                result[midi_str] = {'Velocity': [velocity], 'Start': [start], 'End': [end]}
+        result = pandas.DataFrame(result).transpose()
+        result['MIDI'] = result.index
+        result.reset_index(drop=True, inplace=True)
+        result = result[['Velocity', 'MIDI', 'Start', 'End']]
+        return result
+    
+    @staticmethod
     def rearrange_columns(dataframe, *column_names):
         return dataframe[list(column_names)]
     
@@ -380,9 +381,15 @@ if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Percussion(sivs)
     perc2 = Percussion(sivs, '4/3')
-    perc = Part._combine_dataframes(perc1.notes_data, perc2.notes_data)
-    perc = Part._group_by_start(perc)
-    perc = Part._get_max_end_value(perc)
-    perc = Part._update_end_value(perc)
-    # perc = Part.combine_parts(perc1, perc2)
-    Utility.save_as_csv(perc, 'combined df')
+    # perc = Part._combine_dataframes(perc1.notes_data, perc2.notes_data)
+    # perc = Part._group_by_start(perc)
+    # perc = Part._get_max_end_value(perc)
+    # perc = Part._update_end_value(perc)
+    # # perc = Part.combine_parts(perc1, perc2)
+    # Utility.save_as_csv(perc, 'combined df')
+    score = Score(perc1, perc2)
+    # score.combine_parts()
+    score = score.create_score()
+    Utility.save_as_midi(score, 'score')
+    # print(score)
+    # print(score.args[1].notes_data)
