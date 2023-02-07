@@ -91,7 +91,7 @@ class Score:
             else:
                 result = pandas.concat([result, pandas.DataFrame({'Velocity': [velocity], 'MIDI': [midi], 'Start': [start], 'End': [end]})], ignore_index=True)
         return result
-
+    
     def _convert_velocity_to_scalar(df):
         df['Velocity'] = df['Velocity'].apply(lambda x: x[0])
         return df
@@ -100,13 +100,13 @@ class Score:
         #should I add grid history to the datad
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
         return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id-1]
-
+    
     def _normalize_numerator(arg, mult):
         return arg.grid_history[arg.id-1].numerator * mult
-
+    
     def _normalize_denominator(arg, mult):
         return arg.grid_history[arg.id-1].denominator * mult
-
+    
     def _csv_to_midi(dataframe):
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(velocity=x.Velocity, start=x.Start, end=x.End))
         return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
@@ -368,6 +368,7 @@ class Utility:
         pretty_midi_obj.write(f'sifters/.{filename}.mid')
         
         # is it possible to make multiple grids within one instance of a part class
+        # remove _ from beginning for method names
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     perc1 = Percussion(sivs)
@@ -378,7 +379,7 @@ if __name__ == '__main__':
     # perc = Part._update_end_value(perc)
     # # perc = Part.combine_parts(perc1, perc2)
     # Utility.save_as_csv(perc, 'combined df')
-    # What if I move combine_parts to 
+    # What if I move combine_parts to Part class so I can preserve create a Part object to pass to Score
     perc = Score.combine_parts(perc1, perc2)
     score = Score(perc)
     score = score.create_score()
