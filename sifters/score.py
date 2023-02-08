@@ -53,7 +53,7 @@ class Score:
         part = Score._convert_velocity_to_scalar(part)
         Utility.save_as_csv(part, f'Combined Part')
         return part
-
+    
     def _group_by_start(dataframe):
         # Set is used to automatically remove duplicate values from the list
         grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(list(set(x))))
@@ -62,19 +62,19 @@ class Score:
         result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
         result = result[['Velocity', 'MIDI', 'Start', 'End']]
         return result
-
+    
     def _get_max_end_value(dataframe):
         dataframe = dataframe.copy()
         dataframe['End'] = dataframe['End'].apply(lambda x: max(x) if type(x) == list else x)
         return dataframe
-
+    
     def _update_end_value(dataframe):
         dataframe = dataframe.copy()
         for i in range(len(dataframe) - 1):
             if dataframe.loc[i + 1, 'Start'] < dataframe.loc[i, 'End']:
                 dataframe.loc[i, 'End'] = dataframe.loc[i + 1, 'Start']
         return dataframe
-
+    
     def _expand_midi_lists(dataframe):
         result = pandas.DataFrame(columns=['Velocity', 'MIDI', 'Start', 'End'])
         for _, row in dataframe.iterrows():
@@ -91,22 +91,19 @@ class Score:
             else:
                 result = pandas.concat([result, pandas.DataFrame({'Velocity': [velocity], 'MIDI': [midi], 'Start': [start], 'End': [end]})], ignore_index=True)
         return result
-
-    def _convert_velocity_to_scalar(df):
-        df['Velocity'] = df['Velocity'].apply(lambda x: x[0])
-        return df
     
-    def _get_multiplier(arg):
+    def _convert_velocity_to_scalar(dataframe):
+        dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0])
+        return dataframe
+    
+    def _get_multiplier(self, arg):
         #should I add grid history to the datad
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
         return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id-1]
-
-    def _normalize_numerator(arg, mult):
+    
+    def _normalize_numerator(self, arg, mult):
         return arg.grid_history[arg.id-1].numerator * mult
-
-    def _normalize_denominator(arg, mult):
-        return arg.grid_history[arg.id-1].denominator * mult
-
+    
     def _csv_to_midi(dataframe):
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(velocity=x.Velocity, start=x.Start, end=x.End))
         return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
@@ -152,7 +149,7 @@ class Part:
             binary.append(object.segment(segmentFormat='binary'))
         return binary
     
-    def _find_indices(binary_lists, target):
+    def _find_indices(self, binary_lists, target):
         indexes = []
         for i in range(len(binary_lists)):
             ind = []
@@ -217,7 +214,7 @@ class Part:
         dataframe = dataframe.dropna(subset=['MIDI'])
         return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
     
-    def _is_prime(num):
+    def _is_prime(self, num):
         if num < 2:
             return False
         for i in range(2, num):
@@ -338,6 +335,7 @@ class Keyboard(Part):
         return pool
     
 class Utility:
+    @staticmethod
     def _group_by_midi(dataframe):
         result = {}
         for _, row in dataframe.iterrows():
@@ -358,15 +356,18 @@ class Utility:
         result = result[['Velocity', 'MIDI', 'Start', 'End']]
         return result
     
+    @staticmethod
     def rearrange_columns(dataframe, *column_names):
         return dataframe[list(column_names)]
     
+    @staticmethod
     def save_as_csv(dataframe, filename):
         dataframe.sort_values(by = 'Start').to_csv(f'sifters/.{filename}.csv', index=False)
         
+    @staticmethod
     def save_as_midi(pretty_midi_obj, filename):
         pretty_midi_obj.write(f'sifters/.{filename}.mid')
-        
+            
         # is it possible to make multiple grids within one instance of a part class
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
@@ -378,10 +379,9 @@ if __name__ == '__main__':
     # perc = Part._update_end_value(perc)
     # # perc = Part.combine_parts(perc1, perc2)
     # Utility.save_as_csv(perc, 'combined df')
-    # What if I move combine_parts to 
     perc = Score.combine_parts(perc1, perc2)
-    score = Score(perc)
-    score = score.create_score()
+    # score = Score(perc)
+    score = perc.create_score()
     Utility.save_as_midi(score, 'score')
     # print(score)
     # print(score.args[1].notes_data)
