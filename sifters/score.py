@@ -10,9 +10,11 @@ import math
 class Score:
     def __init__(self, *args):
         self.args = args
-        self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.args])
-        self.multipliers = self.args[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
-        self.normalized_notes_data = self.normalize_periodicity()
+        self.grid_history = args[0][0].grid_history
+        print(self.grid_history)
+        # self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.args])
+        # self.multipliers = self.args[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
+        # self.normalized_notes_data = self.normalize_periodicity()
         
     def create_score(self, notes):
         score = pretty_midi.PrettyMIDI()
@@ -67,12 +69,21 @@ class Score:
     #     Utility.save_as_csv(part, f'Combined Part')
     #     return part
     
-    def combine_parts(indices):
-        dataframes = []
+    def combine_parts(score_obj, indices):
+        part_objs = []
         for index in indices:
-            dataframes.append(Score.normalized_notes_data[index])
-        print(dataframes) 
+            # dataframes.append(self.args[index].normalized_notes_data)
+            part_objs.append(score_obj.args[index])
+        Score.combine_dataframes(part_objs)
     
+    def combine_dataframes(part_objs):
+        # score = [Score(part) for part in part_objs]
+        # print(score)
+        print(part_objs[0].grid_history)
+        print(Score(part_objs))
+        # parts = Score(part_objs[0], part_objs[1])
+        # print(parts)
+        # print(part_objs)
     # def combine_dataframes(self, *part_objs):
         # parts = Score(*part_objs)
     # def combine_dataframes(self, parts):
@@ -84,7 +95,6 @@ class Score:
         # part = Score.convert_velocity_to_scalar(part)
         # Utility.save_as_csv(part, f'Combined Part')
         # return part
-        # print(part)
     
     def group_by_start(dataframe):
         # Set is used to automatically remove duplicate values from the list
@@ -406,8 +416,10 @@ if __name__ == '__main__':
     perc1 = Percussion(sivs)
     perc2 = Percussion(sivs, '4/3')
     perc3 = Percussion(sivs, '2/3')
-    score = Score(perc1, perc2, perc3)
-    perc = Score.combine_parts([0, 1])
+    instruments = [perc1, perc2, perc3]
+    # score = Score(perc1, perc2, perc3)
+    score = Score(instruments)
+    # perc = Score.combine_parts(score, [0, 1])
     # score.args = perc, score.args[2]
     # score = score.combine_parts()
     # score = Score.combine_parts(perc1, perc2)
