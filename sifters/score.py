@@ -4,7 +4,6 @@ import fractions
 import itertools
 import functools
 import pandas
-import heapq
 import numpy
 import math
 
@@ -30,10 +29,10 @@ class Score:
             duplicates = [arg.notes_data.copy()]
             length_of_one_rep = math.pow(arg.period, 2)
             for i in range(multiplier):
-                df_copy = arg.notes_data.copy()
-                df_copy['Start'] = round(df_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
-                df_copy['End'] = round(df_copy['End'] + (length_of_one_rep * arg.grid) * i, 6)
-                duplicates.append(df_copy)
+                dataframe_copy = arg.notes_data.copy()
+                dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
+                dataframe_copy['End'] = round(dataframe_copy['End'] + (length_of_one_rep * arg.grid) * i, 6)
+                duplicates.append(dataframe_copy)
             result = pandas.concat(duplicates)
             result = result.drop_duplicates()
             normalized_parts_data.append(result)
@@ -41,6 +40,7 @@ class Score:
         
     def write_score(self):
         score = pretty_midi.PrettyMIDI()
+        # Write method to determine TimeSignature
         score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
         score.resolution = score.resolution * 2
         midi_data = [self.csv_to_midi(part) for part in self.normalized_parts_data]
@@ -56,24 +56,15 @@ class Score:
         return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
     
     def combine_parts(self, *args):
+        first_obj = next(iter(self.kwargs.values()), None)
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
         combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
-        combined_notes_data = self.group_by_start(combined_notes_data)
+        combined_notes_data = first_obj.group_by_start(combined_notes_data)
         combined_notes_data = self.get_max_end_value(combined_notes_data)
         combined_notes_data = self.update_end_value(combined_notes_data)
         combined_notes_data = self.expand_midi_lists(combined_notes_data)
         remaining_indices = [i for i in range(len(self.normalized_parts_data)) if i not in indices]
         self.normalized_parts_data = [self.normalized_parts_data[i] for i in remaining_indices] + [combined_notes_data]
-        
-    @staticmethod
-    def group_by_start(dataframe):
-        # Remove duplicate values from the list
-        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(set(x)))
-        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(set(x)))
-        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(set(x)))
-        result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
-        result = result[['Velocity', 'MIDI', 'Start', 'End']]
-        return result
     
     @staticmethod
     def get_max_end_value(dataframe):
@@ -124,7 +115,27 @@ class Part:
             'Retrograde-Inversion': lambda bin: [1 if x == 0 else 0 for x in bin][::-1]
         }
         return [forms[form](bin) for bin in binary]
-        
+    
+    def find_indices(self, binary_lists, target):
+        indexes = []
+        for i in range(len(binary_lists)):
+            ind = []
+            for j in range(len(binary_lists[i])):
+                if binary_lists[i][j] == target:
+                    ind.append(j)
+            indexes.append(ind)
+        return indexes
+    
+    @staticmethod
+    def get_factors(num):
+        factors = []
+        i = 1
+        while i <= num:
+            if num % i == 0:
+                factors.append(i)
+            i += 1
+        return factors
+    
     def get_binary(self, sivs):
         binary = []
         if isinstance(sivs, tuple):
@@ -143,16 +154,6 @@ class Part:
             object.setZRange(0, object.period() - 1)
             binary.append(object.segment(segmentFormat='binary'))
         return binary
-    
-    def find_indices(self, binary_lists, target):
-        indexes = []
-        for i in range(len(binary_lists)):
-            ind = []
-            for j in range(len(binary_lists[i])):
-                if binary_lists[i][j] == target:
-                    ind.append(j)
-            indexes.append(ind)
-        return indexes
     
     def get_least_common_multiple(self, nums):
         if len(nums) == 2:
@@ -176,15 +177,22 @@ class Part:
         return num
     
     @staticmethod
-    def octave_interpolation(intervals):
-        set = []
-        mod12 = list(range(12))
-        for i in intervals:
-            siv = []
-            for j in i:
-                siv.append(mod12[j % len(mod12)])
-            set.append(siv)
-        return set
+    def is_prime(num):
+        if num < 2:
+            return False
+        for i in range(2, num):
+            if num % i == 0:
+                return False
+        return True
+    
+    @staticmethod
+    def group_by_start(dataframe):
+        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(set(x)))
+        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(set(x)))
+        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(set(x)))
+        result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
+        result = result[['Velocity', 'MIDI', 'Start', 'End']]
+        return result
     
     @staticmethod
     def combine_consecutive_midi_values(dataframe):
@@ -213,23 +221,22 @@ class Part:
         return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
     
     @staticmethod
-    def is_prime(num):
-        if num < 2:
-            return False
-        for i in range(2, num):
-            if num % i == 0:
-                return False
-        return True
+    def octave_interpolation(intervals):
+        set = []
+        mod12 = list(range(12))
+        for i in intervals:
+            siv = []
+            for j in i:
+                siv.append(mod12[j % len(mod12)])
+            set.append(siv)
+        return set
     
     @staticmethod
-    def get_factors(num):
-        factors = []
-        i = 1
-        while i <= num:
-            if num % i == 0:
-                factors.append(i)
-            i += 1
-        return factors
+    def convert_lists_to_scalars(dataframe):
+        for col in dataframe.columns:
+            if dataframe[col].dtype == object:
+                dataframe[col] = dataframe[col].apply(lambda x: x[0])
+        return dataframe
     
 class Percussion(Part):
     id = 1
@@ -255,8 +262,6 @@ class Percussion(Part):
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
-        # self.notes_data = Utility.rearrange_columns(self.notes_data,'MIDI', 'Velocity', 'Start', 'End')
-        Utility.save_as_csv(self.notes_data, f'{self.name} Part {self.id}')
         
     def midi_pool(self, index):
         events = self.form[index].count(1)
@@ -288,12 +293,10 @@ class Bass(Part):
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
-        # self.notes_data = Utility._group_by_midi(self.notes_data)
-        self.notes_data = Score.group_by_start(self.notes_data)
+        self.notes_data = self.group_by_start(self.notes_data)
         self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.get_lowest_midi(self.notes_data)
-        self.notes_data = Utility.rearrange_columns(self.notes_data,'MIDI', 'Velocity', 'Start', 'End')
-        Utility.save_as_csv(self.notes_data, f'{self.name} Part {self.id}')
+        self.notes_data = self.convert_lists_to_scalars(self.notes_data)
         
     def midi_pool(self, index):
         pitch_class = self.octave_interpolation(self.intervals)
@@ -361,17 +364,19 @@ class Utility:
     def save_as_csv(dataframe, filename):
         dataframe.sort_values(by = 'Start').to_csv(f'sifters/.{filename}.csv', index=False)
         
-        # is it possible to make multiple grids within one instance of a part class
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     # Test to make sure combine_parts will work with more than two parts
     instruments = {
-        'perc1': Percussion(sivs),
-        'perc2': Percussion(sivs, '4/3'),
-        'perc3': Percussion(sivs, '2/3'),
-        # 'bass1': Bass(sivs, '3')
+        # 'perc1': Percussion(sivs),
+        # 'perc2': Percussion(sivs, '4/3'),
+        # 'perc3': Percussion(sivs, '2/3'),
+        'bass1': Bass(sivs),
+        'bass2': Bass(sivs, '3')
     }
     
     score = Score(**instruments)
-    score.combine_parts('perc1', 'perc2', 'perc3')
+    # check why if I combine just one part it defaults to quarter
+    score.combine_parts('bass1', 'bass2')
+
     score.write_score()
