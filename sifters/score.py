@@ -54,7 +54,7 @@ class Score:
     def csv_to_midi(dataframe):
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(velocity=x.Velocity, start=x.Start, end=x.End))
         return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
-        
+    
     def combine_parts(self, *args):
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
         combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
@@ -62,16 +62,15 @@ class Score:
         combined_notes_data = self.get_max_end_value(combined_notes_data)
         combined_notes_data = self.update_end_value(combined_notes_data)
         combined_notes_data = self.expand_midi_lists(combined_notes_data)
-        combined_notes_data = self.convert_velocity_to_scalar(combined_notes_data)
         remaining_indices = [i for i in range(len(self.normalized_parts_data)) if i not in indices]
         self.normalized_parts_data = [self.normalized_parts_data[i] for i in remaining_indices] + [combined_notes_data]
-    
+        
     @staticmethod
     def group_by_start(dataframe):
-        # Set is used to automatically remove duplicate values from the list
-        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(list(set(x))))
-        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(list(set(x))))
-        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(list(set(x))))
+        # Remove duplicate values from the list
+        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(set(x)))
+        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(set(x)))
+        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(set(x)))
         result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
         result = result[['Velocity', 'MIDI', 'Start', 'End']]
         return result
@@ -79,39 +78,30 @@ class Score:
     @staticmethod
     def get_max_end_value(dataframe):
         dataframe = dataframe.copy()
-        dataframe['End'] = dataframe['End'].apply(lambda x: max(x) if type(x) == list else x)
+        dataframe['End'] = dataframe['End'].apply(lambda x: max(x) if isinstance(x, list) else x)
         return dataframe
     
     @staticmethod
     def update_end_value(dataframe):
         dataframe = dataframe.copy()
-        for i in range(len(dataframe) - 1):
-            if dataframe.loc[i + 1, 'Start'] < dataframe.loc[i, 'End']:
-                dataframe.loc[i, 'End'] = dataframe.loc[i + 1, 'Start']
+        dataframe['End'] = numpy.minimum(dataframe['End'].shift(-1), dataframe['End'])
+        dataframe = dataframe.iloc[:-1]
         return dataframe
     
     @staticmethod
     def expand_midi_lists(dataframe):
-        result = pandas.DataFrame(columns=['Velocity', 'MIDI', 'Start', 'End'])
-        for _, row in dataframe.iterrows():
-            midi = row['MIDI']
-            start = row['Start']
-            end = row['End']
-            velocity = row['Velocity']
-            if isinstance(midi, list):
-                intermediate_df = pandas.DataFrame({'Velocity': [velocity] * len(midi),
-                                                    'MIDI': midi, 
-                                                    'Start': [start + i for i in range(len(midi))], 
-                                                    'End': [end + i for i in range(len(midi))]})
-                result = pandas.concat([result, intermediate_df], ignore_index=True)
-            else:
-                result = pandas.concat([result, pandas.DataFrame({'Velocity': [velocity], 'MIDI': [midi], 'Start': [start], 'End': [end]})], ignore_index=True)
+        dataframe = dataframe.copy()
+        dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
+        start_not_lists = dataframe[~dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
+        start_lists = dataframe[dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
+        start_lists = start_lists.explode('MIDI')
+        start_lists = start_lists.reset_index(drop=True)
+        start_lists = start_lists.drop(['End'], axis=1)
+        start_lists['End'] = start_lists['Start'] + 1
+        result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
+        result.sort_values('Start', inplace=True)
+        result.reset_index(drop=True, inplace=True)
         return result
-    
-    @staticmethod
-    def convert_velocity_to_scalar(dataframe):
-        dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0])
-        return dataframe
     
 class Part:
     grid_history = []
