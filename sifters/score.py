@@ -12,6 +12,7 @@ class Score:
         self.kwargs = kwargs
         self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
+        self.set_instrumentation()
         self.normalize_periodicity()
         
     @staticmethod
@@ -23,6 +24,12 @@ class Score:
     def normalize_numerator(arg, mult):
         return arg.grid_history[arg.id-1].numerator * mult
     
+    def set_instrumentation(self):
+        instruments_list = []
+        for kwarg in self.kwargs.values():
+            instruments_list.append(pretty_midi.Instrument(program=0, name=f'{kwarg.name}'))
+        self.instrumentation = instruments_list
+        
     def normalize_periodicity(self):
         normalized_parts_data = []
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
@@ -44,10 +51,9 @@ class Score:
         score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
         score.resolution = score.resolution * 2
         midi_data = [self.csv_to_midi(part) for part in self.normalized_parts_data]
-        instruments = [pretty_midi.Instrument(program=0, name='Percussion') for _ in midi_data]
         for i, _ in enumerate(midi_data):
-            instruments[i].notes = midi_data[i]
-            score.instruments.append(instruments[i])
+            self.instrumentation[i].notes = midi_data[i]
+            score.instruments.append(self.instrumentation[i])
         score.write(f'sifters/.score.mid')
     
     @staticmethod
@@ -58,13 +64,15 @@ class Score:
     def combine_parts(self, *args):
         first_obj = next(iter(self.kwargs.values()), None)
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
+        remaining_indices = [i for i in range(len(self.normalized_parts_data)) if i not in indices]
         combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
         combined_notes_data = first_obj.group_by_start(combined_notes_data)
         combined_notes_data = self.get_max_end_value(combined_notes_data)
         combined_notes_data = self.update_end_value(combined_notes_data)
         combined_notes_data = self.expand_midi_lists(combined_notes_data)
-        remaining_indices = [i for i in range(len(self.normalized_parts_data)) if i not in indices]
-        self.normalized_parts_data = [self.normalized_parts_data[i] for i in remaining_indices] + [combined_notes_data]
+        self.instrumentation = self.filter_first_match(self.instrumentation, indices)
+        # How to reinsert the combined notes data in a place which is consistent with its instrumentation index value
+        self.normalized_parts_data = [combined_notes_data] + [self.normalized_parts_data[i] for i in remaining_indices]
     
     @staticmethod
     def get_max_end_value(dataframe):
@@ -75,7 +83,7 @@ class Score:
     @staticmethod
     def update_end_value(dataframe):
         dataframe = dataframe.copy()
-        dataframe['End'] = numpy.minimum(dataframe['End'].shift(-1), dataframe['End'])
+        dataframe['End'] = numpy.minimum(dataframe['Start'].shift(-1), dataframe['End'])
         dataframe = dataframe.iloc[:-1]
         return dataframe
     
@@ -87,12 +95,22 @@ class Score:
         start_lists = dataframe[dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
         start_lists = start_lists.explode('MIDI')
         start_lists = start_lists.reset_index(drop=True)
-        start_lists = start_lists.drop(['End'], axis=1)
-        start_lists['End'] = start_lists['Start'] + 1
         result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
         result.sort_values('Start', inplace=True)
         result.reset_index(drop=True, inplace=True)
         return result
+    
+    @staticmethod
+    def filter_first_match(objects, indices):
+        updated_objects = []
+        first_match_found = False
+        for i, obj in enumerate(objects):
+            if i in indices and not first_match_found:
+                updated_objects.append(obj)
+                first_match_found = True
+            elif i not in indices:
+                updated_objects.append(obj)
+        return updated_objects
     
 class Part:
     grid_history = []
@@ -368,15 +386,16 @@ if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     # Test to make sure combine_parts will work with more than two parts
     instruments = {
-        # 'perc1': Percussion(sivs),
-        # 'perc2': Percussion(sivs, '4/3'),
-        # 'perc3': Percussion(sivs, '2/3'),
-        'bass1': Bass(sivs),
-        'bass2': Bass(sivs, '3')
+        'perc1': Percussion(sivs),
+        'perc2': Percussion(sivs, '2/3'),
+        'perc3': Percussion(sivs, '4/5'),
+        'bass1': Bass(sivs, '2'),
+        # 'bass2': Bass(sivs, '3')
     }
     
     score = Score(**instruments)
-    # check why if I combine just one part it defaults to quarter
-    score.combine_parts('bass1', 'bass2')
-
+    # What if I want to combine different subsectuibs if the instrumentation (bass, percussion)
+    score.combine_parts('perc1', 'perc2', 'perc3')
+    # # score.combine_parts('bass1', 'bass2')
     score.write_score()
+    Utility.save_as_csv(score.normalized_parts_data[0], 'combined')
