@@ -18,11 +18,11 @@ class Score:
     @staticmethod
     def get_multiplier(arg):
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
-        return [lcd // fraction.denominator for fraction in arg.grid_history][arg.id-1]
+        return [lcd // fraction.denominator for fraction in arg.grid_history][arg.part_id-1]
     
     @staticmethod
     def normalize_numerator(arg, mult):
-        return arg.grid_history[arg.id-1].numerator * mult
+        return arg.grid_history[arg.part_id-1].numerator * mult
     
     def set_instrumentation(self):
         instruments_list = []
@@ -43,6 +43,7 @@ class Score:
             result = pandas.concat(duplicates)
             result = result.drop_duplicates()
             normalized_parts_data.append(result)
+            Utility.save_as_csv(result, f'Norm {arg.name} {arg.instrument_id}')
         self.normalized_parts_data = normalized_parts_data
         
     def write_score(self):
@@ -60,20 +61,23 @@ class Score:
     def csv_to_midi(dataframe):
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(velocity=x.Velocity, start=x.Start, end=x.End))
         return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
-    
+        
     def combine_parts(self, *args):
-        first_obj = next(iter(self.kwargs.values()), None)
-        indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
-        remaining_indices = [i for i in range(len(self.normalized_parts_data)) if i not in indices]
-        combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
-        combined_notes_data = first_obj.group_by_start(combined_notes_data)
-        combined_notes_data = self.get_max_end_value(combined_notes_data)
-        combined_notes_data = self.update_end_value(combined_notes_data)
-        combined_notes_data = self.expand_midi_lists(combined_notes_data)
-        self.instrumentation = self.filter_first_match(self.instrumentation, indices)
-        # How to reinsert the combined notes data in a place which is consistent with its instrumentation index value
-        self.normalized_parts_data = [combined_notes_data] + [self.normalized_parts_data[i] for i in remaining_indices]
-    
+            first_obj = next(iter(self.kwargs.values()), None)
+            indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
+            combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
+            combined_notes_data = first_obj.group_by_start(combined_notes_data)
+            combined_notes_data = self.get_max_end_value(combined_notes_data)
+            combined_notes_data = self.update_end_value(combined_notes_data)
+            combined_notes_data = self.expand_midi_lists(combined_notes_data)
+            self.instrumentation = self.filter_first_match(self.instrumentation, indices)
+            filtered_notes_data = self.filter_first_match(self.normalized_parts_data, indices)
+            filtered_notes_data[indices[0]] = combined_notes_data
+            self.normalized_parts_data = filtered_notes_data
+            # Is there be a nondestructive way to align kwargs with newly ready to combine state?
+            for arg in args[1:]:
+                del self.kwargs[arg]
+
     @staticmethod
     def get_max_end_value(dataframe):
         dataframe = dataframe.copy()
@@ -114,6 +118,7 @@ class Score:
     
 class Part:
     grid_history = []
+    part_id = 1
         
     def __init__(self, sivs, grid=None, midi=None, form=None):
         self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
@@ -123,6 +128,8 @@ class Part:
         self.period = len(self.form[0])
         self.factors = self.get_factors(self.period) 
         self.grid_history.append(self.grid)
+        self.part_id = Part.part_id
+        Part.part_id += 1
         
     def select_form(self, sivs, form):
         binary = self.get_binary(sivs)
@@ -257,15 +264,15 @@ class Part:
         return dataframe
     
 class Percussion(Part):
-    id = 1
+    instrument_id = 1
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
         self.name = 'Percussion'
-        self.id = Percussion.id
-        Percussion.id += 1
+        self.instrument_id = Percussion.instrument_id
+        Percussion.instrument_id += 1
         self.create_part()
-        
+
     def create_part(self):
         notes_data = []
         for i in range(len(self.form)):
@@ -280,6 +287,7 @@ class Percussion(Part):
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
+        Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
         
     def midi_pool(self, index):
         events = self.form[index].count(1)
@@ -288,13 +296,13 @@ class Percussion(Part):
         return [next(instrument_pool) for _ in range(events)]
     
 class Bass(Part):
-    id = 1
+    instrument_id = 1
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
         self.name = 'Bass'
-        self.id = Bass.id
-        Bass.id += 1
+        self.instrument_id = Bass.instrument_id
+        Bass.instrument_id += 1
         self.create_part()
         
     def create_part(self):
@@ -315,6 +323,7 @@ class Bass(Part):
         self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.get_lowest_midi(self.notes_data)
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
+        Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
         
     def midi_pool(self, index):
         pitch_class = self.octave_interpolation(self.intervals)
@@ -325,13 +334,13 @@ class Bass(Part):
 # Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
 # A better solution may be to utilize the approach to consolidating datapoints as in the Bass class to create a counterpoint
 class Keyboard(Part):
-    id = 1
+    instrument_id = 1
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
         self.name = 'Keyboard'
-        self.id = Keyboard.id
-        Keyboard.id += 1
+        self.instrument_id = Keyboard.instrument_id
+        Keyboard.instrument_id += 1
         self.create_part()
         
     def create_part(self):
@@ -384,18 +393,15 @@ class Utility:
         
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    # Test to make sure combine_parts will work with more than two parts
     instruments = {
-        'perc1': Percussion(sivs),
-        'perc2': Percussion(sivs, '2/3'),
-        'perc3': Percussion(sivs, '4/5'),
-        'bass1': Bass(sivs, '2'),
-        # 'bass2': Bass(sivs, '3')
+        'perc1': Percussion(sivs, '4'),
+        'perc2': Percussion(sivs, '3'),
+        'bass1': Bass(sivs),
+        'bass2': Bass(sivs, '2'),
     }
     
     score = Score(**instruments)
-    # What if I want to combine different subsectuibs if the instrumentation (bass, percussion)
-    score.combine_parts('perc1', 'perc2', 'perc3')
-    # # score.combine_parts('bass1', 'bass2')
+    # What if I want to combine different subsections if the instrumentation (bass, percussion)
+    score.combine_parts('perc1', 'perc2')
+    score.combine_parts('bass1', 'bass2')
     score.write_score()
-    Utility.save_as_csv(score.normalized_parts_data[0], 'combined')
