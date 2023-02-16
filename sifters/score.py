@@ -257,6 +257,17 @@ class Part:
         return set
     
     @staticmethod
+    def close_intervals(dataframe):
+        updated_df = dataframe.copy()
+        for i, midi in enumerate(updated_df["MIDI"][:-1]):
+            next_midi = updated_df["MIDI"][i + 1]
+            if midi - next_midi > 6:
+                updated_df.at[i + 1, "MIDI"] = next_midi + 12
+            elif midi - next_midi < -6:
+                updated_df.at[i + 1, "MIDI"] = next_midi - 12
+        return updated_df
+    
+    @staticmethod
     def convert_lists_to_scalars(dataframe):
         for col in dataframe.columns:
             if dataframe[col].dtype == object:
@@ -280,10 +291,10 @@ class Percussion(Part):
             for j in range(len(self.factors)):
                 pattern = numpy.tile(self.form[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
-                dur = self.grid * (self.period / self.factors[j])
+                duration = self.grid * (self.period / self.factors[j])
                 for k in indices:
                     velocity = 127
-                    offset = k * dur
+                    offset = k * duration
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
@@ -312,18 +323,21 @@ class Bass(Part):
             for j in range(len(self.factors)):
                 pattern = numpy.tile(self.form[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
-                dur = self.grid * (self.period / self.factors[j])
+                duration = self.grid * (self.period / self.factors[j])
                 for k in indices:
                     velocity = 127
-                    offset = k * dur
+                    offset = k * duration
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
         self.notes_data = self.group_by_start(self.notes_data)
         self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.get_lowest_midi(self.notes_data)
+        # close_intervals method does not work if the movement if from higher to lower
+        self.notes_data = self.close_intervals(self.notes_data)
+        # Make method to build closed voicing of sucessive intervals
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
-        Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
+        Utility.save_as_csv(self.notes_data, f'Init close {self.name} {self.instrument_id}')
         
     def midi_pool(self, index):
         pitch_class = self.octave_interpolation(self.intervals)
@@ -350,16 +364,16 @@ class Keyboard(Part):
             for j in range(len(self.factors)):
                 pattern = numpy.tile(self.form[i], self.factors[j])
                 indices = numpy.nonzero(pattern)[0]
-                dur = self.grid * (self.period / self.factors[j])
+                duration = self.grid * (self.period / self.factors[j])
                 for k in indices:
                     velocity = 127
-                    offset = k * dur
+                    offset = k * duration
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
         
     def midi_pool(self, index):
-        pitch_class = self._octave_interpolation(self.intervals)
+        pitch_class = self.octave_interpolation(self.intervals)
         tonality = 40
         pool = [pitch + tonality for pitch in pitch_class[index]]
         return pool
@@ -394,14 +408,16 @@ class Utility:
 if __name__ == '__main__':
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     instruments = {
-        'perc1': Percussion(sivs, '4'),
-        'perc2': Percussion(sivs, '3'),
+        # 'perc1': Percussion(sivs),
+        # 'perc2': Percussion(sivs, '2/3'),
+        # 'perc3': Percussion(sivs, '4/5'),
         'bass1': Bass(sivs),
-        'bass2': Bass(sivs, '2'),
+        # 'bass2': Bass(sivs, '2/3'),
+        # 'bass3': Bass(sivs, '7/5')
     }
     
     score = Score(**instruments)
     # What if I want to combine different subsections if the instrumentation (bass, percussion)
-    score.combine_parts('perc1', 'perc2')
-    score.combine_parts('bass1', 'bass2')
+    # score.combine_parts('perc1', 'perc2', 'perc3')
+    # score.combine_parts('bass1', 'bass2', 'bass3')
     score.write_score()
