@@ -43,7 +43,6 @@ class Score:
             result = pandas.concat(duplicates)
             result = result.drop_duplicates()
             normalized_parts_data.append(result)
-            Utility.save_as_csv(result, f'Norm {arg.name} {arg.instrument_id}')
         self.normalized_parts_data = normalized_parts_data
         
     def write_score(self):
@@ -70,6 +69,14 @@ class Score:
             combined_notes_data = self.get_max_end_value(combined_notes_data)
             combined_notes_data = self.update_end_value(combined_notes_data)
             combined_notes_data = self.expand_midi_lists(combined_notes_data)
+            if isinstance(first_obj, Bass):
+                combined_notes_data = first_obj.group_by_start(combined_notes_data)
+                combined_notes_data = first_obj.get_lowest_midi(combined_notes_data)
+                combined_notes_data = first_obj.close_intervals(combined_notes_data)
+                combined_notes_data = first_obj.combine_consecutive_midi_values(combined_notes_data)
+                combined_notes_data = first_obj.convert_lists_to_scalars(combined_notes_data)
+            Utility.save_as_csv(combined_notes_data, 'combined')
+            
             self.instrumentation = self.filter_first_match(self.instrumentation, indices)
             filtered_notes_data = self.filter_first_match(self.normalized_parts_data, indices)
             filtered_notes_data[indices[0]] = combined_notes_data
@@ -77,7 +84,7 @@ class Score:
             # Is there be a nondestructive way to align kwargs with newly ready to combine state?
             for arg in args[1:]:
                 del self.kwargs[arg]
-
+                
     @staticmethod
     def get_max_end_value(dataframe):
         dataframe = dataframe.copy()
@@ -283,7 +290,7 @@ class Percussion(Part):
         self.instrument_id = Percussion.instrument_id
         Percussion.instrument_id += 1
         self.create_part()
-
+        
     def create_part(self):
         notes_data = []
         for i in range(len(self.form)):
@@ -331,13 +338,10 @@ class Bass(Part):
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
         self.notes_data = self.group_by_start(self.notes_data)
-        self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.get_lowest_midi(self.notes_data)
-        # close_intervals method does not work if the movement if from higher to lower
         self.notes_data = self.close_intervals(self.notes_data)
-        # Make method to build closed voicing of sucessive intervals
+        self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
-        Utility.save_as_csv(self.notes_data, f'Init close {self.name} {self.instrument_id}')
         
     def midi_pool(self, index):
         pitch_class = self.octave_interpolation(self.intervals)
@@ -410,14 +414,12 @@ if __name__ == '__main__':
     instruments = {
         # 'perc1': Percussion(sivs),
         # 'perc2': Percussion(sivs, '2/3'),
-        # 'perc3': Percussion(sivs, '4/5'),
         'bass1': Bass(sivs),
-        # 'bass2': Bass(sivs, '2/3'),
-        # 'bass3': Bass(sivs, '7/5')
+        'bass2': Bass(sivs, '2/3'),
     }
     
     score = Score(**instruments)
     # What if I want to combine different subsections if the instrumentation (bass, percussion)
-    # score.combine_parts('perc1', 'perc2', 'perc3')
-    # score.combine_parts('bass1', 'bass2', 'bass3')
+    # score.combine_parts('perc1', 'perc2')
+    score.combine_parts('bass1', 'bass2')
     score.write_score()
