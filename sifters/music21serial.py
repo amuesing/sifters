@@ -13,7 +13,7 @@ import music21
 #     bStream.append(c)
 # bStream.show()
 
-r = music21.serial.TwelveToneRow([1, 8, 4, 11, 7, 9])
+r = music21.serial.TwelveToneRow([4, 0, 8, 4, 0])
 m = r.matrix()
 
 # print([str(e.pitchClass) for e in m[0]])
@@ -24,4 +24,6 @@ m = r.matrix()
 
 
 # print([str(e.pitch) for e in m[0]])
-print(m)
+# print(m)
+
+print(abs(1-6))

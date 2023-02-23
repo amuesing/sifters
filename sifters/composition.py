@@ -8,14 +8,23 @@ import numpy
 import math
 
 class Composition:
-    def generate_serial_matrix(row):
-        intervals = []
+    def generate_relative_matrix(intervals):
+        row = []
         columns = []
-        for tone in row:
-            interval = (tone - row[0])
-            intervals.append(interval)
-            columns.append([(row[0] + (row[0] - tone))] * len(row))
-        return numpy.add(intervals, columns)
+        for tone in intervals:
+            interval = (tone - intervals[0])
+            row.append(interval)
+            columns.append([(intervals[0] + (intervals[0] - tone))] * len(intervals))
+        return numpy.add(row, columns)
+    
+    def generate_serial_matrix(intervals):
+        current = intervals[:-1]
+        next = intervals[1:]
+        row = [0] + [abs(current[0] - next[i]) for i, _ in enumerate(current)]
+        matrix = [[abs(note - 12) % 12] for note in row]
+        matrix = [r * len(intervals) for r in matrix]
+        matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
+        return matrix
     
     @staticmethod
     def group_by_start(dataframe):
@@ -297,8 +306,6 @@ class Part(Composition):
             set.append(siv)
         return set
     
-
-    
 class Percussion(Part):
     instrument_id = 1
     
@@ -341,6 +348,8 @@ class Bass(Part):
         Bass.instrument_id += 1
         self.closed_intervals = self.octave_interpolation(self.intervals)
         self.create_part()
+        m = [Composition.generate_serial_matrix(self.closed_intervals[i]) for i, _ in enumerate(range(len(self.closed_intervals)))]
+        print(m)
         
     def create_part(self):
         notes_data = []
@@ -436,13 +445,13 @@ if __name__ == '__main__':
         # 'perc2': Percussion(sivs, '2/3'),
         # 'perc3': Percussion(sivs, '4/5'),
         'bass1': Bass(sivs, '4/3'),
-        'bass2': Bass(sivs, '2'),
-        'bass3': Bass(sivs, '8/3')
+        # 'bass2': Bass(sivs, '2'),
+        # 'bass3': Bass(sivs, '8/3')
     }
     
     score = Score(**instruments)
     # What if I want to combine different subsections if the instrumentation (bass, percussion)
     # score.combine_parts('perc1', 'perc2', 'perc3')
-    score.combine_parts('bass1', 'bass2', 'bass3')
-    score.write_score()
-    print(score)
+    # score.combine_parts('bass1', 'bass2', 'bass3')
+    # score.write_score()
+    # print(score)
