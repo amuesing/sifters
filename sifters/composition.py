@@ -15,8 +15,11 @@ class Composition:
             interval = (tone - intervals[0])
             row.append(interval)
             columns.append([(intervals[0] + (intervals[0] - tone))] * len(intervals))
+        for i, _ in enumerate(row):
+            for j, _ in enumerate(row):
+                print(row[i] + columns[i][j])
         return numpy.add(row, columns)
-    
+
     def generate_serial_matrix(intervals):
         current = intervals[:-1]
         next = intervals[1:]
@@ -24,7 +27,19 @@ class Composition:
         matrix = [[abs(note - 12) % 12] for note in row]
         matrix = [r * len(intervals) for r in matrix]
         matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
+        matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]])
+        Utility.save_as_csv(matrix, f'serial matrix {intervals}')
+        inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         return matrix
+
+    # def generate_serial_matrix(intervals):
+    #     current = intervals[:-1]
+    #     next = intervals[1:]
+    #     row = [0] + [abs(current[0] - next[i]) for i, _ in enumerate(current)]
+    #     matrix = [[abs(note - 12) % 12] for note in row]
+    #     matrix = [r * len(intervals) for r in matrix]
+    #     matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
+    #     return matrix
     
     @staticmethod
     def group_by_start(dataframe):
@@ -348,8 +363,9 @@ class Bass(Part):
         Bass.instrument_id += 1
         self.closed_intervals = self.octave_interpolation(self.intervals)
         self.create_part()
-        m = [Composition.generate_serial_matrix(self.closed_intervals[i]) for i, _ in enumerate(range(len(self.closed_intervals)))]
-        print(m)
+        # m = [Composition.generate_relative_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
+        m = [Composition.generate_serial_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
+        # print(m)
         
     def create_part(self):
         notes_data = []
@@ -373,9 +389,14 @@ class Bass(Part):
         Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
             
     def midi_pool(self, index):
-        intervals = self.octave_interpolation(self.intervals)
-        tonality = 32
-        pool = [pitch + tonality for pitch in intervals[index]]
+        tonality = 0
+        pool = [pitch + tonality for pitch in self.closed_intervals[index]]
+        # print(pool)
+        matrix = [Composition.generate_serial_matrix([note + tonality for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
+        print(self.closed_intervals[index])
+        # matrix = Composition.generate_serial_matrix([note + tonality for note in self.closed_intervals[index]])
+        print(matrix)
+        # print([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         return pool
     
 # Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
@@ -436,9 +457,10 @@ class Utility:
         return dataframe[list(column_names)]
     
     def save_as_csv(dataframe, filename):
-        dataframe.sort_values(by = 'Start').to_csv(f'sifters/.{filename}.csv', index=False)
+        dataframe.to_csv(f'sifters/.{filename}.csv', index=True)
         
 if __name__ == '__main__':
+    # sivs = '((8@0|8@1|8@7)&(5@1|5@3))'
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
     instruments = {
         # 'perc1': Percussion(sivs),
