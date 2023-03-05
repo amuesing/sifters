@@ -20,18 +20,6 @@ class Composition:
                 print(row[i] + columns[i][j])
         return numpy.add(row, columns)
 
-    def generate_serial_matrix(intervals):
-        current = intervals[:-1]
-        next = intervals[1:]
-        row = [0] + [abs(current[0] - next[i]) for i, _ in enumerate(current)]
-        matrix = [[abs(note - 12) % 12] for note in row]
-        matrix = [r * len(intervals) for r in matrix]
-        matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
-        matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]])
-        Utility.save_as_csv(matrix, f'serial matrix {intervals}')
-        inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
-        return matrix
-
     # def generate_serial_matrix(intervals):
     #     current = intervals[:-1]
     #     next = intervals[1:]
@@ -39,7 +27,20 @@ class Composition:
     #     matrix = [[abs(note - 12) % 12] for note in row]
     #     matrix = [r * len(intervals) for r in matrix]
     #     matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
+    #     matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]])
+    #     Utility.save_as_csv(matrix, f'serial matrix {intervals}')
+    #     inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
     #     return matrix
+
+    def generate_serial_matrix(intervals):
+        current = intervals[:-1]
+        next = intervals[1:]
+        row = [0] + [abs(current[0] - next[i]) for i, _ in enumerate(current)]
+        matrix = [[abs(note - 12) % 12] for note in row]
+        matrix = [r * len(intervals) for r in matrix]
+        matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
+        matrix = pandas.DataFrame(matrix)
+        return matrix
     
     @staticmethod
     def group_by_start(dataframe):
@@ -364,7 +365,8 @@ class Bass(Part):
         self.closed_intervals = self.octave_interpolation(self.intervals)
         self.create_part()
         # m = [Composition.generate_relative_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
-        m = [Composition.generate_serial_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
+        # m = [Composition.generate_serial_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
+        m = Composition.generate_serial_matrix
         # print(m)
         
     def create_part(self):
@@ -389,12 +391,11 @@ class Bass(Part):
         Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
             
     def midi_pool(self, index):
-        tonality = 0
+        tonality = 40
         pool = [pitch + tonality for pitch in self.closed_intervals[index]]
         # print(pool)
-        matrix = [Composition.generate_serial_matrix([note + tonality for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
         print(self.closed_intervals[index])
-        # matrix = Composition.generate_serial_matrix([note + tonality for note in self.closed_intervals[index]])
+        matrix = Composition.generate_serial_matrix(self.closed_intervals[index])
         print(matrix)
         # print([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         return pool
@@ -408,6 +409,7 @@ class Keyboard(Part):
         super().__init__(sivs, grid, midi, form)
         self.name = 'Keyboard'
         self.instrument_id = Keyboard.instrument_id
+        
         Keyboard.instrument_id += 1
         self.create_part()
         
