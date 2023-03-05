@@ -35,7 +35,7 @@ class Composition:
     def generate_serial_matrix(intervals):
         current = intervals[:-1]
         next = intervals[1:]
-        row = [0] + [abs(current[0] - next[i]) for i, _ in enumerate(current)]
+        row = [0] + [next[i] - current[0] for i, _ in enumerate(current)]
         matrix = [[abs(note - 12) % 12] for note in row]
         matrix = [r * len(intervals) for r in matrix]
         matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
