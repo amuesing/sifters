@@ -8,40 +8,19 @@ import numpy
 import math
 
 class Composition:
-    def generate_relative_matrix(intervals):
-        row = []
-        columns = []
-        for tone in intervals:
-            interval = (tone - intervals[0])
-            row.append(interval)
-            columns.append([(intervals[0] + (intervals[0] - tone))] * len(intervals))
-        for i, _ in enumerate(row):
-            for j, _ in enumerate(row):
-                print(row[i] + columns[i][j])
-        return numpy.add(row, columns)
-
-    # def generate_serial_matrix(intervals):
-    #     current = intervals[:-1]
-    #     next = intervals[1:]
-    #     row = [0] + [abs(current[0] - next[i]) for i, _ in enumerate(current)]
-    #     matrix = [[abs(note - 12) % 12] for note in row]
-    #     matrix = [r * len(intervals) for r in matrix]
-    #     matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
-    #     matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]])
-    #     Utility.save_as_csv(matrix, f'serial matrix {intervals}')
-    #     inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
-    #     return matrix
-
-    def generate_serial_matrix(intervals):
-        current = intervals[:-1]
-        next = intervals[1:]
-        row = [0] + [next[i] - current[0] for i, _ in enumerate(current)]
-        matrix = [[abs(note - 12) % 12] for note in row]
-        matrix = [r * len(intervals) for r in matrix]
-        matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(intervals))]
-        matrix = pandas.DataFrame(matrix)
+    # Return a serial matrix given a list of integers.
+    def generate_pitchclass_matrix(intervals):
+        next_interval = intervals[1:] # List of intervals, starting from the second value.
+        row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])] # Normalize tone row.
+        matrix = [[abs(note - 12) % 12] for note in row] # Generate the rows of the matrix.
+        matrix = [r * len(intervals) for r in matrix] # Generate the columns of the matrix.
+        matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
+        matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]]) # Label rows and collumns.
+        # inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
+        Utility.save_as_csv(matrix, f'serial matrix {intervals}')
         return matrix
     
+    # Group the notes_data dataframe by the 'Start' collumn.
     @staticmethod
     def group_by_start(dataframe):
         grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(set(x)))
@@ -364,10 +343,6 @@ class Bass(Part):
         Bass.instrument_id += 1
         self.closed_intervals = self.octave_interpolation(self.intervals)
         self.create_part()
-        # m = [Composition.generate_relative_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
-        # m = [Composition.generate_serial_matrix([note + 40 for note in self.closed_intervals[i]]) for i, _ in enumerate(range(len(self.closed_intervals)))]
-        m = Composition.generate_serial_matrix
-        # print(m)
         
     def create_part(self):
         notes_data = []
@@ -391,12 +366,12 @@ class Bass(Part):
         Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
             
     def midi_pool(self, index):
-        tonality = 40
-        pool = [pitch + tonality for pitch in self.closed_intervals[index]]
-        # print(pool)
-        print(self.closed_intervals[index])
-        matrix = Composition.generate_serial_matrix(self.closed_intervals[index])
-        print(matrix)
+        pitch = 40
+        pitch = pitch + self.closed_intervals[index][0]
+        pool = [pitch + pitch for pitch in self.closed_intervals[index]]
+        print(pitch)
+        matrix = pitch + Composition.generate_pitchclass_matrix(self.closed_intervals[index])
+        print(matrix[:, 0])
         # print([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         return pool
     
