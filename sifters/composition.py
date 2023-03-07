@@ -302,13 +302,13 @@ class Part(Composition):
         return set
     
 class Percussion(Part):
-    instrument_id = 1
+    instrument_id = 1 # First instance has ID of 1.
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
-        self.name = 'Percussion'
-        self.instrument_id = Percussion.instrument_id
-        Percussion.instrument_id += 1
+        self.name = 'Percussion' # Set name of instrument.
+        self.instrument_id = Percussion.instrument_id # Set ID value.
+        Percussion.instrument_id += 1 # Increment ID value.
         self.create_part()
         
     def create_part(self):
@@ -334,14 +334,14 @@ class Percussion(Part):
         return [next(pool) for _ in range(events)]
     
 class Bass(Part):
-    instrument_id = 1
+    instrument_id = 1 # First instance has ID of 1.
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
-        self.name = 'Bass'
-        self.instrument_id = Bass.instrument_id
-        Bass.instrument_id += 1
-        self.closed_intervals = self.octave_interpolation(self.intervals)
+        self.name = 'Bass' # Set name of instrument.
+        self.instrument_id = Bass.instrument_id # Set ID value.
+        Bass.instrument_id += 1 # Increment ID value.
+        self.closed_intervals = self.octave_interpolation(self.intervals) 
         self.create_part()
         
     def create_part(self):
@@ -368,24 +368,24 @@ class Bass(Part):
     def midi_pool(self, index):
         pitch = 40
         pitch = pitch + self.closed_intervals[index][0]
-        pool = [pitch + pitch for pitch in self.closed_intervals[index]]
-        print(pitch)
+        pool = [pitch + p for p in self.closed_intervals[index]]
         matrix = pitch + Composition.generate_pitchclass_matrix(self.closed_intervals[index])
-        print(matrix[:, 0])
-        # print([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
+        # print(matrix.iloc[:, 0].values.tolist())
+        # print(matrix.iloc[0].values.tolist())
+        combo = [matrix.iloc[i].values.tolist() for i, _ in enumerate(matrix)] + [matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)]
+        pool = list(itertools.chain(*combo))
         return pool
     
 # Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
 # A better solution may be to utilize the approach to consolidating datapoints as in the Bass class to create a counterpoint
 class Keyboard(Part):
-    instrument_id = 1
+    instrument_id = 1 # First instance has ID of 1.
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
-        self.name = 'Keyboard'
-        self.instrument_id = Keyboard.instrument_id
-        
-        Keyboard.instrument_id += 1
+        self.name = 'Keyboard' # Set name of instrument.
+        self.instrument_id = Keyboard.instrument_id # Set ID value.
+        Keyboard.instrument_id += 1 # Increment ID value.
         self.create_part()
         
     def create_part(self):
@@ -452,5 +452,5 @@ if __name__ == '__main__':
     # What if I want to combine different subsections if the instrumentation (bass, percussion)
     # score.combine_parts('perc1', 'perc2', 'perc3')
     # score.combine_parts('bass1', 'bass2', 'bass3')
-    # score.write_score()
+    score.write_score()
     # print(score)
