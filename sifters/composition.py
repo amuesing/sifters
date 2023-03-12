@@ -341,18 +341,21 @@ class Bass(Part):
         self.name = 'Bass' # Set name of instrument.
         self.instrument_id = Bass.instrument_id # Set ID value.
         Bass.instrument_id += 1 # Increment ID value.
-        self.closed_intervals = self.octave_interpolation(self.intervals) 
-        self.create_part()
+        self.closed_intervals = self.octave_interpolation(self.intervals) # Contain all intervals within a mod12 continuum. 
+        self.create_part() # Call the create_part method.
         
     def create_part(self):
-        notes_data = []
-        for i in range(len(self.form)):
-            midi_pool = itertools.cycle(self.midi_pool(i))
-            for j in range(len(self.factors)):
-                pattern = numpy.tile(self.form[i], self.factors[j])
-                indices = numpy.nonzero(pattern)[0]
-                duration = self.grid * (self.period / self.factors[j])
-                for k in indices:
+        notes_data = [] # A list container for notes_data.
+        for i in range(len(self.form)): # Set an iterator for each sieve represented in self.form.
+            midi_pool = itertools.cycle(self.midi_pool(i)) # Create a midi_pool for each sieve represented in self.form.
+            for j in range(len(self.factors)): # Set an iterator for each sieve based on the factorization of self.period.
+                pattern = numpy.tile(self.form[i], self.factors[j]) # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.form.
+                indices = numpy.nonzero(pattern)[0] # Create a list of indicies where non-zero elements occur within the pattern.
+                multiplier = self.period / self.factors[j] # Find the number of repititions required to achieve periodicity per sieve represented in self.form.
+                duration = self.grid * multiplier # Find the duration of each note represented as a float.
+                number_of_events = len(indices) * multiplier
+                pool = self.generate_midi_pool(i, j, number_of_events)
+                for k in indices: # For each non-zero indice append notes_data list with cooresponding midi information.
                     velocity = 127
                     offset = k * duration
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
@@ -364,14 +367,22 @@ class Bass(Part):
         self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
         Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
-            
+        
+    # How to use the referenced sieve to select row form?
+    # How to use number of needed events to generate exactly the correct amount of pitch data needed?
+    # midi_pool represents a sequence of pitch data that is repeated until the required number of notes needed has been satisfied.
+    # How does the number of needed notes relate to the pool data? How does the pool data relate to the matrix of intervals?
+    def generate_midi_pool(self, form_index, factor_index, number_of_events):
+        tonality = 40
+        pitch = tonality + self.closed_intervals[form_index][0]
+        matrix = pitch + Composition.generate_pitchclass_matrix(self.closed_intervals[form_index])
+        print(matrix)
+        print(form_index, factor_index, number_of_events)
+    
     def midi_pool(self, index):
-        pitch = 40
-        pitch = pitch + self.closed_intervals[index][0]
-        pool = [pitch + p for p in self.closed_intervals[index]]
+        tonality = 40
+        pitch = tonality + self.closed_intervals[index][0]
         matrix = pitch + Composition.generate_pitchclass_matrix(self.closed_intervals[index])
-        # print(matrix.iloc[:, 0].values.tolist())
-        # print(matrix.iloc[0].values.tolist())
         combo = [matrix.iloc[i].values.tolist() for i, _ in enumerate(matrix)] + [matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)]
         pool = list(itertools.chain(*combo))
         return pool
