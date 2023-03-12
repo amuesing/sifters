@@ -12,8 +12,8 @@ class Composition:
     def generate_pitchclass_matrix(intervals):
         next_interval = intervals[1:] # List of intervals, starting from the second value.
         row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])] # Normalize tone row.
-        matrix = [[abs(note - 12) % 12] for note in row] # Generate the rows of the matrix.
-        matrix = [r * len(intervals) for r in matrix] # Generate the columns of the matrix.
+        matrix = [[abs(note - 12) % 12] for note in row] # Generate matrix rows.
+        matrix = [r * len(intervals) for r in matrix] # Generate matrix columns.
         matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
         matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]]) # Label rows and collumns.
         # inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
@@ -372,6 +372,9 @@ class Bass(Part):
     # How to use number of needed events to generate exactly the correct amount of pitch data needed?
     # midi_pool represents a sequence of pitch data that is repeated until the required number of notes needed has been satisfied.
     # How does the number of needed notes relate to the pool data? How does the pool data relate to the matrix of intervals?
+    
+    ###### The modulo system used to derive pitch_class should be derived from the sieve. 
+    # Each modulo should coorespond to a frequency which represents a subdivision of an octave by that modulo.
     def generate_midi_pool(self, form_index, factor_index, number_of_events):
         tonality = 40
         pitch = tonality + self.closed_intervals[form_index][0]
