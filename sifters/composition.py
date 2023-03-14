@@ -3,6 +3,7 @@ import pretty_midi
 import fractions
 import itertools
 import functools
+import decimal
 import pandas
 import numpy
 import math
@@ -15,7 +16,7 @@ class Composition:
         matrix = [[abs(note - 12) % 12] for note in row] # Generate matrix rows.
         matrix = [r * len(intervals) for r in matrix] # Generate matrix columns.
         matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
-        matrix = pandas.DataFrame(matrix, index=[f"P{m[0]}" for m in matrix], columns=[f"I{i}" for i in matrix[0]]) # Label rows and collumns.
+        matrix = pandas.DataFrame(matrix, index=[f"P{round(m[0], 3)}" for m in matrix], columns=[f"I{round(i, 3)}" for i in matrix[0]]) # Label rows and collumns.
         # inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         Utility.save_as_csv(matrix, f'serial matrix {intervals}')
         return matrix
@@ -300,7 +301,12 @@ class Part(Composition):
                 siv.append(mod12[j % len(mod12)])
             set.append(siv)
         return set
-    
+
+    @staticmethod
+    def segment_octave_by_period(period):
+        interval = decimal.Decimal('12') / decimal.Decimal(str(period))
+        return [float(interval * decimal.Decimal(str(i))) for i in range(period)]
+        
 class Percussion(Part):
     instrument_id = 1 # First instance has ID of 1.
     
@@ -348,13 +354,12 @@ class Bass(Part):
         notes_data = [] # A list container for notes_data.
         for i in range(len(self.form)): # Set an iterator for each sieve represented in self.form.
             midi_pool = itertools.cycle(self.midi_pool(i)) # Create a midi_pool for each sieve represented in self.form.
+            pool = self.generate_midi_pool(i)
             for j in range(len(self.factors)): # Set an iterator for each sieve based on the factorization of self.period.
                 pattern = numpy.tile(self.form[i], self.factors[j]) # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.form.
                 indices = numpy.nonzero(pattern)[0] # Create a list of indicies where non-zero elements occur within the pattern.
                 multiplier = self.period / self.factors[j] # Find the number of repititions required to achieve periodicity per sieve represented in self.form.
                 duration = self.grid * multiplier # Find the duration of each note represented as a float.
-                number_of_events = len(indices) * multiplier
-                pool = self.generate_midi_pool(i, j, number_of_events)
                 for k in indices: # For each non-zero indice append notes_data list with cooresponding midi information.
                     velocity = 127
                     offset = k * duration
@@ -375,12 +380,26 @@ class Bass(Part):
     
     ###### The modulo system used to derive pitch_class should be derived from the sieve. 
     # Each modulo should coorespond to a frequency which represents a subdivision of an octave by that modulo.
-    def generate_midi_pool(self, form_index, factor_index, number_of_events):
-        tonality = 40
-        pitch = tonality + self.closed_intervals[form_index][0]
-        matrix = pitch + Composition.generate_pitchclass_matrix(self.closed_intervals[form_index])
+    # It should actually coorespond to the LCM of all modulo so that each cooresponding matrix is referencing the same increment of subdivision.
+    # Divide the octave by the period of the sieve-- how would this coorespond to the resulting matrix
+    # The intervals will be based on the points of the sieve.
+    
+    # Inorder to encode microtonal options into midi, the amount of cents displaced from a pitch will be stored as a cooresponding pitch_bend event.
+    # Would it be better to do dividing a mod12 system by the period (40/12)
+    def generate_midi_pool(self, form_index):
+        fund = 220
+        indices = numpy.nonzero(self.form[form_index])[0]
+        # freq_list = self.segment_octave_by_freq(12, self.period)
+        segment = self.segment_octave_by_period(self.period)
+        intervals = [segment[i] for i in indices]
+        # midi = [self.freq_to_midi(val) for val in intervals]
+        matrix = Composition.generate_pitchclass_matrix(intervals)
         print(matrix)
-        print(form_index, factor_index, number_of_events)
+        
+    @staticmethod
+    def freq_to_midi(frequency):
+        midi_value = 12 * math.log2(frequency / 440) + 69
+        return round(midi_value, 3)
     
     def midi_pool(self, index):
         tonality = 40

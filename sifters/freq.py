@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 # Given a fundamental, find an octave above, then segment that octave by a given modulo.
 
 # f = 110
@@ -17,13 +19,21 @@
 # print([220 + n for n in num])
 # print(num)
 
-fund = 220
-oct = fund * 2
+# fund = 220
+# oct = fund * 2
 
-def create_subdivided_list(integer, number):
-    interval = integer / number
-    return [i*interval for i in range(number)]
+# def segment_octave_by_freq(fundamental, modulo):
+#     interval = fundamental / modulo
+#     return [i * interval + fund for i in range(modulo)]
 
+# list = segment_octave_by_freq(fund, 40)
 
-# print(sum(create_subdivided_list(12, 5)))
-print()
+# print(list)
+
+def segment_octave_by_period(period):
+    interval = Decimal('12') / Decimal(str(period))
+    return [float(interval * Decimal(str(i))) for i in range(period)]
+
+seg = segment_octave_by_period(40)
+
+print(seg)
