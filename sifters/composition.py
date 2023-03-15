@@ -10,15 +10,25 @@ import math
 
 class Composition:
     # Return a serial matrix given a list of integers.
+    # def generate_pitchclass_matrix(intervals):
+    #     next_interval = intervals[1:] # List of intervals, starting from the second value.
+    #     row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])] # Normalize tone row.
+    #     matrix = [[abs(note - 12) % 12] for note in row] # Generate matrix rows.
+    #     matrix = [r * len(intervals) for r in matrix] # Generate matrix columns.
+    #     matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
+    #     matrix = pandas.DataFrame(matrix, index=[f"P{round(m[0], 3)}" for m in matrix], columns=[f"I{round(i, 3)}" for i in matrix[0]]) # Label rows and collumns.
+    #     # inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
+    #     Utility.save_as_csv(matrix, f'serial matrix {intervals}')
+    #     return matrix
+    
     def generate_pitchclass_matrix(intervals):
         next_interval = intervals[1:] # List of intervals, starting from the second value.
         row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])] # Normalize tone row.
-        matrix = [[abs(note - 12) % 12] for note in row] # Generate matrix rows.
+        matrix = [[abs(decimal.Decimal(str(note)) - decimal.Decimal('12')) % decimal.Decimal('12')] for note in row] # Generate matrix rows.
         matrix = [r * len(intervals) for r in matrix] # Generate matrix columns.
-        matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
-        matrix = pandas.DataFrame(matrix, index=[f"P{round(m[0], 3)}" for m in matrix], columns=[f"I{round(i, 3)}" for i in matrix[0]]) # Label rows and collumns.
-        # inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
-        Utility.save_as_csv(matrix, f'serial matrix {intervals}')
+        matrix = [[(matrix[i][j] + decimal.Decimal(str(row[j]))) % decimal.Decimal('12') for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
+        matrix = pandas.DataFrame(matrix, index=[f'P{m[0]}' for m in matrix], columns=[f'I{i}' for i in matrix[0]]).astype(float) # Label rows and collumns.
+        inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         return matrix
     
     # Group the notes_data dataframe by the 'Start' collumn.
@@ -50,10 +60,21 @@ class Composition:
         for i, midi in enumerate(updated_df["MIDI"][:-1]):
             next_midi = updated_df["MIDI"][i + 1]
             if midi - next_midi > 6:
-                updated_df.at[i + 1, "MIDI"] = next_midi + 12
+                updated_df.at[i + 1, "MIDI"] = round(next_midi + 12)
             elif midi - next_midi < -6:
-                updated_df.at[i + 1, "MIDI"] = next_midi - 12
+                updated_df.at[i + 1, "MIDI"] = round(next_midi - 12)
         return updated_df
+    
+    # @staticmethod
+    # def close_intervals(dataframe):
+    #     updated_df = dataframe.copy()
+    #     for i, midi in enumerate(updated_df["MIDI"][:-1]):
+    #         next_midi = updated_df["MIDI"][i + 1]
+    #         if midi - next_midi > 6:
+    #             updated_df.at[i + 1, "MIDI"] = (decimal.Decimal(str(next_midi)) + decimal.Decimal("12"))
+    #         elif midi - next_midi < -6:
+    #             updated_df.at[i + 1, "MIDI"] = (decimal.Decimal(str(next_midi)) - decimal.Decimal("12"))
+    #     return updated_df
     
     @staticmethod
     def combine_consecutive_midi_values(dataframe):
@@ -79,7 +100,7 @@ class Composition:
     def convert_lists_to_scalars(dataframe):
         for col in dataframe.columns:
             if dataframe[col].dtype == object:
-                dataframe[col] = dataframe[col].apply(lambda x: x[0])
+                dataframe[col] = dataframe[col].apply(lambda x: x[0] if isinstance(x, (list, tuple)) else x)
         return dataframe
     
 class Score(Composition):
@@ -112,6 +133,7 @@ class Score(Composition):
             length_of_one_rep = math.pow(arg.period, 2)
             for i in range(multiplier):
                 dataframe_copy = arg.notes_data.copy()
+                # What about using decimal library here?
                 dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
                 dataframe_copy['End'] = round(dataframe_copy['End'] + (length_of_one_rep * arg.grid) * i, 6)
                 duplicates.append(dataframe_copy)
@@ -126,6 +148,7 @@ class Score(Composition):
         score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
         score.resolution = score.resolution * 2
         midi_data = [self.csv_to_midi(part) for part in self.normalized_parts_data]
+        # print(self.normalized_parts_data[0]['MIDI'].tolist())
         for i, _ in enumerate(midi_data):
             self.instrumentation[i].notes = midi_data[i]
             score.instruments.append(self.instrumentation[i])
@@ -133,6 +156,8 @@ class Score(Composition):
     
     @staticmethod
     def csv_to_midi(dataframe):
+        # Why is that some are Decimal objects and some are not?
+        # print(dataframe['MIDI'].tolist())
         dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(velocity=x.Velocity, start=x.Start, end=x.End))
         return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
         
@@ -301,11 +326,11 @@ class Part(Composition):
                 siv.append(mod12[j % len(mod12)])
             set.append(siv)
         return set
-
+    
     @staticmethod
     def segment_octave_by_period(period):
         interval = decimal.Decimal('12') / decimal.Decimal(str(period))
-        return [float(interval * decimal.Decimal(str(i))) for i in range(period)]
+        return [interval * decimal.Decimal(str(i)) for i in range(period)]
         
 class Percussion(Part):
     instrument_id = 1 # First instance has ID of 1.
@@ -353,8 +378,8 @@ class Bass(Part):
     def create_part(self):
         notes_data = [] # A list container for notes_data.
         for i in range(len(self.form)): # Set an iterator for each sieve represented in self.form.
-            midi_pool = itertools.cycle(self.midi_pool(i)) # Create a midi_pool for each sieve represented in self.form.
-            pool = self.generate_midi_pool(i)
+            # midi_pool = itertools.cycle(self.midi_pool(i)) # Create a midi_pool for each sieve represented in self.form.
+            midi_pool = itertools.cycle(self.generate_midi_pool(i))
             for j in range(len(self.factors)): # Set an iterator for each sieve based on the factorization of self.period.
                 pattern = numpy.tile(self.form[i], self.factors[j]) # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.form.
                 indices = numpy.nonzero(pattern)[0] # Create a list of indicies where non-zero elements occur within the pattern.
@@ -387,26 +412,20 @@ class Bass(Part):
     # Inorder to encode microtonal options into midi, the amount of cents displaced from a pitch will be stored as a cooresponding pitch_bend event.
     # Would it be better to do dividing a mod12 system by the period (40/12)
     def generate_midi_pool(self, form_index):
-        fund = 220
+        tonality = 40
+        pitch = tonality + self.closed_intervals[form_index][0]
         indices = numpy.nonzero(self.form[form_index])[0]
-        # freq_list = self.segment_octave_by_freq(12, self.period)
         segment = self.segment_octave_by_period(self.period)
         intervals = [segment[i] for i in indices]
-        # midi = [self.freq_to_midi(val) for val in intervals]
-        matrix = Composition.generate_pitchclass_matrix(intervals)
-        print(matrix)
-        
-    @staticmethod
-    def freq_to_midi(frequency):
-        midi_value = 12 * math.log2(frequency / 440) + 69
-        return round(midi_value, 3)
-    
-    def midi_pool(self, index):
-        tonality = 40
-        pitch = tonality + self.closed_intervals[index][0]
-        matrix = pitch + Composition.generate_pitchclass_matrix(self.closed_intervals[index])
+        matrix = pitch + Composition.generate_pitchclass_matrix(intervals)
         combo = [matrix.iloc[i].values.tolist() for i, _ in enumerate(matrix)] + [matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)]
         pool = list(itertools.chain(*combo))
+        return pool
+    
+    def midi_pool(self, index):
+        pitch_class = self.octave_interpolation(self.intervals)
+        tonality = 40
+        pool = [pitch + tonality for pitch in pitch_class[index]]
         return pool
     
 # Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
@@ -487,3 +506,4 @@ if __name__ == '__main__':
     # score.combine_parts('bass1', 'bass2', 'bass3')
     score.write_score()
     # print(score)
+    # print(Composition.generate_pitchclass_matrix([0.0, 2.4, 4.8, 7.2, 9.6]))
