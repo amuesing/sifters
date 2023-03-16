@@ -10,17 +10,6 @@ import math
 
 class Composition:
     # Return a serial matrix given a list of integers.
-    # def generate_pitchclass_matrix(intervals):
-    #     next_interval = intervals[1:] # List of intervals, starting from the second value.
-    #     row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])] # Normalize tone row.
-    #     matrix = [[abs(note - 12) % 12] for note in row] # Generate matrix rows.
-    #     matrix = [r * len(intervals) for r in matrix] # Generate matrix columns.
-    #     matrix = [[(matrix[i][j] + row[j]) % 12 for j, _ in enumerate(range(len(row)))] for i in range(len(row))] # Update vectors with correct value.
-    #     matrix = pandas.DataFrame(matrix, index=[f"P{round(m[0], 3)}" for m in matrix], columns=[f"I{round(i, 3)}" for i in matrix[0]]) # Label rows and collumns.
-    #     # inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
-    #     Utility.save_as_csv(matrix, f'serial matrix {intervals}')
-    #     return matrix
-    
     def generate_pitchclass_matrix(intervals):
         next_interval = intervals[1:] # List of intervals, starting from the second value.
         row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])] # Normalize tone row.
@@ -54,27 +43,17 @@ class Composition:
                 return self.check_and_close_intervals(dataframe)
         return dataframe
     
+    # What about using decimal library here?
     @staticmethod
     def close_intervals(dataframe):
         updated_df = dataframe.copy()
         for i, midi in enumerate(updated_df["MIDI"][:-1]):
             next_midi = updated_df["MIDI"][i + 1]
             if midi - next_midi > 6:
-                updated_df.at[i + 1, "MIDI"] = round(next_midi + 12)
+                updated_df.at[i + 1, "MIDI"] = round(next_midi + 12, 3)
             elif midi - next_midi < -6:
-                updated_df.at[i + 1, "MIDI"] = round(next_midi - 12)
+                updated_df.at[i + 1, "MIDI"] = round(next_midi - 12, 3)
         return updated_df
-    
-    # @staticmethod
-    # def close_intervals(dataframe):
-    #     updated_df = dataframe.copy()
-    #     for i, midi in enumerate(updated_df["MIDI"][:-1]):
-    #         next_midi = updated_df["MIDI"][i + 1]
-    #         if midi - next_midi > 6:
-    #             updated_df.at[i + 1, "MIDI"] = (decimal.Decimal(str(next_midi)) + decimal.Decimal("12"))
-    #         elif midi - next_midi < -6:
-    #             updated_df.at[i + 1, "MIDI"] = (decimal.Decimal(str(next_midi)) - decimal.Decimal("12"))
-    #     return updated_df
     
     @staticmethod
     def combine_consecutive_midi_values(dataframe):
@@ -110,6 +89,7 @@ class Score(Composition):
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
         self.set_instrumentation()
         self.normalize_periodicity()
+        self.parse_pitch_data()
         
     @staticmethod
     def get_multiplier(arg):
@@ -127,40 +107,63 @@ class Score(Composition):
         self.instrumentation = instruments_list
         
     def normalize_periodicity(self):
+        # Create an empty list to store the normalized notes_data.
         normalized_parts_data = []
+        # Iterate over the kwargs.values() and self.multipliers.
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
+            # Create a list to store the original notes_data and the copies that will be normalized.
             duplicates = [arg.notes_data.copy()]
+            # Calculate the length of one repetition.
             length_of_one_rep = math.pow(arg.period, 2)
+            # Iterate over the range of multipliers to create copies of notes_data.
             for i in range(multiplier):
+                # Create a copy of notes_data.
                 dataframe_copy = arg.notes_data.copy()
-                # What about using decimal library here?
+                # Adjust the Start and End columns of the copy based on the length of one repetition and grid value.
                 dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
                 dataframe_copy['End'] = round(dataframe_copy['End'] + (length_of_one_rep * arg.grid) * i, 6)
+                # Append the copy to the duplicates list.
                 duplicates.append(dataframe_copy)
+            # Concatenate the duplicates list into a single dataframe.
             result = pandas.concat(duplicates)
+            # Remove duplicate rows from the concatenated dataframe.
             result = result.drop_duplicates()
+            # Append the normalized dataframe to the normalized_parts_data list.
             normalized_parts_data.append(result)
+        # Store the normalized_parts_data in self.normalized_parts_data.
         self.normalized_parts_data = normalized_parts_data
+        
+    def parse_pitch_data(self):
+        pitch_data = []
+        for part_data in self.normalized_parts_data:
+            part_data['Pitch'] = part_data['MIDI'].apply(lambda x: round(x - math.floor(x), 4))
+            part_data['MIDI'] = part_data['MIDI'].apply(lambda x: math.floor(x))
+            pitch_data.append(part_data)
+        self.normalized_parts_data = pitch_data
         
     def write_score(self):
         score = pretty_midi.PrettyMIDI()
         # Write method to determine TimeSignature
         score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
         score.resolution = score.resolution * 2
-        midi_data = [self.csv_to_midi(part) for part in self.normalized_parts_data]
-        # print(self.normalized_parts_data[0]['MIDI'].tolist())
-        for i, _ in enumerate(midi_data):
-            self.instrumentation[i].notes = midi_data[i]
+        note_objects = [self.csv_to_note_object(part) for part in self.normalized_parts_data]
+        bend_objects = [self.csv_to_bend_object(part) for part in self.normalized_parts_data]
+        for i, _ in enumerate(note_objects):
+            self.instrumentation[i].notes = note_objects[i]
+            self.instrumentation[i].pitch_bends = bend_objects[i]
             score.instruments.append(self.instrumentation[i])
         score.write(f'sifters/.score.mid')
+        
+    @staticmethod
+    def csv_to_note_object(dataframe):
+        note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
+        return note_data
     
     @staticmethod
-    def csv_to_midi(dataframe):
-        # Why is that some are Decimal objects and some are not?
-        # print(dataframe['MIDI'].tolist())
-        dataframe = dataframe.groupby('MIDI', group_keys=True).apply(lambda x: x.assign(velocity=x.Velocity, start=x.Start, end=x.End))
-        return [pretty_midi.Note(velocity=int(row['velocity']), pitch=int(row['MIDI']), start=row['start'], end=row['end']) for _, row in dataframe.iterrows()]
-        
+    def csv_to_bend_object(dataframe):
+        bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
+        return bend_objects
+    
     def combine_parts(self, *args):
         objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
