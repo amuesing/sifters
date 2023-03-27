@@ -20,14 +20,26 @@ class Composition:
         inverted_matrix = ([matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)])
         return matrix
     
+    # Make all these 'with_start' method work as single methods
     # Group the notes_data dataframe by the 'Start' collumn.
     @staticmethod
     def group_by_start(dataframe):
         grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(set(x)))
         grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(set(x)))
+        # grouped_pitch = dataframe.groupby('Start')['Pitch'].apply(lambda x: sorted(set(x)))
         grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(set(x)))
         result = pandas.concat([grouped_velocity, grouped_midi, grouped_end], axis=1).reset_index()
         result = result[['Velocity', 'MIDI', 'Start', 'End']]
+        return result
+    
+    @staticmethod
+    def group_by_start_with_pitch(dataframe):
+        grouped_velocity = dataframe.groupby('Start')['Velocity'].apply(lambda x: sorted(set(x)))
+        grouped_midi = dataframe.groupby('Start')['MIDI'].apply(lambda x: sorted(set(x)))
+        grouped_pitch = dataframe.groupby('Start')['Pitch'].apply(lambda x: sorted(set(x)))
+        grouped_end = dataframe.groupby('Start')['End'].apply(lambda x: sorted(set(x)))
+        result = pandas.concat([grouped_velocity, grouped_midi, grouped_pitch, grouped_end], axis=1).reset_index()
+        result = result[['Velocity', 'MIDI', 'Pitch', 'Start', 'End']]
         return result
     
     @staticmethod
@@ -36,14 +48,20 @@ class Composition:
         dataframe = dataframe.dropna(subset=['MIDI'])
         return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
     
+    @staticmethod
+    def get_lowest_midi_with_pitch(dataframe):
+        dataframe['MIDI'] = dataframe['MIDI'].apply(lambda x: min(x) if x else None)
+        dataframe = dataframe.dropna(subset=['MIDI'])
+        return dataframe[['Velocity', 'MIDI', 'Pitch', 'Start', 'End']]
+    
     def check_and_close_intervals(self, dataframe):
         for i in range(len(dataframe['MIDI']) - 1):
-            if abs(dataframe['MIDI'][i] - dataframe['MIDI'][i + 1]) > 6:
+            if abs(dataframe['MIDI'][i] - dataframe['MIDI'][i + 1]) > 6: 
                 dataframe = self.close_intervals(dataframe)
+                # dataframe = self.adjust_midi_range(dataframe)
                 return self.check_and_close_intervals(dataframe)
         return dataframe
     
-    # What about using decimal library here?
     @staticmethod
     def close_intervals(dataframe):
         updated_df = dataframe.copy()
@@ -54,6 +72,16 @@ class Composition:
             elif midi - next_midi < -6:
                 updated_df.at[i + 1, "MIDI"] = round(next_midi - 12, 3)
         return updated_df
+    
+    # How to make it so that this adjustment hinges on the close_intervals so that if the range is greater than 6 it will increase, unless within a certain range.
+    @staticmethod
+    def adjust_midi_range(dataframe):
+        # Define the lambda function to adjust values outside the range [0, 127]
+        adjust_value = lambda x: x - 12 if x > 108 else (x + 12 if x < 24 else x)
+        # Apply the lambda function repeatedly until all values satisfy the condition
+        while dataframe['MIDI'].apply(lambda x: x < 24 or x > 108).any():
+            dataframe['MIDI'] = dataframe['MIDI'].apply(adjust_value)
+        return dataframe
     
     @staticmethod
     def combine_consecutive_midi_values(dataframe):
@@ -76,6 +104,28 @@ class Composition:
         return pandas.DataFrame(result, columns=['Velocity', 'MIDI', 'Start', 'End'])
     
     @staticmethod
+    def combine_consecutive_midi_values_with_pitch(dataframe):
+        result = []
+        current_velocity = None
+        current_midi = None
+        current_pitch = None
+        current_start = None
+        current_end = None
+        for _, row in dataframe.iterrows():
+            if current_midi == row['MIDI']:
+                current_end = row['End']
+            else:
+                if current_midi is not None:
+                    result.append([current_velocity, current_midi, current_pitch, current_start, current_end])
+                current_velocity = row['Velocity']
+                current_midi = row['MIDI']
+                current_pitch = row['Pitch']
+                current_start = row['Start']
+                current_end = row['End']
+        result.append([current_velocity, current_midi, current_pitch, current_start, current_end,])
+        return pandas.DataFrame(result, columns=['Velocity', 'MIDI', 'Pitch', 'Start', 'End'])
+    
+    @staticmethod
     def convert_lists_to_scalars(dataframe):
         for col in dataframe.columns:
             if dataframe[col].dtype == object:
@@ -89,7 +139,6 @@ class Score(Composition):
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
         self.set_instrumentation()
         self.normalize_periodicity()
-        self.parse_pitch_data()
         
     @staticmethod
     def get_multiplier(arg):
@@ -107,39 +156,19 @@ class Score(Composition):
         self.instrumentation = instruments_list
         
     def normalize_periodicity(self):
-        # Create an empty list to store the normalized notes_data.
-        normalized_parts_data = []
-        # Iterate over the kwargs.values() and self.multipliers.
-        for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
-            # Create a list to store the original notes_data and the copies that will be normalized.
-            duplicates = [arg.notes_data.copy()]
-            # Calculate the length of one repetition.
-            length_of_one_rep = math.pow(arg.period, 2)
-            # Iterate over the range of multipliers to create copies of notes_data.
-            for i in range(multiplier):
-                # Create a copy of notes_data.
-                dataframe_copy = arg.notes_data.copy()
-                # Adjust the Start and End columns of the copy based on the length of one repetition and grid value.
-                dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
-                dataframe_copy['End'] = round(dataframe_copy['End'] + (length_of_one_rep * arg.grid) * i, 6)
-                # Append the copy to the duplicates list.
-                duplicates.append(dataframe_copy)
-            # Concatenate the duplicates list into a single dataframe.
-            result = pandas.concat(duplicates)
-            # Remove duplicate rows from the concatenated dataframe.
-            result = result.drop_duplicates()
-            # Append the normalized dataframe to the normalized_parts_data list.
-            normalized_parts_data.append(result)
-        # Store the normalized_parts_data in self.normalized_parts_data.
-        self.normalized_parts_data = normalized_parts_data
-        
-    def parse_pitch_data(self):
-        pitch_data = []
-        for part_data in self.normalized_parts_data:
-            part_data['Pitch'] = part_data['MIDI'].apply(lambda x: round(x - math.floor(x), 4))
-            part_data['MIDI'] = part_data['MIDI'].apply(lambda x: math.floor(x))
-            pitch_data.append(part_data)
-        self.normalized_parts_data = pitch_data
+        normalized_parts_data = [] # Create an empty list to store the normalized notes_data.
+        for arg, multiplier in zip(self.kwargs.values(), self.multipliers): # Iterate over the kwargs.values() and self.multipliers.
+            duplicates = [arg.notes_data.copy()] # Create a list to store the original notes_data and the copies that will be normalized.
+            length_of_one_rep = math.pow(arg.period, 2) # Calculate the length of one repetition.
+            for i in range(multiplier): # Iterate over the range of multipliers to create copies of notes_data.
+                dataframe_copy = arg.notes_data.copy() # Create a copy of notes_data.
+                dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6) # Adjust the Start column of the copy based on the length of one repitition and grid value.
+                dataframe_copy['End'] = round(dataframe_copy['End'] + (length_of_one_rep * arg.grid) * i, 6) # Adjust the End column of the copy based on the length of one repitition and grid value.
+                duplicates.append(dataframe_copy) # Append the copy to the duplicates list.
+            result = pandas.concat(duplicates) # Concatenate the duplicates list into a single dataframe.
+            result = result.drop_duplicates() # Remove duplicate rows from the concatenated dataframe.
+            normalized_parts_data.append(result) # Append the normalized dataframe to the normalized_parts_data list.
+        self.normalized_parts_data = normalized_parts_data # Store the normalized_parts_data in self.normalized_parts_data.
         
     def write_score(self):
         score = pretty_midi.PrettyMIDI()
@@ -152,11 +181,17 @@ class Score(Composition):
             self.instrumentation[i].notes = note_objects[i]
             self.instrumentation[i].pitch_bends = bend_objects[i]
             score.instruments.append(self.instrumentation[i])
+        # Not working for combined parts because midi goes below 0, write a function to ensure that part is within a certain range of midi notes
         score.write(f'sifters/.score.mid')
+        # self.normalized_parts_data[0].to_csv('norm df')
         
     @staticmethod
     def csv_to_note_object(dataframe):
+        dataframe.to_csv('note_obj', index=False)
+        # Use a list comprehension to generate a list of pretty_midi.Note objects from the input dataframe
+        # The list comprehension iterates over each row in the dataframe and creates a new Note object with the specified attributes
         note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
+        # Return the list of Note objects
         return note_data
     
     @staticmethod
@@ -168,22 +203,25 @@ class Score(Composition):
         objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
         combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
-        combined_notes_data = self.group_by_start(combined_notes_data)
+        combined_notes_data = self.group_by_start_with_pitch(combined_notes_data)
         combined_notes_data = self.get_max_end_value(combined_notes_data)
         combined_notes_data = self.update_end_value(combined_notes_data)
         combined_notes_data = self.expand_midi_lists(combined_notes_data)
-        if all(isinstance(obj, Bass) for obj in objects):
-            combined_notes_data = self.group_by_start(combined_notes_data)
-            combined_notes_data = self.get_lowest_midi(combined_notes_data)
+        if all(isinstance(obj, Monophonic) for obj in objects):
+            combined_notes_data = self.group_by_start_with_pitch(combined_notes_data)
+            combined_notes_data = self.get_lowest_midi_with_pitch(combined_notes_data)
             combined_notes_data = self.check_and_close_intervals(combined_notes_data)
-            combined_notes_data = self.combine_consecutive_midi_values(combined_notes_data)
+            combined_notes_data = self.adjust_midi_range(combined_notes_data)
+            combined_notes_data = self.combine_consecutive_midi_values_with_pitch(combined_notes_data)
+            # print(combined_notes_data)
+            out_of_range = combined_notes_data[(combined_notes_data['MIDI'] < 0) | (combined_notes_data['MIDI'] > 127)]
+            print(out_of_range)
             combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
-        Utility.save_as_csv(combined_notes_data, 'combined')
         self.instrumentation = self.filter_first_match(self.instrumentation, indices)
         filtered_notes_data = self.filter_first_match(self.normalized_parts_data, indices)
         filtered_notes_data[indices[0]] = combined_notes_data
         self.normalized_parts_data = filtered_notes_data
-        # Is there be a nondestructive way to align kwargs with newly ready to combine state?
+        # # Is there be a nondestructive way to align kwargs with newly ready to combine state?
         for arg in args[1:]:
             del self.kwargs[arg]
                 
@@ -204,6 +242,7 @@ class Score(Composition):
     def expand_midi_lists(dataframe):
         dataframe = dataframe.copy()
         dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
+        dataframe['Pitch'] = dataframe['Pitch'].apply(lambda x: x[0] if isinstance(x, list) else x)
         start_not_lists = dataframe[~dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
         start_lists = dataframe[dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
         start_lists = start_lists.explode('MIDI')
@@ -225,9 +264,9 @@ class Score(Composition):
                 updated_objects.append(obj)
         return updated_objects
     
-class Part(Composition):
+class Texture(Composition):
     grid_history = []
-    part_id = 1
+    texture_id = 1
         
     def __init__(self, sivs, grid=None, midi=None, form=None):
         self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
@@ -237,8 +276,8 @@ class Part(Composition):
         self.period = len(self.form[0])
         self.factors = self.get_factors(self.period) 
         self.grid_history.append(self.grid)
-        self.part_id = Part.part_id
-        Part.part_id += 1
+        self.texture_id = Texture.texture_id
+        Texture.texture_id += 1
         
     def select_form(self, sivs, form):
         binary = self.get_binary(sivs)
@@ -334,15 +373,38 @@ class Part(Composition):
     def segment_octave_by_period(period):
         interval = decimal.Decimal('12') / decimal.Decimal(str(period))
         return [interval * decimal.Decimal(str(i)) for i in range(period)]
-        
-class Percussion(Part):
-    instrument_id = 1 # First instance has ID of 1.
+    
+    @staticmethod
+    def parse_pitch_data(dataframe):
+        # Compute 'Pitch' and 'MIDI' columns for each row
+        for index, row in dataframe.iterrows():
+            pitch = round(row['MIDI'] - math.floor(row['MIDI']), 4)
+            midi = math.floor(row['MIDI'])
+            dataframe.at[index, 'MIDI'] = midi
+            dataframe.at[index, 'Pitch'] = pitch
+        # Reorder the columns
+        column_order = ['Velocity', 'MIDI', 'Pitch', 'Start', 'End']
+        dataframe = dataframe.reindex(columns=column_order)
+        # Return the updated dataframe
+        return dataframe
+    
+    # @staticmethod
+    # def parse_pitch_data(dataframe):
+    #     pitch_data = []
+    #     for _, row in dataframe.iterrows():
+    #         row['Pitch'] = row['MIDI'].apply(lambda x: round(x - math.floor(x), 4))
+    #         row['MIDI'] = row['MIDI'].apply(lambda x: math.floor(x))
+    #         pitch_data.append(row)
+    #     return pitch_data
+    
+class NonPitched(Texture):
+    part_id = 1 # First instance has ID of 1.
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
-        self.name = 'Percussion' # Set name of instrument.
-        self.instrument_id = Percussion.instrument_id # Set ID value.
-        Percussion.instrument_id += 1 # Increment ID value.
+        self.name = 'NonPitched' # Set name of instrument.
+        self.part_id = NonPitched.part_id # Set ID value.
+        NonPitched.part_id += 1 # Increment ID value.
         self.create_part()
         
     def create_part(self):
@@ -359,7 +421,6 @@ class Percussion(Part):
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
-        Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
         
     def midi_pool(self, index):
         events = self.form[index].count(1)
@@ -367,16 +428,16 @@ class Percussion(Part):
         pool = itertools.cycle(self.midi[largest_prime_slice])
         return [next(pool) for _ in range(events)]
     
-class Bass(Part):
-    instrument_id = 1 # First instance has ID of 1.
+class Monophonic(Texture):
+    part_id = 1 # First instance has ID of 1.
     
     def __init__(self, sivs, grid=None, midi=None, form=None):
         super().__init__(sivs, grid, midi, form)
-        self.name = 'Bass' # Set name of instrument.
-        self.instrument_id = Bass.instrument_id # Set ID value.
-        Bass.instrument_id += 1 # Increment ID value.
+        self.name = 'Monophonic' # Set name of texture.
+        self.part_id = Monophonic.part_id # Set ID value.
+        Monophonic.part_id += 1 # Increment ID value.
         self.closed_intervals = self.octave_interpolation(self.intervals) # Contain all intervals within a mod12 continuum. 
-        self.create_part() # Call the create_part method.
+        self.create_part() # Call the create_Texture method.
         
     def create_part(self):
         notes_data = [] # A list container for notes_data.
@@ -399,21 +460,14 @@ class Bass(Part):
         self.notes_data = self.close_intervals(self.notes_data)
         self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
-        Utility.save_as_csv(self.notes_data, f'Init {self.name} {self.instrument_id}')
+        self.notes_data = self.parse_pitch_data(self.notes_data)
         
     # How to use the referenced sieve to select row form?
     # How to use number of needed events to generate exactly the correct amount of pitch data needed?
     # midi_pool represents a sequence of pitch data that is repeated until the required number of notes needed has been satisfied.
     # How does the number of needed notes relate to the pool data? How does the pool data relate to the matrix of intervals?
+    # What about using the select_form method to determine row selection?
     
-    ###### The modulo system used to derive pitch_class should be derived from the sieve. 
-    # Each modulo should coorespond to a frequency which represents a subdivision of an octave by that modulo.
-    # It should actually coorespond to the LCM of all modulo so that each cooresponding matrix is referencing the same increment of subdivision.
-    # Divide the octave by the period of the sieve-- how would this coorespond to the resulting matrix
-    # The intervals will be based on the points of the sieve.
-    
-    # Inorder to encode microtonal options into midi, the amount of cents displaced from a pitch will be stored as a cooresponding pitch_bend event.
-    # Would it be better to do dividing a mod12 system by the period (40/12)
     def generate_midi_pool(self, form_index):
         tonality = 40
         pitch = tonality + self.closed_intervals[form_index][0]
@@ -425,88 +479,18 @@ class Bass(Part):
         pool = list(itertools.chain(*combo))
         return pool
     
-    def midi_pool(self, index):
-        pitch_class = self.octave_interpolation(self.intervals)
-        tonality = 40
-        pool = [pitch + tonality for pitch in pitch_class[index]]
-        return pool
+# Monophonic
+# Homophonic
+# Polyphonic
+# Heterophonic
     
-# Map intervals onto mod-12 semitones, then map again on those intervals to create chords.
-# A better solution may be to utilize the approach to consolidating datapoints as in the Bass class to create a counterpoint
-class Keyboard(Part):
-    instrument_id = 1 # First instance has ID of 1.
-    
-    def __init__(self, sivs, grid=None, midi=None, form=None):
-        super().__init__(sivs, grid, midi, form)
-        self.name = 'Keyboard' # Set name of instrument.
-        self.instrument_id = Keyboard.instrument_id # Set ID value.
-        Keyboard.instrument_id += 1 # Increment ID value.
-        self.create_part()
-        
-    def create_part(self):
-        notes_data = []
-        for i in range(len(self.form)):
-            midi_pool = itertools.cycle(self.midi_pool(i))
-            for j in range(len(self.factors)):
-                pattern = numpy.tile(self.form[i], self.factors[j])
-                indices = numpy.nonzero(pattern)[0]
-                duration = self.grid * (self.period / self.factors[j])
-                for k in indices:
-                    velocity = 127
-                    offset = k * duration
-                    notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
-        notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
-        self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by = 'Start').drop_duplicates()
-        
-    def midi_pool(self, index):
-        pitch_class = self.octave_interpolation(self.intervals)
-        tonality = 40
-        pool = [pitch + tonality for pitch in pitch_class[index]]
-        return pool
-    
-class Utility:
-    def group_by_midi(dataframe):
-        result = {}
-        for _, row in dataframe.iterrows():
-            velocity = row['Velocity']
-            midi = row['MIDI']
-            start = row['Start']
-            end = row['End']
-            midi_str = str(midi)
-            if midi_str in result:
-                result[midi_str]['Velocity'].append(velocity)
-                result[midi_str]['Start'].append(start)
-                result[midi_str]['End'].append(end)
-            else:
-                result[midi_str] = {'Velocity': [velocity], 'Start': [start], 'End': [end]}
-        result = pandas.DataFrame(result).transpose()
-        result['MIDI'] = result.index
-        result.reset_index(drop=True, inplace=True)
-        result = result[['Velocity', 'MIDI', 'Start', 'End']]
-        return result
-    
-    def rearrange_columns(dataframe, *column_names):
-        return dataframe[list(column_names)]
-    
-    def save_as_csv(dataframe, filename):
-        dataframe.to_csv(f'sifters/.{filename}.csv', index=True)
-        
 if __name__ == '__main__':
-    # sivs = '((8@0|8@1|8@7)&(5@1|5@3))'
     sivs = '((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)'
-    instruments = {
-        # 'perc1': Percussion(sivs),
-        # 'perc2': Percussion(sivs, '2/3'),
-        # 'perc3': Percussion(sivs, '4/5'),
-        'bass1': Bass(sivs, '4/3'),
-        # 'bass2': Bass(sivs, '2'),
-        # 'bass3': Bass(sivs, '8/3')
+    voices = {
+        'mono1': Monophonic(sivs),
+        'mono2': Monophonic(sivs, '4/3')
     }
     
-    score = Score(**instruments)
-    # What if I want to combine different subsections if the instrumentation (bass, percussion)
-    # score.combine_parts('perc1', 'perc2', 'perc3')
-    # score.combine_parts('bass1', 'bass2', 'bass3')
+    score = Score(**voices)
+    score.combine_parts('mono1', 'mono2')
     score.write_score()
-    # print(score)
-    # print(Composition.generate_pitchclass_matrix([0.0, 2.4, 4.8, 7.2, 9.6]))
