@@ -9,7 +9,7 @@ import math
 
 class Score(Composition):
     def __init__(self, **kwargs):
-        """
+        '''
         Initializes a Score object with keyword arguments.
 
         Stores the keyword arguments in self.kwargs.
@@ -17,7 +17,7 @@ class Score(Composition):
         Calculates the multipliers for each argument and stores them in self.multipliers.
         Sets the instrumentation with self.set_instrumentation().
         Normalizes the periodicity with self.normalize_periodicity().
-        """
+        '''
         self.kwargs = kwargs
         self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
@@ -27,7 +27,7 @@ class Score(Composition):
         
     @staticmethod
     def get_multiplier(arg):
-        """
+        '''
         Calculates the multiplier for a given argument.
         
         Computes the least common multiple of the denominators in the grid_history fractions.
@@ -40,7 +40,7 @@ class Score(Composition):
         Returns:
             A list of integers representing the multipliers for each fraction in grid_history, 
             indexed by the part_id of the argument minus one.
-        """
+        '''
         # Compute the least common multiple of the denominators in the grid_history fractions
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
         
@@ -53,7 +53,7 @@ class Score(Composition):
     
     @staticmethod
     def normalize_numerator(arg, mult):
-        """
+        '''
         Normalizes the numerator of a given argument.
         
         Args:
@@ -62,20 +62,20 @@ class Score(Composition):
         
         Returns:
             The numerator of the grid_history fraction at the part_id of the argument multiplied by the given multiplier.
-        """
+        '''
         return arg.grid_history[arg.part_id-1].numerator * mult
 
     
     
     def set_instrumentation(self):
-        """
+        '''
         Sets the instrumentation for the object.
         
         Creates an empty list to store the instruments.
         Iterates over self.kwargs.values() and creates a pretty_midi.Instrument for each one.
         Appends the instrument to the instruments_list.
         Stores the list in self.instrumentation.
-        """
+        '''
         instruments_list = []
         for kwarg in self.kwargs.values():
             instruments_list.append(pretty_midi.Instrument(program=0, name=f'{kwarg.name}'))
@@ -83,14 +83,14 @@ class Score(Composition):
         
         
     def normalize_periodicity(self):
-        """
+        '''
         Normalizes the periodicity of notes_data in each argument in kwargs.
         
         Iterates over kwargs.values() and self.multipliers to create copies of notes_data.
         Adjusts the Start and End columns of each copy based on the length of one repetition and grid value.
         Concatenates the duplicates list into a single dataframe and removes duplicate rows.
         Stores the normalized dataframes in self.normalized_parts_data.
-        """
+        '''
         normalized_parts_data = []
         
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
@@ -128,12 +128,12 @@ class Score(Composition):
         
         
     def write_score(self):
-        """
+        '''
         Write the score to a MIDI file.
         
         This method creates a PrettyMIDI object, adds the TimeSignature and instrumentation to it,
         and writes the score to a MIDI file.
-        """
+        '''
         # Create a PrettyMIDI object
         score = pretty_midi.PrettyMIDI()
         
@@ -159,7 +159,7 @@ class Score(Composition):
     
     @staticmethod
     def csv_to_note_object(dataframe):
-        """
+        '''
         Convert a pandas DataFrame to a list of Note objects.
         
         This method takes a pandas DataFrame as input and returns a list of pretty_midi.Note objects.
@@ -171,7 +171,7 @@ class Score(Composition):
             
         Returns:
             list: A list of pretty_midi.Note objects.
-        """
+        '''
         # Use a list comprehension to generate a list of pretty_midi.Note objects from the input dataframe
         # The list comprehension iterates over each row in the dataframe and creates a new Note object with the specified attributes
         note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
@@ -182,7 +182,7 @@ class Score(Composition):
     
     @staticmethod
     def csv_to_bend_object(dataframe):
-        """
+        '''
         Convert a pandas DataFrame to a list of PitchBend objects.
         
         This method takes a pandas DataFrame as input and returns a list of pretty_midi.PitchBend objects.
@@ -194,7 +194,7 @@ class Score(Composition):
             
         Returns:
             list: A list of pretty_midi.PitchBend objects.
-        """
+        '''
         # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
         # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
         bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
@@ -202,7 +202,7 @@ class Score(Composition):
     
     
     def combine_parts(self, *args):
-        """
+        '''
         Combines multiple parts into one.
         
         Args:
@@ -210,7 +210,7 @@ class Score(Composition):
             
         Returns:
             None.
-        """
+        '''
         
         # Get objects and indices for the parts to combine.
         objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
@@ -255,7 +255,7 @@ class Score(Composition):
                 
     @staticmethod
     def get_max_end_value(dataframe):
-        """
+        '''
         Returns a copy of the input dataframe with the 'End' column updated to contain the maximum value of the
         'End' column if it contains a list, otherwise the original value is preserved.
         
@@ -264,7 +264,7 @@ class Score(Composition):
             
         Returns:
             pandas.DataFrame, the updated dataframe
-        """
+        '''
         # Make a copy of the input dataframe to avoid modifying the original
         dataframe = dataframe.copy()
         
@@ -276,7 +276,7 @@ class Score(Composition):
     
     @staticmethod
     def update_end_value(dataframe):
-        """
+        '''
         Returns a copy of the input dataframe with the 'End' column updated to contain the minimum value between 
         the current 'End' value and the 'Start' value of the next row in the dataframe.
         
@@ -285,7 +285,7 @@ class Score(Composition):
             
         Returns:
             pandas.DataFrame, the updated dataframe
-        """
+        '''
         # Make a copy of the input dataframe to avoid modifying the original
         dataframe = dataframe.copy()
         
@@ -301,7 +301,7 @@ class Score(Composition):
         
     @staticmethod
     def expand_midi_lists(dataframe):
-        """
+        '''
         Given a dataframe with MIDI data where some values are in lists, expand the lists so that each row has only one value.
         
         Args:
@@ -309,7 +309,7 @@ class Score(Composition):
             
         Returns:
             A pandas DataFrame where each row has only one value for MIDI data.
-        """
+        '''
         # Create a copy of the input dataframe to avoid modifying the original one.
         dataframe = dataframe.copy()
         
@@ -334,7 +334,7 @@ class Score(Composition):
     
     @staticmethod
     def filter_first_match(objects, indices):
-        """
+        '''
         Given a list of objects and a list of indices, remove all objects except for the first one at each index in the list.
         
         Args:
@@ -343,7 +343,7 @@ class Score(Composition):
             
         Returns:
             A new list of objects with only the first object at each index.
-        """
+        '''
         
         updated_objects = []
         first_match_found = False

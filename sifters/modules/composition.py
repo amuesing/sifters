@@ -3,7 +3,7 @@ import pandas
 
 class Composition:
     def generate_pitchclass_matrix(intervals):
-        """
+        '''
         Generate a pitch class matrix from a list of integers.
         
         The matrix is based on the concept of a twelve-tone row, a sequence of the twelve
@@ -17,7 +17,7 @@ class Composition:
         Returns:
             pandas.DataFrame: A pitch class matrix, with rows labeled P0-P11 and columns
             labeled I0-I(n-1), where n is the number of intervals in the input list.
-        """
+        '''
         
         # Calculate the interval between each pair of consecutive pitches.
         next_interval = intervals[1:]
@@ -47,7 +47,7 @@ class Composition:
     
     @staticmethod
     def group_by_start(dataframe):
-        """
+        '''
         Groups the input dataframe by the 'Start' column and returns the unique values for
         each column for each start time.
         
@@ -56,7 +56,7 @@ class Composition:
         
         Returns:
             pandas.DataFrame: A new dataframe containing the grouped data.
-        """
+        '''
         
         # Group the notes_data dataframe by the 'Start' column and return the unique values
         # for each column for each start time.
@@ -80,7 +80,7 @@ class Composition:
     
     @staticmethod
     def get_lowest_midi(dataframe):
-        """
+        '''
         For each row in the input dataframe, select the lowest MIDI value in the 'MIDI' column.
         Drop any rows where the 'MIDI' value is None.
         
@@ -89,7 +89,7 @@ class Composition:
             
         Returns:
             pandas.DataFrame: Output dataframe with the 'MIDI' column reduced to the lowest value in each row.
-        """
+        '''
         dataframe['MIDI'] = dataframe['MIDI'].apply(lambda x: min(x) if x else None)
         dataframe = dataframe.dropna(subset=['MIDI'])
         if 'Pitch' in dataframe.columns:
@@ -98,7 +98,7 @@ class Composition:
             return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
         
     def check_and_close_intervals(self, dataframe):
-        """
+        '''
         Recursively check the intervals between adjacent MIDI values in the 'MIDI' column of the input dataframe.
         If the interval is greater than 6, apply the 'close_intervals' method to merge the intervals.
         
@@ -107,7 +107,7 @@ class Composition:
             
         Returns:
             pandas.DataFrame: Output dataframe with adjacent intervals less than or equal to 6 merged.
-        """
+        '''
         for i in range(len(dataframe['MIDI']) - 1):
             if abs(dataframe['MIDI'][i] - dataframe['MIDI'][i + 1]) > 6: 
                 dataframe = self.close_intervals(dataframe)
@@ -116,7 +116,7 @@ class Composition:
     
     @staticmethod
     def close_intervals(dataframe):
-        """
+        '''
         Adjust the MIDI values in the dataframe to ensure that the interval between each
         pair of consecutive MIDI values is no greater than a tritone (six semitones).
         
@@ -125,7 +125,7 @@ class Composition:
             
         Returns:
             pandas.DataFrame: A copy of the input dataframe, with the MIDI values adjusted as necessary.
-        """
+        '''
         
         # Make a copy of the input dataframe.
         updated_df = dataframe.copy()
@@ -149,7 +149,7 @@ class Composition:
     
     @staticmethod
     def adjust_midi_range(dataframe):
-        """
+        '''
         Adjust the MIDI values in a dataframe to ensure they are within the range [36, 60].
         
         Args:
@@ -157,7 +157,7 @@ class Composition:
             
         Returns:
             pandas.DataFrame: Output dataframe with MIDI values adjusted to be within the range [36, 60].
-        """
+        '''
         # Define the lambda function to adjust values outside the range [36, 60].
         adjust_value = lambda x: x - 12 if x > 60 else (x + 12 if x < 36 else x)
         
@@ -169,7 +169,7 @@ class Composition:
     
     @staticmethod
     def combine_consecutive_midi_values(dataframe):
-        """
+        '''
         Combine consecutive MIDI notes in the input dataframe that have the same MIDI value and optional 'Pitch' value.
         
         Args:
@@ -177,7 +177,7 @@ class Composition:
             
         Returns:
             pandas.DataFrame: Output dataframe with consecutive MIDI notes combined.
-        """
+        '''
         # Check if the dataframe contains a 'Pitch' column.
         has_pitch = 'Pitch' in dataframe.columns
         
@@ -234,7 +234,7 @@ class Composition:
     
     @staticmethod
     def convert_lists_to_scalars(dataframe):
-        """
+        '''
         Convert values in a pandas dataframe that are lists or tuples of length 1 to scalars.
         
         Args:
@@ -242,7 +242,7 @@ class Composition:
             
         Returns:
             pandas.DataFrame: Output dataframe with values that were lists or tuples of length 1 converted to scalars.
-        """
+        '''
         # Iterate over each column in the dataframe
         for col in dataframe.columns:
             # Check if the column contains objects (lists or tuples)
