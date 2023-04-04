@@ -25,6 +25,7 @@ class Texture(Composition):
     grid_history = []
     texture_id = 1
         
+        
     def __init__(self, sivs, grid=None, form=None):
         '''
         Initializes a Texture object.
@@ -57,8 +58,6 @@ class Texture(Composition):
         
         # Increment the texture ID for the next Texture object
         Texture.texture_id += 1
-        
-        ### MIDI SHOULD BE SELF CONTAINED WITHIN SIEVE/MIDI POOL, REMOVE AS ARGUMENT
         
         
     def set_binary(self, sivs):
@@ -311,11 +310,14 @@ class Texture(Composition):
         # Create an iterator which is equal to the length of a list of forms represented in binary.
         for i in range(len(self.binary)):
             
-            # Create a midi_pool for each sieve represented in self.binary.
-            midi_pool = itertools.cycle(self.generate_midi_pool(i))
+            # # Create a midi_pool for each sieve represented in self.binary.
+            # midi_pool = itertools.cycle(self.generate_midi_pool(i))
             
             # Create an iterator which is equal to the length of a list of factors (for self.period).
             for j in range(len(self.factors)):
+                
+                # Create a midi_pool for each sieve represented in self.binary.
+                midi_pool = itertools.cycle(self.generate_midi_pool(i, j))
                 
                 # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
                 pattern = numpy.tile(self.binary[i], self.factors[j])
@@ -324,10 +326,10 @@ class Texture(Composition):
                 indices = numpy.nonzero(pattern)[0]
                 
                 # Find the multiplier for self.grid to normalize duration length against number of repititions of sieve in pattern.
-                multiplier = self.period / self.factors[j]
+                duration_multiplier = self.period / self.factors[j]
                 
                 # Find the duration of each note represented as a float.
-                duration = self.grid * multiplier
+                duration = self.grid * duration_multiplier
                 
                 # For each non-zero indice append notes_data list with corresponding midi information.
                 for k in indices:
@@ -340,7 +342,7 @@ class Texture(Composition):
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by='Start').drop_duplicates()
     
     
-    def generate_midi_pool(self, form_index):
+    def generate_midi_pool(self, form_index, factor_index):
         '''
         Generates a MIDI pool for a given sieve represented in self.binary.
         The MIDI pool is constructed by computing the closed interval list for a given sieve, 
@@ -355,6 +357,9 @@ class Texture(Composition):
         '''
         # Set the base tonality value.
         tonality = 40
+        
+        num_of_events = (self.binary[form_index].count(1) * self.factors[factor_index])
+        print(num_of_events)
         
         # Compute the starting pitch for the sieve.
         prime = tonality + self.intervals[form_index][0]
@@ -414,23 +419,26 @@ class NonPitched(Texture):
         self.notes_data = self.parse_pitch_data(self.notes_data)
         
         
-    ### THIS IS A CUSTOM METHOD DESIGNED FOR THIS CLASS, HOW CAN I UNIFY?
-    def generate_midi_pool(self, form_index):
-        '''
-        Generates a pool of MIDI notes to be used for creating notes in the instrument's part.
+    # ### THIS IS A CUSTOM METHOD DESIGNED FOR THIS CLASS, HOW CAN I UNIFY?
+    # def generate_midi_pool(self, form_index):
+    #     '''
+    #     Generates a pool of MIDI notes to be used for creating notes in the instrument's part.
         
-        Args:
-            index: The index of the form section to generate MIDI notes for.
+    #     Args:
+    #         index: The index of the form section to generate MIDI notes for.
         
-        Returns:
-            A list of MIDI notes.
-        '''
-        ### EVENTS SHOULD BE THE SAME AS len(self.form[index])
-        print(self.form)
-        events = self.binary[form_index].count(1)  # Count the number of events in the form section
-        largest_prime_slice = slice(0, self.get_largest_prime_factor(events))  # Determine the slice of the MIDI array to use based on the largest prime factor of the number of events
-        pool = itertools.cycle([40, 41, 42, 43, 44, 45][largest_prime_slice])  # Create a cycle iterator over the MIDI slice
-        return [next(pool) for _ in range(events)]  # Return a list of MIDI notes by cycling through the iterator and taking the first "events" values
+    #     Returns:
+    #         A list of MIDI notes.
+    #     '''
+    #     ### EVENTS SHOULD BE THE SAME AS len(self.form[index])
+    #     events = self.binary[form_index].count(1)  # Count the number of events in the form section
+    #     print(events)
+    #     print(self.binary[form_index])
+    #     largest_prime_slice = slice(0, self.get_largest_prime_factor(events))  # Determine the slice of the MIDI array to use based on the largest prime factor of the number of events
+    #     print(largest_prime_slice)
+    #     pool = itertools.cycle([40, 41, 42, 43, 44, 45][largest_prime_slice])  # Create a cycle iterator over the MIDI slice
+    #     print(pool)
+    #     return [next(pool) for _ in range(events)]  # Return a list of MIDI notes by cycling through the iterator and taking the first "events" values
     
     
 class Monophonic(Texture):
