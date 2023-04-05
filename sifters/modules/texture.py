@@ -345,7 +345,7 @@ class Texture(Composition):
     def generate_midi_pool(self, form_index, factor_index):
         '''
         Generates a MIDI pool for a given sieve represented in self.binary.
-        The MIDI pool is constructed by computing the closed interval list for a given sieve, 
+        The MIDI pool is constructed by computing the interval list for a given sieve, 
         creating a pitch matrix based on the intervals in the sieve, and generating all possible
         combinations of the rows and columns in the matrix.
         
