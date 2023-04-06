@@ -1,5 +1,5 @@
-from modules.composition import *
-from modules.texture import *
+from modules.generators.composition import *
+from modules.generators.texture import *
 
 import pretty_midi
 import functools

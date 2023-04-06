@@ -1,5 +1,5 @@
-from modules.composition import *
-from modules.utility import *
+from modules.generators.composition import *
+from modules.generators.utility import *
 
 import music21
 import fractions
