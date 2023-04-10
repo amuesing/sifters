@@ -297,6 +297,7 @@ class Texture(Composition):
         # Return the updated dataframe
         return dataframe
     
+    
     @staticmethod
     def get_successive_diff(lst):
         """
@@ -308,7 +309,7 @@ class Texture(Composition):
         Returns:
             list: A list of integers representing the successive difference 
         """
-        return [lst[i+1] - lst[i] for i in range(len(lst)-1)]
+        return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
     
     
     def set_notes_data(self):
@@ -334,12 +335,15 @@ class Texture(Composition):
                 
                 # Create a midi_pool for each sieve represented in self.binary.
                 midi_pool = itertools.cycle(self.generate_midi_pool(i, j))
+                # mid = self.generate_midi_pool(i, j)
                 
                 # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
                 pattern = numpy.tile(self.binary[i], self.factors[j])
                 
                 # Create a list of indices where non-zero elements occur within the pattern.
                 indices = numpy.nonzero(pattern)[0]
+                # print(len(mid))
+                print(f'indices {len(indices)}')
                 
                 # Find the multiplier for self.grid to normalize duration length against number of repititions of sieve in pattern.
                 duration_multiplier = self.period / self.factors[j]
@@ -356,7 +360,6 @@ class Texture(Composition):
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by='Start').drop_duplicates()
-        Utility.save_as_csv(self.notes_data, f'{self.name} {self.texture_id}')
     
     
     def generate_midi_pool(self, binary_index, factor_index):
@@ -398,33 +401,37 @@ class Texture(Composition):
         # Generate a pitch matrix based on the intervals.
         matrix = first_pitch + Composition.generate_pitchclass_matrix(intervals)
         
-        # How can I use the interval structure to select the row form to 
-        # generate the necessary number of materials.
-        print('start')
-        # ARE THESE THE SAME PITCH CLASS?? -- Yes, these are same PC, so select for
-        # prime if difference is positive, and select for inversion if negative? 
-        # What about retrograde?
-        # What about the select_form method? How does that play in here?
-        # print(self.get_successive_diff(self.intervals[binary_index]))
-        print(self.get_successive_diff(self.closed_intervals[binary_index]))
-        print(matrix)
-        prime_cycle = itertools.cycle(matrix.values.tolist())
-        # index = 0
-        # for i in range(10):
-        # # for step in steps:
-        #     current_list = next(prime_cycle)
-        #     wrapped_index = index % len(current_list)
-        #     current_element = current_list[wrapped_index]
-        #     print(current_element)
-            # index += 1
-        # print([matrix.iloc[i].values.tolist() for i, _ in enumerate(matrix)])
-            # print(prime_cycle[0])
-        # print(next(prime_cycle))
-        
-        # Create all possible combinations of the rows and columns in the matrix.
-        combo = [matrix.iloc[i].values.tolist() for i, _ in enumerate(matrix)] + [matrix.iloc[:, i].values.tolist() for i, _ in enumerate(matrix)]
-        pool = list(itertools.chain(*combo))
-        return pool
+        # Retrograde every time the intervals traverse the range of the matrix and repeat?
+        print(f'events {num_of_events}')
+        pool = []
+        rotations = num_of_events // len(steps)
+        current_index = 0
+        retrograde = False
+        # for _ in range(rotations):
+        for step in steps:
+            wrapped_index = (current_index + abs(step)) % len(self.intervals[binary_index])
+            # What if there are more than 1 cycles-- False -> True -> False?
+            # print(abs(step) + current_index)
+            # print(len(self.intervals[binary_index]))
+            if (abs(step) + current_index) >= len(self.intervals[binary_index]):
+                if retrograde == False:
+                    retrograde = True
+                else:
+                    retrograde = False
+            if step >= 0:
+                if retrograde == True:
+                    pool.append(matrix.iloc[wrapped_index][::-1].tolist())
+                else:
+                    pool.append(matrix.iloc[wrapped_index].tolist())
+            if step < 0:
+                if retrograde == True:
+                    pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
+                else:
+                    pool.append(matrix.iloc[:, wrapped_index].tolist())
+            current_index = wrapped_index
+        flattened_pool = [num for list in pool for num in list]
+        print(f'pool {len(flattened_pool)}')
+        return flattened_pool
     
     
 class NonPitched(Texture):
@@ -463,28 +470,6 @@ class NonPitched(Texture):
         
         # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
         self.notes_data = self.parse_pitch_data(self.notes_data)
-        
-        
-    # ### THIS IS A CUSTOM METHOD DESIGNED FOR THIS CLASS, HOW CAN I UNIFY?
-    # def generate_midi_pool(self, binary_index):
-    #     '''
-    #     Generates a pool of MIDI notes to be used for creating notes in the instrument's part.
-        
-    #     Args:
-    #         index: The index of the form section to generate MIDI notes for.
-        
-    #     Returns:
-    #         A list of MIDI notes.
-    #     '''
-    #     ### EVENTS SHOULD BE THE SAME AS len(self.form[index])
-    #     events = self.binary[binary_index].count(1)  # Count the number of events in the form section
-    #     print(events)
-    #     print(self.binary[binary_index])
-    #     largest_prime_slice = slice(0, self.get_largest_prime_factor(events))  # Determine the slice of the MIDI array to use based on the largest prime factor of the number of events
-    #     print(largest_prime_slice)
-    #     pool = itertools.cycle([40, 41, 42, 43, 44, 45][largest_prime_slice])  # Create a cycle iterator over the MIDI slice
-    #     print(pool)
-    #     return [next(pool) for _ in range(events)]  # Return a list of MIDI notes by cycling through the iterator and taking the first "events" values
     
     
 class Monophonic(Texture):
@@ -533,7 +518,6 @@ class Monophonic(Texture):
         
         # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
         self.notes_data = self.parse_pitch_data(self.notes_data)
-        # Utility.save_as_csv(self.notes_data, f'{self.name} {self.part_id}')
         
     # How to use the referenced sieve to select row form?
     # How to use number of needed events to generate exactly the correct amount of pitch data needed?
