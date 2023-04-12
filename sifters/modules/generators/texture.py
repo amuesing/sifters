@@ -300,7 +300,7 @@ class Texture(Composition):
     
     @staticmethod
     def get_successive_diff(lst):
-        """
+        '''
         Takes a list of integers and returns a list containing the difference between each successive integer.
         
         Args:
@@ -308,7 +308,8 @@ class Texture(Composition):
             
         Returns:
             list: A list of integers representing the successive difference 
-        """
+        '''
+
         return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
     
     
@@ -342,8 +343,6 @@ class Texture(Composition):
                 
                 # Create a list of indices where non-zero elements occur within the pattern.
                 indices = numpy.nonzero(pattern)[0]
-                # print(len(mid))
-                print(f'indices {len(indices)}')
                 
                 # Find the multiplier for self.grid to normalize duration length against number of repititions of sieve in pattern.
                 duration_multiplier = self.period / self.factors[j]
@@ -365,9 +364,12 @@ class Texture(Composition):
     def generate_midi_pool(self, binary_index, factor_index):
         '''
         Generates a MIDI pool for a given sieve represented in self.binary.
-        The MIDI pool is constructed by computing the interval list for a given sieve, 
-        creating a pitch matrix based on the intervals in the sieve, and generating all possible
-        combinations of the rows and columns in the matrix.
+        
+        A MIDI pool is a set of pitches that can be used to generate a composition. This function
+        generates a MIDI pool for a given sieve by computing the interval list for the sieve, creating 
+        a pitch matrix based on the intervals in the sieve, and generating all possible combinations 
+        of the rows and columns in the matrix. The resulting MIDI pool is a list of MIDI note values 
+        that can be used to generate a composition.
         
         Args:
             binary_index (int): Index representing the i loop from set_notes_data method. 
@@ -381,10 +383,11 @@ class Texture(Composition):
         # Set the base tonality value.
         tonality = 40
         
-        # Given a set number of events, and a set number of rotations, how can we order pitch selection
-        # based on the logic of the sieve?
-        num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
-        num_of_positions = num_of_events // len(self.closed_intervals[binary_index])
+        # Generate a list of successive differences between the intervals.
+        steps = self.get_successive_diff(self.closed_intervals[binary_index])
+        
+        # Create a cycle iterator for the steps list.
+        steps_cycle = itertools.cycle(steps)
         
         # Compute the starting pitch for the sieve.
         first_pitch = tonality + self.closed_intervals[binary_index][0]
@@ -396,28 +399,32 @@ class Texture(Composition):
         segment = self.segment_octave_by_period(self.period)
         intervals = [segment[i] for i in indices]
         
-        steps = self.get_successive_diff(self.closed_intervals[binary_index])
-        
         # Generate a pitch matrix based on the intervals.
         matrix = first_pitch + Composition.generate_pitchclass_matrix(intervals)
         
-        # Retrograde every time the intervals traverse the range of the matrix and repeat?
-        print(f'events {num_of_events}')
+        # Compute the number of events and positions needed for the sieve.
+        num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
+        num_of_positions = num_of_events // len(steps)
+        
+        # Generate the MIDI pool by iterating through the steps and matrix.
         pool = []
-        rotations = num_of_events // len(steps)
         current_index = 0
         retrograde = False
-        # for _ in range(rotations):
-        for step in steps:
+        for _ in range(num_of_positions):
+            step = next(steps_cycle)
             wrapped_index = (current_index + abs(step)) % len(self.intervals[binary_index])
-            # What if there are more than 1 cycles-- False -> True -> False?
-            # print(abs(step) + current_index)
-            # print(len(self.intervals[binary_index]))
-            if (abs(step) + current_index) >= len(self.intervals[binary_index]):
+            
+            # Check if the intervals have wrapped around the range of the matrix.
+            wrap_count = (abs(step) + current_index) // len(self.intervals[binary_index])
+            
+            # If the interval wraps the length of the matrix a odd number of times update retrograde.
+            if wrap_count % 2 == 1:
                 if retrograde == False:
                     retrograde = True
                 else:
                     retrograde = False
+            
+            # Append the appropriate row or column of the matrix to the pool.
             if step >= 0:
                 if retrograde == True:
                     pool.append(matrix.iloc[wrapped_index][::-1].tolist())
@@ -428,9 +435,11 @@ class Texture(Composition):
                     pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
                 else:
                     pool.append(matrix.iloc[:, wrapped_index].tolist())
+            
             current_index = wrapped_index
+        
+        # Flatten the pool into a 1D list of MIDI values.
         flattened_pool = [num for list in pool for num in list]
-        print(f'pool {len(flattened_pool)}')
         return flattened_pool
     
     

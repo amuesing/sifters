@@ -1,6 +1,5 @@
 # Sifters
 Sifters is a tool for developing musical compositions that makes use of combinatorial sieves as the point of departure for generative processes. My goal in coding Sifters has been to create a system for generating musical forms that are derived from a single logical source. The mechanism which hold that logic is called a 'sieve' and is a concept I inherited from my analysis of the score <i>Psappha</i> (1975) by Iannis Xenakis. The user is able to serialize the resulting intervalic structure by Prime, Inversion, Retrograde, and Retrograde-Inversion forms, as well as select from NonPitched, Monophonic, Homophonic, Heterophonic, and Polyphonic textures as a contrapuntal representation of the sieve.
-# Controllers
 # Generators
 ## class Composition:
 ___
@@ -46,3 +45,4 @@ The ```generate_midi_pool``` method interprets positive integers as rows of the 
 ## class Heterophonic(Texture):
 ## class Polyphonic(Texture):
 # Transformers
+# Controllers

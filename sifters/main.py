@@ -6,11 +6,11 @@ def main():
     voices = {
         # 'np1': texture.NonPitched(sivs),
         'mono1': texture.Monophonic(sivs),
-        # 'mono2': texture.Monophonic(sivs, '4/3')
+        'mono2': texture.Monophonic(sivs, '4/3')
     }
     
     output = score.Score(**voices)
-    # output.combine_parts('mono1', 'mono2')
+    output.combine_parts('mono1', 'mono2')
     output.write_score()
     
 if __name__ == '__main__':
