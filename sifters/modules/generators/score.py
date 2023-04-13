@@ -195,10 +195,16 @@ class Score(Composition):
         Returns:
             list: A list of pretty_midi.PitchBend objects.
         '''
-        # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
-        # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
-        bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
+        if 'Pitch' in dataframe.columns:
+            # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
+            # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
+            bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
+        else:
+            # If the 'Pitch' column does not exist, create a list of PitchBend objects with default pitch values
+            bend_objects = [pretty_midi.PitchBend(pitch=0, time=row['Start']) for _, row in dataframe.iterrows()]
+            
         return bend_objects
+    
     
     
     def combine_parts(self, *args):
@@ -313,10 +319,13 @@ class Score(Composition):
         # Create a copy of the input dataframe to avoid modifying the original one.
         dataframe = dataframe.copy()
         
-        # Convert list values in Velocity and Pitch columns to single values.
+        # Convert list values in Velocity column to single values.
         dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
-        dataframe['Pitch'] = dataframe['Pitch'].apply(lambda x: x[0] if isinstance(x, list) else x)
         
+        # Convert list values in Pitch column to single values, if the column exists.
+        if 'Pitch' in dataframe.columns:
+            dataframe['Pitch'] = dataframe['Pitch'].apply(lambda x: x[0] if isinstance(x, list) else x)
+            
         # Separate rows with list values in MIDI column from rows without.
         start_not_lists = dataframe[~dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
         start_lists = dataframe[dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
@@ -330,6 +339,7 @@ class Score(Composition):
         result.sort_values('Start', inplace=True)
         result.reset_index(drop=True, inplace=True)
         return result
+    
     
     
     @staticmethod

@@ -1,12 +1,54 @@
 # Sifters
 Sifters is a tool for developing musical compositions that makes use of combinatorial sieves as the point of departure for generative processes. My goal in coding Sifters has been to create a system for generating musical forms that are derived from a single logical source. The mechanism which hold that logic is called a 'sieve' and is a concept I inherited from my analysis of the score <i>Psappha</i> (1975) by Iannis Xenakis. The user is able to serialize the resulting intervalic structure by Prime, Inversion, Retrograde, and Retrograde-Inversion forms, as well as select from NonPitched, Monophonic, Homophonic, Heterophonic, and Polyphonic textures as a contrapuntal representation of the sieve.
+
+The application's functionality falls into one of three categories: generators, transformers, and controllers. Generators are designed to generate complete musical forms based on a generative sieve. Transformers are designed to apply probability based operations to generated musical textures. Controllers are designed to generate the inital input materials of a sieve.
 # Generators
+<img src="./images/example4.png" alt="generator classes diagram" height="400" style="display:block;margin:auto;">
+
+Generators are responsible for deriving compositional materials from a logical sieve. There are three main classes of Generators: Composition, Texture, and Score. Composition is the superclass of Texture and Score. Texture is the superclass of five additional classes: NonPitched, Monophonic, Homophonic, Heterophonic, and Polyphonic.
+
+The Composition class the superclass of all subsequent Generator classes. It holds methods for generating a serialized pitchclass matrix, as well as transforming a Pandas ```DataFrame```. These methods are shared and utilized by the Score and Texture classes.
+
+The Texture class is responsible for generating baseline musical materials in the form of contrapuntal textures. These materials will go through a process of formalization within the Score class, and subject to further variations through Transformer classes.
+
+The main function of the Score class is to combine specified textures into a single part, normalize the length of textures across all input arguments, and output a MIDI file based on the note data set in the Texture classes.
 ## class Composition:
+### __def generate_pitchclass_matrix(intervals):__
+
+### __def group_by_start(dataframe):__
+
+### __def get_lowest_midi(dataframe):__
+
+### __def check_and_close_intervals(self, dataframe):__
+
+### __def close_intervals(dataframe):__
+
+### __def adjust_midi_range(dataframe):__
+
+### __def combine_consecutive_midi_values(dataframe):__
+
+### __def convert_lists_to_scalar(dataframe):__
 ___
-## class Score(Composition):
-___
+
 ## class Texture(Composition):
-___
+### __def set_binary(self, sivs):__
+
+### __def get_binary(self, sivs):__
+
+### __def find_indices(self, binary_lists, target):__
+
+### __def get_factors(num):__
+
+### __def get_largest_prime_factor(self, num):__
+
+### __def is_prime(num):__
+
+### __def set_octave_interpolation(intervals):__
+
+### __def segment_octave_by_period(period):__
+
+### __def get_least_common_multiple(self, nums):__
+
 ### __def set_notes_data(self):__
 Each binary list's form is repeated a number of times relative
 to the duration of each grid unit for that repitition.
@@ -40,9 +82,38 @@ The first integer in this list is 7. Since 7 is a positive number the method tra
 The second integer in this list is -4. Since -4 is a negative number the method traverses the columns 4 times, starting with the inversional pair of the last row of the previous transformation (in this case row B). The pointer then moves to the right 4 times to select the F column.
 
 The ```generate_midi_pool``` method interprets positive integers as rows of the matrix, and negative numbers as columns. This is meant to associate ascending intervals with the prime form of the tone-row, and descending intervals with the inversional form of the tone-row.
+## class NonPitched(Texture):
 ## class Monophonic(Texture):
 ## class Homophonic(Texture):
 ## class Heterophonic(Texture):
 ## class Polyphonic(Texture):
+
+___
+## class Score(Composition):
+
+### __def get_multiplier(arg):__
+
+### __def normalize_numerator(arg, mult):__
+
+### __def set_instrumentation(self):__
+
+### __def normalize_periodicity(self):__
+
+### __def write_score(self):__
+
+### __def csv_to_note_object(dataframe):__
+
+### __def csv_to_bend_object(dataframe):__
+
+### __def combine_parts(self, *args):__
+
+### __def get_max_end_value(dataframe):__
+
+### __def update_end_value(dataframe):__
+
+### __def expand_midi_lists(dataframe):__
+
+### __def filter_first_match(dataframe):__
+
 # Transformers
 # Controllers

@@ -1,5 +1,4 @@
 from modules.generators.composition import *
-from modules.generators.utility import *
 
 import music21
 import fractions
@@ -10,18 +9,6 @@ import numpy
 import math
 
 class Texture(Composition):
-    '''
-    A class representing a texture in a composition.
-    
-    Attributes:
-        grid_history (list): A list of Fraction objects representing the history of grid values for all texture objects.
-        texture_id (int): An integer representing the unique ID of the current texture.
-        grid (Fraction): A Fraction object representing the current grid value for the texture.
-        binary (list): A list of lists representing the binary form of the texture.
-        intervals (list): A list of lists representing the indices of intervals in the binary form of the texture.
-        period (int): An integer representing the period of the binary form of the texture.
-        factors (list): A list of integers representing the factors of the period of the binary form of the texture.
-    '''
     grid_history = []
     texture_id = 1
         
@@ -309,7 +296,7 @@ class Texture(Composition):
         Returns:
             list: A list of integers representing the successive difference 
         '''
-
+        
         return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
     
     
@@ -417,7 +404,7 @@ class Texture(Composition):
             # Check if the intervals have wrapped around the range of the matrix.
             wrap_count = (abs(step) + current_index) // len(self.intervals[binary_index])
             
-            # If the interval wraps the length of the matrix a odd number of times update retrograde.
+            # If the interval wraps the length of the matrix an odd number of times update retrograde.
             if wrap_count % 2 == 1:
                 if retrograde == False:
                     retrograde = True
@@ -444,13 +431,6 @@ class Texture(Composition):
     
     
 class NonPitched(Texture):
-    '''
-    A class representing a non-pitched instrument in a musical texture.
-    
-    Attributes:
-        part_id (int): The ID value of the instrument.
-        name (str): The name of the instrument.
-    '''
     # Initialize ID for the first instance of NonPitched object.
     part_id = 1
     
@@ -478,7 +458,14 @@ class NonPitched(Texture):
         self.set_notes_data()
         
         # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
-        self.notes_data = self.parse_pitch_data(self.notes_data)
+        # self.notes_data = self.parse_pitch_data(self.notes_data)
+        unique_midi_values = self.notes_data['MIDI'].unique()
+        unique_midi_values_sorted = pandas.Series(unique_midi_values).sort_values().to_list()
+        # What if there are more than 127 unique midi values?
+        int_dict = {val: i + 40 for i, val in enumerate(unique_midi_values_sorted)}
+        self.notes_data['MIDI'] = self.notes_data['MIDI'].map(int_dict)
+        
+        self.notes_data.to_csv(f'{self.part_id}')
     
     
 class Monophonic(Texture):
