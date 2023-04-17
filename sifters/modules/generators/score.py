@@ -11,7 +11,7 @@ class Score(Composition):
     def __init__(self, **kwargs):
         '''
         Initializes a Score object with keyword arguments.
-
+        
         Stores the keyword arguments in self.kwargs.
         Normalizes the numerators for each argument and stores them in self.normalized_numerators.
         Calculates the multipliers for each argument and stores them in self.multipliers.
@@ -64,7 +64,6 @@ class Score(Composition):
             The numerator of the grid_history fraction at the part_id of the argument multiplied by the given multiplier.
         '''
         return arg.grid_history[arg.part_id-1].numerator * mult
-
     
     
     def set_instrumentation(self):
@@ -206,7 +205,6 @@ class Score(Composition):
         return bend_objects
     
     
-    
     def combine_parts(self, *args):
         '''
         Combines multiple parts into one.
@@ -219,7 +217,9 @@ class Score(Composition):
         '''
         
         # Get objects and indices for the parts to combine.
-        objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
+        objects = [self.kwargs[key] for key in args if key in self.kwargs]
+        print(objects)
+        # objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
         
         # Combine the notes data from the selected parts.
@@ -339,7 +339,6 @@ class Score(Composition):
         result.sort_values('Start', inplace=True)
         result.reset_index(drop=True, inplace=True)
         return result
-    
     
     
     @staticmethod

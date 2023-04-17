@@ -1,5 +1,6 @@
 import decimal
 import pandas
+import math
 
 class Composition:
     def generate_pitchclass_matrix(intervals):
@@ -78,6 +79,7 @@ class Composition:
         # Return the result dataframe.
         return result
     
+    
     @staticmethod
     def get_lowest_midi(dataframe):
         '''
@@ -97,22 +99,38 @@ class Composition:
         else:
             return dataframe[['Velocity', 'MIDI', 'Start', 'End']]
         
-    def check_and_close_intervals(self, dataframe):
-        '''
-        Recursively check the intervals between adjacent MIDI values in the 'MIDI' column of the input dataframe.
-        If the interval is greater than 6, apply the 'close_intervals' method to merge the intervals.
         
-        Args:
-            dataframe (pandas.DataFrame): Input dataframe.
+    def check_and_close_intervals(self, dataframe):
+        
+        def close_intervals(dataframe):
             
-        Returns:
-            pandas.DataFrame: Output dataframe with adjacent intervals less than or equal to 6 merged.
-        '''
+            # Make a copy of the input dataframe.
+            updated_df = dataframe.copy()
+            
+            # Iterate through each pair of consecutive MIDI values.
+            for i, midi in enumerate(updated_df["MIDI"][:-1]):
+                next_midi = updated_df["MIDI"][i + 1]
+                
+                # If the increase between midi notes is greater than a tritone, transpose
+                # the next midi note up one octave.
+                if midi - next_midi > 6:
+                    updated_df.at[i + 1, "MIDI"] = round(next_midi + 12, 3)
+                
+                # If the decrease between midi notes is greater than a tritone, transpose
+                # the next midi note down one octave.
+                elif midi - next_midi < -6:
+                    updated_df.at[i + 1, "MIDI"] = round(next_midi - 12, 3)
+            
+            # Return the updated dataframe.
+            return updated_df
+        
         for i in range(len(dataframe['MIDI']) - 1):
             if abs(dataframe['MIDI'][i] - dataframe['MIDI'][i + 1]) > 6: 
-                dataframe = self.close_intervals(dataframe)
+                dataframe = close_intervals(dataframe)
                 return self.check_and_close_intervals(dataframe)
+
         return dataframe
+    
     
     @staticmethod
     def close_intervals(dataframe):
@@ -147,6 +165,7 @@ class Composition:
         # Return the updated dataframe.
         return updated_df
     
+    
     @staticmethod
     def adjust_midi_range(dataframe):
         '''
@@ -166,6 +185,7 @@ class Composition:
             dataframe['MIDI'] = dataframe['MIDI'].apply(adjust_value)
             
         return dataframe
+    
     
     @staticmethod
     def combine_consecutive_midi_values(dataframe):
@@ -232,6 +252,7 @@ class Composition:
         # Return the new dataframe as output
         return new_dataframe
     
+    
     @staticmethod
     def convert_lists_to_scalars(dataframe):
         '''
@@ -251,4 +272,27 @@ class Composition:
                 # If the value is a list or tuple of length 1, replace it with the single value
                 dataframe[col] = dataframe[col].apply(lambda x: x[0] if isinstance(x, (list, tuple)) else x)
         
+        return dataframe
+    
+    @staticmethod
+    def parse_pitch_data(dataframe):
+        '''
+        Parses the pitch data in the given dataframe, computing the 'Pitch' and 'MIDI' columns for each row.
+        
+        Args:
+            dataframe (pandas.DataFrame): The dataframe to parse.
+            
+        Returns:
+            pandas.DataFrame: The updated dataframe.
+        '''
+        # Compute 'Pitch' and 'MIDI' columns for each row
+        for index, row in dataframe.iterrows():
+            pitch = round(row['MIDI'] - math.floor(row['MIDI']), 4)
+            midi = math.floor(row['MIDI'])
+            dataframe.at[index, 'MIDI'] = midi
+            dataframe.at[index, 'Pitch'] = pitch
+        # Reorder the columns
+        column_order = ['Velocity', 'MIDI', 'Pitch', 'Start', 'End']
+        dataframe = dataframe.reindex(columns=column_order)
+        # Return the updated dataframe
         return dataframe

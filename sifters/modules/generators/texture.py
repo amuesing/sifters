@@ -14,14 +14,7 @@ class Texture(Composition):
         
         
     def __init__(self, sivs, grid=None, form=None):
-        '''
-        Initializes a Texture object.
         
-        Args:
-            sivs (list): A list of lists representing the sieve(s) (set-class interval vectors) of the texture.
-            grid (Fraction): A Fraction object representing the grid value for the texture (default: 1/1).
-            form (str): A string representing the form of the texture to be used. Can be 'Prime', 'Inversion', 'Retrograde', or 'Retrograde-Inversion' (default: 'Prime').
-        '''
         # Set the grid attribute of the Texture object
         self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
         
@@ -51,17 +44,35 @@ class Texture(Composition):
         
         
     def set_binary(self, sivs):
-        '''
-        Transforms a list of sets of intervals into a list of their binary forms, based on a selected form.
-        
-        Args:
-            sivs (List[List[int]]): A list of sets of intervals, where each set is a list of integers.
+        def get_binary(self, sivs):
+            binary = []
             
-        Returns:
-            List[List[int]]: A list of the binary forms for each input set of intervals.
-        '''
+            # If the input is a tuple, compute the binary representation for each sieve.
+            if isinstance(sivs, tuple):
+                periods = []
+                objects = []
+                for siv in sivs:
+                    obj = music21.sieve.Sieve(siv)
+                    objects.append(obj)
+                    periods.append(obj.period())
+                    
+                # Compute the least common multiple of the periods of the input sieves.
+                self.period = self.get_least_common_multiple(periods)
+                
+                # Set the Z range of each Sieve object and append its binary representation to the list.
+                for obj in objects:
+                    obj.setZRange(0, self.period - 1)
+                    binary.append(obj.segment(segmentFormat='binary'))
+            else:
+                # Compute the binary representation for the single input sieve.
+                object = music21.sieve.Sieve(sivs)
+                object.setZRange(0, object.period() - 1)
+                binary.append(object.segment(segmentFormat='binary'))
+                
+            return binary
+        
         # Convert the list of sets of intervals to their binary forms
-        binary = self.get_binary(sivs)
+        binary = get_binary(sivs)
         
         # Define a dictionary with lambda functions to transform the binary forms into different forms
         forms = {
@@ -75,58 +86,7 @@ class Texture(Composition):
         return [forms[self.form](bin) for bin in binary]
     
     
-    def get_binary(self, sivs):
-        '''
-        Returns the binary representation of the input sieve(s).
-        
-        If a tuple of sieves is given, this function computes the binary representation
-        of each sieve and returns them as a list. If a single sieve is given, it returns its
-        binary representation as a list with a single element.
-        
-        Args:
-            sivs: A single sieve or a tuple of sieves.
-            
-        Returns:
-            A list of binary representations of the input sieve(s).
-        '''
-        binary = []
-        
-        # If the input is a tuple, compute the binary representation for each sieve.
-        if isinstance(sivs, tuple):
-            periods = []
-            objects = []
-            for siv in sivs:
-                obj = music21.sieve.Sieve(siv)
-                objects.append(obj)
-                periods.append(obj.period())
-                
-            # Compute the least common multiple of the periods of the input sieves.
-            self.period = self.get_least_common_multiple(periods)
-            
-            # Set the Z range of each Sieve object and append its binary representation to the list.
-            for obj in objects:
-                obj.setZRange(0, self.period - 1)
-                binary.append(obj.segment(segmentFormat='binary'))
-        else:
-            # Compute the binary representation for the single input sieve.
-            object = music21.sieve.Sieve(sivs)
-            object.setZRange(0, object.period() - 1)
-            binary.append(object.segment(segmentFormat='binary'))
-            
-        return binary
-    
-    
     def find_indices(self, binary_lists, target):
-        '''
-        Finds the indices of the target element in each binary list.
-        
-        Args:
-            binary_lists (list): A list of binary lists.
-            target (int): The target element.
-            
-        Returns:
-            list: A list of lists, where each sublist contains the indices of the target element in the corresponding binary list.
-        '''
         indices = []
         for i in range(len(binary_lists)):
             ind = []
@@ -139,15 +99,6 @@ class Texture(Composition):
     
     @staticmethod
     def get_factors(num):
-        '''
-        Given a positive integer, returns a list of its factors.
-        
-        Args:
-            num (int): a positive integer
-        
-        Returns:
-            factors (list): a list of positive integers that are factors of num
-        '''
         factors = []
         i = 1
         while i <= num:
@@ -158,15 +109,6 @@ class Texture(Composition):
     
     
     def get_least_common_multiple(self, nums):
-        '''
-        Finds the least common multiple of a list of numbers.
-        
-        Args:
-            nums: A list of integers.
-        
-        Returns:
-            The least common multiple of the given list of integers.
-        '''
         if len(nums) == 2:
             return nums[0] * nums[1] // math.gcd(nums[0], nums[1])
         elif len(nums) > 2:
@@ -179,63 +121,29 @@ class Texture(Composition):
         
         
     def get_largest_prime_factor(self, num):
-        '''
-        Returns the largest prime factor of a given integer.
-        
-        Args:
-            num (int): The integer to find the largest prime factor of
-        
-        Returns:
-            The largest prime factor of the given integer
-        '''
+        def is_prime(num):
+            if num < 2:
+                return False
+            for i in range(2, num):
+                if num % i == 0:
+                    return False
+            return True
         # Iterate through all numbers up to the square root of num
         for i in range(1, int(num ** 0.5) + 1):
             # If i is a factor of num, check if num // i is prime
             if num % i == 0:
                 factor = num // i
-                if self.is_prime(factor):
+                if is_prime(factor):
                     return factor
                 # If num // i is not prime, check if i is prime
-                elif self.is_prime(i):
+                elif is_prime(i):
                     return i
         # If no prime factors are found, return num
         return num
     
     
     @staticmethod
-    def is_prime(num):
-        '''
-        Check if a given number is prime.
-        
-        Args:
-            num (int): The number to check.
-            
-        Returns:
-            bool: True if the number is prime, False otherwise.
-        '''
-        if num < 2:
-            return False
-        for i in range(2, num):
-            if num % i == 0:
-                return False
-        return True
-    
-    
-    @staticmethod
     def set_octave_interpolation(intervals):
-        '''
-        Interpolates the given intervals into the range of 0 to 11.
-        
-        For each interval, the method generates a list of the same length containing the values of
-        the given interval modulo 12. These lists are appended to a resulting list, and that list
-        is returned.
-        
-        Args:
-            intervals: a list of lists of integers representing musical intervals.
-        
-        Returns:
-            list: A list of lists of integers representing musical intervals mapped to the range of 0 to 11.
-        '''
         set = []
         mod12 = list(range(12))
         for i in intervals:
@@ -248,75 +156,17 @@ class Texture(Composition):
     
     @staticmethod
     def segment_octave_by_period(period):
-        '''
-        Returns a list of decimal intervals, equally spaced by the given period in the 12-tone octave.
-        
-        Args:
-            period (int): The number of equally spaced intervals in the octave.
-            
-        Returns:
-            list: A list of decimal intervals, equally spaced by the given period in the 12-tone octave.
-        '''
         interval = decimal.Decimal('12') / decimal.Decimal(str(period))
         return [interval * decimal.Decimal(str(i)) for i in range(period)]
     
     
-    @staticmethod
-    def parse_pitch_data(dataframe):
-        '''
-        Parses the pitch data in the given dataframe, computing the 'Pitch' and 'MIDI' columns for each row.
-        
-        Args:
-            dataframe (pandas.DataFrame): The dataframe to parse.
-            
-        Returns:
-            pandas.DataFrame: The updated dataframe.
-        '''
-        # Compute 'Pitch' and 'MIDI' columns for each row
-        for index, row in dataframe.iterrows():
-            pitch = round(row['MIDI'] - math.floor(row['MIDI']), 4)
-            midi = math.floor(row['MIDI'])
-            dataframe.at[index, 'MIDI'] = midi
-            dataframe.at[index, 'Pitch'] = pitch
-        # Reorder the columns
-        column_order = ['Velocity', 'MIDI', 'Pitch', 'Start', 'End']
-        dataframe = dataframe.reindex(columns=column_order)
-        # Return the updated dataframe
-        return dataframe
-    
-    
-    @staticmethod
-    def get_successive_diff(lst):
-        '''
-        Takes a list of integers and returns a list containing the difference between each successive integer.
-        
-        Args:
-            list: A list of integers
-            
-        Returns:
-            list: A list of integers representing the successive difference 
-        '''
-        
-        return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
-    
-    
     def set_notes_data(self):
-        '''
-        Creates the notes_data DataFrame from the given texture data.
         
-        For each binary form (self.binary), iterate over a list of factors (self.factors) and 
-        append a list of notes data (notes_data) with cooresponding data for each note event.
-            
-        Returns:
-            None
-        '''
-        notes_data = []  # A list container for notes_data.
+        # Create a list container for notes_data.
+        notes_data = []
         
         # Create an iterator which is equal to the length of a list of forms represented in binary.
         for i in range(len(self.binary)):
-            
-            # # Create a midi_pool for each sieve represented in self.binary.
-            # midi_pool = itertools.cycle(self.generate_midi_pool(i))
             
             # Create an iterator which is equal to the length of a list of factors (for self.period).
             for j in range(len(self.factors)):
@@ -349,29 +199,15 @@ class Texture(Composition):
     
     
     def generate_midi_pool(self, binary_index, factor_index):
-        '''
-        Generates a MIDI pool for a given sieve represented in self.binary.
         
-        A MIDI pool is a set of pitches that can be used to generate a composition. This function
-        generates a MIDI pool for a given sieve by computing the interval list for the sieve, creating 
-        a pitch matrix based on the intervals in the sieve, and generating all possible combinations 
-        of the rows and columns in the matrix. The resulting MIDI pool is a list of MIDI note values 
-        that can be used to generate a composition.
-        
-        Args:
-            binary_index (int): Index representing the i loop from set_notes_data method. 
-                                Iterates over binary form in self.binary.
-            factor_index (int): Index representing the j loop from set_notes_data method. 
-                                Iterates over factor in self.factors.
-        
-        Returns:
-            A list of MIDI values for the given sieve.
-        '''
         # Set the base tonality value.
         tonality = 40
         
+        def get_successive_diff(lst):
+            return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
+        
         # Generate a list of successive differences between the intervals.
-        steps = self.get_successive_diff(self.closed_intervals[binary_index])
+        steps = get_successive_diff(self.closed_intervals[binary_index])
         
         # Create a cycle iterator for the steps list.
         steps_cycle = itertools.cycle(steps)
@@ -435,14 +271,6 @@ class NonPitched(Texture):
     part_id = 1
     
     def __init__(self, sivs, grid=None, form=None):
-        '''
-        Initializes a NonPitched instrument with specified sieves, grid, MIDI mapping and form.
-        
-        Args:
-            sivs: A single sieve or a tuple of sieves representing the pitch content of the instrument.
-            grid: A Grid object representing the rhythmic content of the instrument (optional).
-            form: A Form object representing the formal structure of the instrument (optional).
-        '''
         super().__init__(sivs, grid, form)
         
         # Set name of the instrument as "NonPitched".
@@ -473,15 +301,7 @@ class Monophonic(Texture):
     part_id = 1
     
     def __init__(self, sivs, grid=None, form=None):
-        '''
-        Initializes a Monophonic instrument.
         
-        Args:
-            sivs (int or tuple): The generative sieve(s) of the texture.
-            grid (float, optional): The grid size for the part. Defaults to None.
-            midi (list, optional): A list of MIDI pitches to be used for creating the part. Defaults to None.
-            form (list, optional): The form of the texture. Defaults to None.
-        '''
         # Call superclass constructor.
         super().__init__(sivs, grid, form)
         
@@ -515,7 +335,30 @@ class Monophonic(Texture):
         # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
         self.notes_data = self.parse_pitch_data(self.notes_data)
         
-    # How to use the referenced sieve to select row form?
-    # How to use number of needed events to generate exactly the correct amount of pitch data needed?
-    # What about using the set_binary method to determine row selection?
-    # How to have a single generate_midi_pool method for all texture classes?
+        
+class Homophonic(Texture):
+    # Initialize ID value for first instance of Homophonic object.
+    part_id = 1
+    
+    def __init__(self, sivs, grid=None, form=None):
+        
+        # Call superclass constructor.
+        super().__init__(sivs, grid, form)
+        
+        # Set name of instrument.
+        self.name = 'Homophonic'
+        
+        # Set ID value.
+        self.part_id = Homophonic.part_id
+        
+        # Increment ID value.
+        Homophonic.part_id += 1
+        
+        # Create a part for the instrument in the musical texture.
+        self.set_notes_data()
+        
+        self.notes_data = self.group_by_start(self.notes_data)
+        
+        self.notes_data = self.get_lowest_midi(self.notes_data)
+                
+        self.notes_data.to_csv(f'Homophonic Texture {self.part_id}')
