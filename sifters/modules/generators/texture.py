@@ -9,6 +9,7 @@ import numpy
 import math
 
 class Texture(Composition):
+    
     grid_history = []
     texture_id = 1
         
@@ -44,7 +45,8 @@ class Texture(Composition):
         
         
     def set_binary(self, sivs):
-        def get_binary(self, sivs):
+        
+        def get_binary(sivs):
             binary = []
             
             # If the input is a tuple, compute the binary representation for each sieve.

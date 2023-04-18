@@ -1,9 +1,23 @@
+<style>
+    table {
+    margin: 0 auto;
+    }
+    td {
+    text-align: center;
+    }
+    img {
+    display: block;
+    margin: auto;
+    width: 400px;
+    }
+</style>
+
 # __Sifters__
 Sifters is a tool for developing musical compositions that makes use of combinatorial sieves as the point of departure for generative processes. My goal in coding Sifters has been to create a system for generating musical forms that are derived from a single logical source. The mechanism which hold that logic is called a 'sieve' and is a concept I inherited from my analysis of the score <i>Psappha</i> (1975) by Iannis Xenakis. The user is able to serialize the resulting intervalic structure by Prime, Inversion, Retrograde, and Retrograde-Inversion forms, as well as select from NonPitched, Monophonic, Homophonic, Heterophonic, and Polyphonic textures as contrapuntal representations of the sieve.
 
 The application's functionality falls into one of three categories: generators, transformers, and controllers. Generators are designed to generate complete musical forms based on a generative sieve. Transformers are designed to apply probability based operations to generated musical textures. Controllers are designed to generate the inital input materials of a sieve.
 # __Generators__
-<img src="./images/example4.png" alt="generator classes diagram" height="400" style="display:block;margin:auto;">
+<img src="./images/generators.png" alt="generator classes">
 
 Generators are responsible for deriving compositional materials from a logical sieve. There are three main classes of Generators: Composition, Texture, and Score. Composition is the superclass of Texture and Score. Texture is the superclass of five additional classes: NonPitched, Monophonic, Homophonic, Heterophonic, and Polyphonic.
 
@@ -47,112 +61,137 @@ ___
 ## class __Texture__(Composition):
 The ```Texture``` class holds methods which are shared by a number of subclasses. The subclasses are meant to replicate the behavior of contrapuntal musical textures. Each subclass adapts ```notes_data``` (generated in the ```Texture``` superclass) to the behavior characteristic of each contrapuntal texture. The behaviors replicated are ```Monophonic```, ```Homophonic```, ```Heterophonic```, and ```Polyphonic``` contrapuntal textures. There is also a ```NonPitched``` class which is meant to order nonpitched musical elements according to the same serial processes as the pitched textures.
 
-The primary functionality of the ```Texture``` class is the ```set_notes_data``` method which generates the ```notes_data``` DataFrame. The ```set_notes_data``` method establishes the baseline MIDI data which will be further modified to approximate the behavior of a subclass.
+The primary functionality of the ```Texture``` class is the ```set_notes_data``` method which generates the ```notes_data``` DataFrame. The ```set_notes_data``` method establishes the baseline MIDI data which will be further modified to approximate the behavior of a subclass. Upon initialization a ```Texture``` object generates a list of binary numbers that represent a generative sieve. The length of the list is set by the periodicity between modulo of that sieve. Intervals are derived from the number of 0s between 1s and are mapped onto a musical octave. The musical octave is subdivided by the length of each binary list (which is equal to the periodicity of the sieve's moduli).
 
-        '''
-        Initializes a Texture object.
-        
-        Args:
-            sivs (list): A list of lists representing the sieve(s) (set-class interval vectors) of the texture.
-            grid (Fraction): A Fraction object representing the grid value for the texture (default: 1/1).
-            form (str): A string representing the form of the texture to be used. Can be 'Prime', 'Inversion', 'Retrograde', or 'Retrograde-Inversion' (default: 'Prime').
-        '''
+- Arguments:
+    - sivs (list): A list of lists representing the sieve(s) (set-class interval vectors) of the texture.
+    - grid (Fraction): A Fraction object representing the grid value for the texture (default: 1/1).
+    - form (str): A string representing the form of the texture to be used. Can be 'Prime', 'Inversion', 'Retrograde', or 'Retrograde-Inversion' (default: 'Prime').
 ___
 ### def __set_binary__(self, sivs):
-        Transforms a list of sets of intervals into a list of their binary forms, based on a selected form.
-        
-        Args:
-            sivs (List[List[int]]): A list of sets of intervals, where each set is a list of integers.
-            
-        Returns:
-            List[List[int]]: A list of the binary forms for each input set of intervals.
+Transforms a list of sets of intervals into a list of their binary forms, based on a selected form.
 
-        Returns the binary representation of the input sieve(s).
-        
-        If a tuple of sieves is given, this function computes the binary representation
-        of each sieve and returns them as a list. If a single sieve is given, it returns its
-        binary representation as a list with a single element.
-        
-        Args:
-            sivs: A single sieve or a tuple of sieves.
-            
-        Returns:
-            A list of binary representations of the input sieve(s).
+Args:
+    sivs (List[List[int]]): A list of sets of intervals, where each set is a list of integers.
+    
+Returns:
+    List[List[int]]: A list of the binary forms for each input set of intervals.
+    
+Returns the binary representation of the input sieve(s).
+
+If a tuple of sieves is given, this function computes the binary representation
+of each sieve and returns them as a list. If a single sieve is given, it returns its
+binary representation as a list with a single element.
+
+Args:
+    sivs: A single sieve or a tuple of sieves.
+    
+Returns:
+    A list of binary representations of the input sieve(s).
 ___
 ### def __find_indices__(self, binary_lists, target):
-        Finds the indices of the target element in each binary list.
-        
-        Args:
-            binary_lists (list): A list of binary lists.
-            target (int): The target element.
-            
-        Returns:
-            list: A list of lists, where each sublist contains the indices of the target element in the corresponding binary list.
+Finds the indices of the target element in each binary list.
+
+Args:
+    binary_lists (list): A list of binary lists.
+    target (int): The target element.
+    
+Returns:
+    list: A list of lists, where each sublist contains the indices of the target element in the corresponding binary list.
 ___
 ### def __get_factors__(num):
-        Given a positive integer, returns a list of its factors.
-        
-        Args:
-            num (int): a positive integer
-        
-        Returns:
-            factors (list): a list of positive integers that are factors of num
+Given a positive integer, returns a list of its factors.
+
+Args:
+    num (int): a positive integer
+
+Returns:
+    factors (list): a list of positive integers that are factors of num
 ___
 
 ### def __get_least_common_multiple__(self, nums):
-        Finds the least common multiple of a list of numbers.
-        
-        Args:
-            nums: A list of integers.
-        
-        Returns:
-            The least common multiple of the given list of integers.
+Finds the least common multiple of a list of numbers.
+
+Args:
+    nums: A list of integers.
+
+Returns:
+    The least common multiple of the given list of integers.
 ___
 ### def __get_largest_prime_factor__(self, num):
-        Returns the largest prime factor of a given integer.
-        
-        Args:
-            num (int): The integer to find the largest prime factor of
-        
-        Returns:
-            The largest prime factor of the given integer
+Returns the largest prime factor of a given integer.
+
+Args:
+    num (int): The integer to find the largest prime factor of
+
+Returns:
+    The largest prime factor of the given integer
 ___
 ### def __set_octave_interpolation__(intervals):
-        '''
-        Interpolates the given intervals into the range of 0 to 11.
-        
-        For each interval, the method generates a list of the same length containing the values of
-        the given interval modulo 12. These lists are appended to a resulting list, and that list
-        is returned.
-        
-        Args:
-            intervals: a list of lists of integers representing musical intervals.
-        
-        Returns:
-            list: A list of lists of integers representing musical intervals mapped to the range of 0 to 11.
-        '''
+Interpolates the given intervals into the range of 0 to 11.
+
+For each interval, the method generates a list of the same length containing the values of
+the given interval modulo 12. These lists are appended to a resulting list, and that list
+is returned.
+
+Args:
+    intervals: a list of lists of integers representing musical intervals.
+
+Returns:
+    list: A list of lists of integers representing musical intervals mapped to the range of 0 to 11.
 ___
 ### def __segment_octave_by_period__(period):
-        '''
-        Returns a list of decimal intervals, equally spaced by the given period in the 12-tone octave.
-        
-        Args:
-            period (int): The number of equally spaced intervals in the octave.
-            
-        Returns:
-            list: A list of decimal intervals, equally spaced by the given period in the 12-tone octave.
-        '''
+Returns a list of decimal intervals, equally spaced by the given period in the 12-tone octave.
+
+Args:
+    period (int): The number of equally spaced intervals in the octave.
+    
+Returns:
+    list: A list of decimal intervals, equally spaced by the given period in the 12-tone octave.
 ___
 ### def __set_notes_data__(self):
 The ```set_notes_data``` method is responsible for generating the base level MIDI ```notes_data``` DataFrame for each contrapuntal voice in the application. These voices are further processed by the ```Score``` class to ensure fidelity between voices.
 
-<img src="./images/example1.png" alt="set_notes_data loop" width="400" style="display:block;margin:auto;">
+<img src="./images/loop.png" alt="set_notes_data loop">
 
 This visualization shows how for every element belonging to the Texture object's ```self.binary``` attribute there is a corresponding iteration over the object's ```self.factors``` attributes. The method generates a part for each factor of ```len(self.binary[i])```. 
 
 Each part is repeated a number of times that cooresponding to that part's durational value. The ratio of repititions is set by determining the factors of ```len(self.binary)```. Each factor is used to multiply the number of repititions as well as the length of that iteration's durational value.
 
-<img src="./images/example2.png" alt="set_notes_data loop" height="400" style="display:block;margin:auto;">
+<table>
+    <tr>
+        <th>Repitition</th>
+        <th>Duration</th>
+    </tr>
+    <tr>
+        <td>40</td>
+        <td>1</td>
+    </tr>
+    <tr>
+        <td>20</td>
+        <td>2</td>
+    </tr>
+    <tr>
+        <td>10</td>
+        <td>4</td>
+    </tr>
+    <tr>
+        <td>8</td>
+        <td>5</td>
+    </tr>
+    <tr>
+        <td>5</td>
+        <td>8</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td>20</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td>40</td>
+    </tr>
+</table>
 
 Each row of this diagram represents a separate version of ```self.binary``` where the number of repititions cooresponds to the ``notes_data`` duration value. The ```set_notes_data``` method repeats the binary form for each factor of ```len(self.binary)```. The method also sets the durational value of each note so that the number of repititions and duration of each note equals the same length across versions of ```self.binary```.
 
@@ -174,7 +213,7 @@ For each j iteration returns a list of midi values called ```midi_pool```. Each 
 
 The method derives a serial matrix from  ```self.closed_intervals[binary_index]```. The method then utilizes the helper method ```get_successive_diff``` to calculate the difference between successive intervals and appends that value to a list as either a positve or a negative integer.
 
-<img src="./images/example3.png" alt="set_notes_data loop" height="400" style="display:block;margin:auto;">
+<img src="./images/matrix.png" alt="generate matrix">
 
 In the example above we are given a list of steps which represent the successive differences in values of ```self.closed_intervals[binary_index]```. Ascending values between intervals are represented by a positive integer, and descending values between intervals are represented by a negative integer. This diagram displays the first two transformations of a midi sequence.
 
