@@ -6,15 +6,13 @@ import itertools
 import decimal
 import pandas
 import numpy
-import math
 
 class Texture(Composition):
     
     grid_history = []
     texture_id = 1
         
-        
-    def __init__(self, sivs, grid=None, form=None):
+    def __init__(self, sieves, grid=None, form=None):
         
         # Set the grid attribute of the Texture object
         self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
@@ -23,16 +21,17 @@ class Texture(Composition):
         self.form = form if form is not None else 'Prime'
         
         # Set the binary attribute of the Texture object
-        self.binary = self.set_binary(sivs)
+        self.binary = self.set_binary(sieves)
         
-        # Set the intervals attribute of the Texture object
-        self.intervals = self.find_indices(self.binary, 1)
+        # Find all occurences of 1 and derive an intervalic structure based on their indices.
+        self.intervals = [[j for j in range(len(self.binary[i])) if self.binary[i][j] == 1] for i in range(len(self.binary))]
         
-        # Set the closed_intervals attribute of the Texture object
-        self.closed_intervals = self.set_octave_interpolation(self.intervals)
+        # Derive modular-12 values from self.intervals. 
+        mod12 = list(range(12))
+        self.closed_intervals = [[mod12[j % len(mod12)] for j in i] for i in self.intervals]
         
         # Set the factors attribute of the Texture object
-        self.factors = self.get_factors(self.period)
+        self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
         # Add the current grid value to the grid history list
         self.grid_history.append(self.grid)
@@ -44,17 +43,18 @@ class Texture(Composition):
         Texture.texture_id += 1
         
         
-    def set_binary(self, sivs):
-        
-        def get_binary(sivs):
+    def set_binary(self, sieves):
+                    
+        def get_binary(sieves):
+                    
             binary = []
             
             # If the input is a tuple, compute the binary representation for each sieve.
-            if isinstance(sivs, tuple):
+            if isinstance(sieves, tuple):
                 periods = []
                 objects = []
-                for siv in sivs:
-                    obj = music21.sieve.Sieve(siv)
+                for siev in sieves:
+                    obj = music21.sieve.Sieve(siev)
                     objects.append(obj)
                     periods.append(obj.period())
                     
@@ -67,14 +67,14 @@ class Texture(Composition):
                     binary.append(obj.segment(segmentFormat='binary'))
             else:
                 # Compute the binary representation for the single input sieve.
-                object = music21.sieve.Sieve(sivs)
+                object = music21.sieve.Sieve(sieves)
                 object.setZRange(0, object.period() - 1)
                 binary.append(object.segment(segmentFormat='binary'))
                 
             return binary
         
         # Convert the list of sets of intervals to their binary forms
-        binary = get_binary(sivs)
+        binary = get_binary(sieves)
         
         # Define a dictionary with lambda functions to transform the binary forms into different forms
         forms = {
@@ -88,81 +88,110 @@ class Texture(Composition):
         return [forms[self.form](bin) for bin in binary]
     
     
-    def find_indices(self, binary_lists, target):
-        indices = []
-        for i in range(len(binary_lists)):
-            ind = []
-            for j in range(len(binary_lists[i])):
-                if binary_lists[i][j] == target:
-                    ind.append(j)
-            indices.append(ind)
-        return indices
-    
-    
-    @staticmethod
-    def get_factors(num):
-        factors = []
-        i = 1
-        while i <= num:
-            if num % i == 0:
-                factors.append(i)
-            i += 1
-        return factors
-    
-    
-    def get_least_common_multiple(self, nums):
-        if len(nums) == 2:
-            return nums[0] * nums[1] // math.gcd(nums[0], nums[1])
-        elif len(nums) > 2:
-            middle = len(nums) // 2
-            left_lcm = self.get_least_common_multiple(nums[:middle])
-            right_lcm = self.get_least_common_multiple(nums[middle:])
-            return left_lcm * right_lcm // math.gcd(left_lcm, right_lcm)
-        else:
-            return nums[0]
-        
-        
-    def get_largest_prime_factor(self, num):
-        def is_prime(num):
-            if num < 2:
-                return False
-            for i in range(2, num):
-                if num % i == 0:
-                    return False
-            return True
-        # Iterate through all numbers up to the square root of num
-        for i in range(1, int(num ** 0.5) + 1):
-            # If i is a factor of num, check if num // i is prime
-            if num % i == 0:
-                factor = num // i
-                if is_prime(factor):
-                    return factor
-                # If num // i is not prime, check if i is prime
-                elif is_prime(i):
-                    return i
-        # If no prime factors are found, return num
-        return num
-    
-    
-    @staticmethod
-    def set_octave_interpolation(intervals):
-        set = []
-        mod12 = list(range(12))
-        for i in intervals:
-            siv = []
-            for j in i:
-                siv.append(mod12[j % len(mod12)])
-            set.append(siv)
-        return set
-    
-    
-    @staticmethod
-    def segment_octave_by_period(period):
-        interval = decimal.Decimal('12') / decimal.Decimal(str(period))
-        return [interval * decimal.Decimal(str(i)) for i in range(period)]
-    
-    
     def set_notes_data(self):
+        
+        def generate_midi_pool(binary_index, factor_index):
+            
+            def get_successieve_diff(lst):
+                return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
+            
+            
+            def segment_octave_by_period(period):
+                interval = decimal.Decimal('12') / decimal.Decimal(str(period))
+                return [interval * decimal.Decimal(str(i)) for i in range(period)]
+            
+            
+            def generate_pitchclass_matrix(intervals):
+                        
+                # Calculate the interval between each pair of consecutive pitches.
+                next_interval = intervals[1:]
+                row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
+                
+                # Normalize the tone row so that it starts with 0 and has no negative values.
+                row = [decimal.Decimal(n) % decimal.Decimal('12') for n in row]
+                
+                # Generate the rows of the pitch class matrix.
+                matrix = [[abs(note - decimal.Decimal('12')) % decimal.Decimal('12')] for note in row]
+                print(intervals)
+                
+                # Generate the columns of the pitch class matrix.
+                matrix = [r * len(intervals) for r in matrix]
+                
+                # Update the matrix with the correct pitch class values.
+                matrix = [[(matrix[i][j] + row[j]) % decimal.Decimal('12')
+                        for j, _ in enumerate(range(len(row)))]
+                        for i in range(len(row))]
+                
+                # Label the rows and columns of the matrix.
+                matrix = pandas.DataFrame(matrix,
+                                        index=[f'P{m[0]}' for m in matrix], 
+                                        columns=[f'I{i}' for i in matrix[0]]).astype(float)
+                
+                return matrix
+            
+            
+            # Set the base tonality value.
+            tonality = 40
+            
+            # Generate a list of successieve differences between the intervals.
+            steps = get_successieve_diff(self.closed_intervals[binary_index])
+            
+            # Create a cycle iterator for the steps list.
+            steps_cycle = itertools.cycle(steps)
+            
+            # Compute the starting pitch for the sieve.
+            first_pitch = tonality + self.closed_intervals[binary_index][0]
+            
+            # Get the indices of non-zero elements in the sieve.
+            indices = numpy.nonzero(self.binary[binary_index])[0]
+            
+            # Get the intervals associated with the non-zero elements.
+            segment = segment_octave_by_period(self.period)
+            intervals = [segment[i] for i in indices]
+            
+            # Generate a pitch matrix based on the intervals.
+            matrix = first_pitch + generate_pitchclass_matrix(intervals)
+            
+            # Compute the number of events and positions needed for the sieve.
+            num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
+            num_of_positions = num_of_events // len(steps)
+            
+            # Generate the MIDI pool by iterating through the steps and matrix.
+            pool = []
+            current_index = 0
+            retrograde = False
+            for _ in range(num_of_positions):
+                step = next(steps_cycle)
+                wrapped_index = (current_index + abs(step)) % len(self.intervals[binary_index])
+                
+                # Check if the intervals have wrapped around the range of the matrix.
+                wrap_count = (abs(step) + current_index) // len(self.intervals[binary_index])
+                
+                # If the interval wraps the length of the matrix an odd number of times update retrograde.
+                if wrap_count % 2 == 1:
+                    if retrograde == False:
+                        retrograde = True
+                    else:
+                        retrograde = False
+                
+                # Append the appropriate row or column of the matrix to the pool.
+                if step >= 0:
+                    if retrograde == True:
+                        pool.append(matrix.iloc[wrapped_index][::-1].tolist())
+                    else:
+                        pool.append(matrix.iloc[wrapped_index].tolist())
+                if step < 0:
+                    if retrograde == True:
+                        pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
+                    else:
+                        pool.append(matrix.iloc[:, wrapped_index].tolist())
+                
+                current_index = wrapped_index
+            
+            # Flatten the pool into a 1D list of MIDI values.
+            flattened_pool = [num for list in pool for num in list]
+            return flattened_pool
+        
         
         # Create a list container for notes_data.
         notes_data = []
@@ -174,8 +203,7 @@ class Texture(Composition):
             for j in range(len(self.factors)):
                 
                 # Create a midi_pool for each sieve represented in self.binary.
-                midi_pool = itertools.cycle(self.generate_midi_pool(i, j))
-                # mid = self.generate_midi_pool(i, j)
+                midi_pool = itertools.cycle(generate_midi_pool(i, j))
                 
                 # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
                 pattern = numpy.tile(self.binary[i], self.factors[j])
@@ -200,80 +228,12 @@ class Texture(Composition):
         self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by='Start').drop_duplicates()
     
     
-    def generate_midi_pool(self, binary_index, factor_index):
-        
-        # Set the base tonality value.
-        tonality = 40
-        
-        def get_successive_diff(lst):
-            return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
-        
-        # Generate a list of successive differences between the intervals.
-        steps = get_successive_diff(self.closed_intervals[binary_index])
-        
-        # Create a cycle iterator for the steps list.
-        steps_cycle = itertools.cycle(steps)
-        
-        # Compute the starting pitch for the sieve.
-        first_pitch = tonality + self.closed_intervals[binary_index][0]
-        
-        # Get the indices of non-zero elements in the sieve.
-        indices = numpy.nonzero(self.binary[binary_index])[0]
-        
-        # Get the intervals associated with the non-zero elements.
-        segment = self.segment_octave_by_period(self.period)
-        intervals = [segment[i] for i in indices]
-        
-        # Generate a pitch matrix based on the intervals.
-        matrix = first_pitch + Composition.generate_pitchclass_matrix(intervals)
-        
-        # Compute the number of events and positions needed for the sieve.
-        num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
-        num_of_positions = num_of_events // len(steps)
-        
-        # Generate the MIDI pool by iterating through the steps and matrix.
-        pool = []
-        current_index = 0
-        retrograde = False
-        for _ in range(num_of_positions):
-            step = next(steps_cycle)
-            wrapped_index = (current_index + abs(step)) % len(self.intervals[binary_index])
-            
-            # Check if the intervals have wrapped around the range of the matrix.
-            wrap_count = (abs(step) + current_index) // len(self.intervals[binary_index])
-            
-            # If the interval wraps the length of the matrix an odd number of times update retrograde.
-            if wrap_count % 2 == 1:
-                if retrograde == False:
-                    retrograde = True
-                else:
-                    retrograde = False
-            
-            # Append the appropriate row or column of the matrix to the pool.
-            if step >= 0:
-                if retrograde == True:
-                    pool.append(matrix.iloc[wrapped_index][::-1].tolist())
-                else:
-                    pool.append(matrix.iloc[wrapped_index].tolist())
-            if step < 0:
-                if retrograde == True:
-                    pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
-                else:
-                    pool.append(matrix.iloc[:, wrapped_index].tolist())
-            
-            current_index = wrapped_index
-        
-        # Flatten the pool into a 1D list of MIDI values.
-        flattened_pool = [num for list in pool for num in list]
-        return flattened_pool
-    
-    
 class NonPitched(Texture):
     # Initialize ID for the first instance of NonPitched object.
     part_id = 1
     
-    def __init__(self, sivs, grid=None, form=None):
-        super().__init__(sivs, grid, form)
+    def __init__(self, sieves, grid=None, form=None):
+        super().__init__(sieves, grid, form)
         
         # Set name of the instrument as "NonPitched".
         self.name = 'NonPitched'
@@ -302,10 +262,10 @@ class Monophonic(Texture):
     # Initialize ID value for first instance of Monophonic object.
     part_id = 1
     
-    def __init__(self, sivs, grid=None, form=None):
+    def __init__(self, sieves, grid=None, form=None):
         
         # Call superclass constructor.
-        super().__init__(sivs, grid, form)
+        super().__init__(sieves, grid, form)
         
         # Set name of instrument.
         self.name = 'Monophonic'
@@ -342,10 +302,10 @@ class Homophonic(Texture):
     # Initialize ID value for first instance of Homophonic object.
     part_id = 1
     
-    def __init__(self, sivs, grid=None, form=None):
+    def __init__(self, sieves, grid=None, form=None):
         
         # Call superclass constructor.
-        super().__init__(sivs, grid, form)
+        super().__init__(sieves, grid, form)
         
         # Set name of instrument.
         self.name = 'Homophonic'
