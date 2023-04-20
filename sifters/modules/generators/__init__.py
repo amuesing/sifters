@@ -1,5 +1,10 @@
 __all__ = [
     'composition',
     'score',
-    'texture'
+    'texture',
+    'monophonic',
+    'homophonic',
+    'heterophonic',
+    'polyphonic',
+    'nonpitched'
     ]

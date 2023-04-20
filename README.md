@@ -133,12 +133,6 @@ Initializes a NonPitched instrument with specified sieves, grid, MIDI mapping an
     - grid: A Grid object representing the rhythmic content of the instrument (optional).
     - form: A Form object representing the formal structure of the instrument (optional).
 ___
-## __class Monophonic(Texture):__
-
-___
-## __class Homophonic(Texture):__
-
-___
 ## __class Heterophonic(Texture):__
 
 ___
