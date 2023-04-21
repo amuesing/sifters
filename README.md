@@ -64,9 +64,9 @@ ___
 ### def __get_binary__(sieves):
 
 ___
-### def __set_notes_data__():
+### <u>def __set_notes_data__():</u>
 
-The `set_notes_data` method is responsible for generating the base level MIDI `notes_data` DataFrame for each contrapuntal voice in the application. This visualization shows how for every element belonging to the Texture object's `self.binary` attribute there is a corresponding iteration over the object's `self.factors` attributes. The method generates a part for each factor of `len(self.binary[i])`. Each part is repeated a number of times that cooresponding to that part's durational value. The ratio of repititions is set by determining the factors of `len(self.binary)`. Each factor is used to multiply the number of repititions as well as the length of that iteration's durational value.
+The `set_notes_data` method is responsible for generating the base level MIDI `notes_data` DataFrame for each contrapuntal voice in the application. At the core of the `set_notes_data` method is a ternary loop involving a `Texture` object's `self.binary`, `self.factors`, and the indices of non-zero elements present in the object's `self.binary` attribute. This visualization shows how for every element belonging to the Texture object's `self.binary` attribute there is a corresponding iteration over the object's `self.factors` attributes. The method generates a part for each factor of `len(self.binary[i])`. Each part is repeated a number of times that cooresponding to that part's durational value. The ratio of repititions is set by determining the factors of `len(self.binary)`. Each factor is used to multiply the number of repititions as well as the length of that iteration's durational value.
 
 <table style='margin:0 auto;'>
     <tr>
@@ -107,25 +107,28 @@ Each row of this table represents a separate version of `self.binary` where the 
 
 In this way, `set_notes_data` combines each version of a single iteration over `self.binary` with every subsequent element of `self.binary`. For each binary form there is a part that corresponds to each factor of `len(self.binary)`. `set_notes_data` returns the combination of each part with each binary form, resulting in the total number of parts being equal to (number of factors) * (number of binary forms).
 
-### def __generate_midi_pool__():
+### <u>def __generate_midi_pool__(binary_index, factor_index):</u>
 
 The `generate_midi_pool` method derives a MIDI pool from a binary list. A MIDI pool is a set of pitches that can be used to generate a composition. This function generates a MIDI pool for a given sieve by computing the interval list for the sieve, creating a pitch matrix based on the intervals in the sieve, and generating all possible combinations of the rows and columns in the matrix. The resulting MIDI pool is a list of MIDI note values that can be used to generate a composition.
 
-For each j iteration returns a list of midi values called `midi_pool`. Each `midi_pool` contains the exact amount of midi information required for the k loop (which is equal to `len(self.closed_intervals[binary_index]) * self.factors[factor_index]`).
-
-The method derives a serial matrix from  `self.closed_intervals[binary_index]`. The method then utilizes the helper method `get_successive_diff` to calculate the difference between successive intervals and appends that value to a list as either a positve or a negative integer.
-
 <img src='./images/matrix.png' alt='generate matrix' style='display:block;margin:auto;width:500px;'>
 
-In the example above we are given a list of steps which represent the successive differences in values of `self.closed_intervals[binary_index]`. Ascending values between intervals are represented by a positive integer, and descending values between intervals are represented by a negative integer. This diagram displays the first two transformations of a midi sequence.
+The above diagram illustrates how an interval structure will dictate row selection from a pitchclass matrix. Here we see how `genereate_midi_pool` will approach the first two movements in a pitchset of `[7, -4, 7, -4, 2]`. Ascending values between intervals are represented by a positive integer, and descending values between intervals are represented by a negative integer. The method computes the number of tone-rows needed and iterates over the matrix to derive rows as needed. Once a row is selected it is appended to a list of notes data called `midi_pool`. The purpose of `midi_pool` is to provide the MIDI note value for the construction of a `notes_data` DataFrame by the `set_notes_data` method. 
 
 The first integer in this list is 7. Since 7 is a positive number the method traverses the rows 7 times, starting with the first row and preceeding down the rows of the matrix. If there are more steps then number of rows the pointer loops back to the first row of the matrix.
 
 The second integer in this list is -4. Since -4 is a negative number the method traverses the columns 4 times, starting with the inversional pair of the last row of the previous transformation (in this case row B). The pointer then moves to the right 4 times to select the F column.
 
-The `generate_midi_pool` method interprets positive integers as rows of the matrix, and negative numbers as columns. This is meant to associate ascending intervals with the prime form of the tone-row, and descending intervals with the inversional form of the tone-row.
+Positive integers are intrepreted as rows of the matrix, and negative numbers as columns. This is meant to associate ascending intervals with the prime form of the tone-row, and descending intervals with the inversional form of the tone-row. If the number of movements from the current position exceeds the remaining spaces of the matrix, the position will cycle to the beginning of the matrix. Every time there is a cycling of the matrix a boolean value called `Retrograde` is updated. If `Retrograde == True` then the selected row will be appended to the `midi_pool` list backwards. All subsequent rows will be appended to the `midi_pool` list in retrograde form until there is another cycling of the matrix.
+
+### <u>def __get_successive_diff__(lst):</u>
+
+### def __segment_octave_by_period__(period):
+
+### def __generate_pitchclass_matrix__(intervals):
 ___
 ## __class NonPitched(Texture):__
+
 Initializes a NonPitched instrument with specified sieves, grid, MIDI mapping and form.
         
 - Args:

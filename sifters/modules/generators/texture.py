@@ -92,7 +92,7 @@ class Texture(Composition):
         
         def generate_midi_pool(binary_index, factor_index):
             
-            def get_successieve_diff(lst):
+            def get_successive_diff(lst):
                 return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
             
             
@@ -112,7 +112,6 @@ class Texture(Composition):
                 
                 # Generate the rows of the pitch class matrix.
                 matrix = [[abs(note - decimal.Decimal('12')) % decimal.Decimal('12')] for note in row]
-                print(intervals)
                 
                 # Generate the columns of the pitch class matrix.
                 matrix = [r * len(intervals) for r in matrix]
@@ -134,7 +133,7 @@ class Texture(Composition):
             tonality = 40
             
             # Generate a list of successieve differences between the intervals.
-            steps = get_successieve_diff(self.closed_intervals[binary_index])
+            steps = get_successive_diff(self.closed_intervals[binary_index])
             
             # Create a cycle iterator for the steps list.
             steps_cycle = itertools.cycle(steps)
