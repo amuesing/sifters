@@ -45,7 +45,45 @@ ___
 ### def __parse_pitch_data__(dataframe):
 
 ___
+## __class Score(Composition):__
 
+___
+### __def get_multiplier(arg):__
+
+___
+### __def normalize_numerator(arg, mult):__
+
+___
+### __def set_instrumentation(self):__
+
+___
+### __def normalize_periodicity(self):__
+
+___
+### __def write_score(self):__
+
+___
+### __def csv_to_note_object(dataframe):__
+
+___
+### __def csv_to_bend_object(dataframe):__
+
+___
+### __def combine_parts(self, *args):__
+The `combine_parts` method is designed to combine multiple `notes_data` pandas DataFrames into a single `notes_data` DataFrame.
+___
+### __def get_max_end_value(dataframe):__
+
+___
+### __def update_end_value(dataframe):__
+
+___
+### __def expand_midi_lists(dataframe):__
+
+___
+### __def filter_first_match(dataframe):__
+
+___
 ## class __Texture__(Composition):
 The role of the `Texture` class is to create a `notes_data` DataFrame to be passed down to a subclass to be modified to approximate the behavior of a musical contrapuntal texture. The primary functionality of the `Texture` class lies within the `set_notes_data()` method, which generates the `notes_data` DataFrame for a `Texture` object. The `notes_data` DataFrame establishes the baseline MIDI data which will be passed to a subclass. Each subclass adapts the `notes_data` DataFrame to the behavior characteristic of a musical contrapuntal texture. The behaviors replicated are `Monophonic`, `Homophonic`, `Heterophonic`, and `Polyphonic` contrapuntal textures. There is also a `NonPitched` class which is meant to order nonpitched musical elements according to the same serial processes as the pitched textures.
 
@@ -59,14 +97,16 @@ The default `grid` value for beat durations is `1/1` and cooresponds with a musi
 
 Upon initialization, a `Texture` object utilizes the `set_binary()` method to create a list of binary numbers that represent a given generative sieve. The length of the list is set by the periodicity between modulo of that sieve. Intervals are derived from the number of 0s between 1s and are mapped onto a musical octave. The musical octave is subdivided by the length of each binary list. Once all of these parameters have been set, the `set_notes_data` method is called, and a `notes_data` DataFrame is generated. The `notes_data` DataFrame is passed to a subclass to further modify its data to approxinate the behavior of a musical contrapuntal texture.
 ___
-### def __set_binary__(sieves):
+### <u>def __set_binary__(sieves):</u>
 
-### def __get_binary__(sieves):
+### <u>def __get_binary__(sieves):</u>
 
 ___
 ### <u>def __set_notes_data__():</u>
 
-The `set_notes_data` method is responsible for generating the base level MIDI `notes_data` DataFrame for each contrapuntal voice in the application. At the core of the `set_notes_data` method is a ternary loop involving a `Texture` object's `self.binary`, `self.factors`, and the indices of non-zero elements present in the object's `self.binary` attribute. This visualization shows how for every element belonging to the Texture object's `self.binary` attribute there is a corresponding iteration over the object's `self.factors` attributes. The method generates a part for each factor of `len(self.binary[i])`. Each part is repeated a number of times that cooresponding to that part's durational value. The ratio of repititions is set by determining the factors of `len(self.binary)`. Each factor is used to multiply the number of repititions as well as the length of that iteration's durational value.
+The `set_notes_data` method is responsible for generating the base level MIDI `notes_data` DataFrame for each contrapuntal voice in the application. At the core of the `set_notes_data` method is a ternary loop involving a `Texture` object's `self.binary`, `self.factors`, and the indices of non-zero elements present in the object's `self.binary` attribute. 
+
+For every element belonging to the Texture object's `self.binary` attribute there is a corresponding iteration over that object's `self.factors` attributes. The method generates a part for each factor of `len(self.binary[i])`. Each part cycles through the non-zero indices of a `Texture` object's `self.binary` attribute to create a list of MIDI `notes_data`. The `notes_data` between parts differ by durational value and each part is repeated a number of times that cooresponding to that part's durational value. The ratio of repititions is set by determining the factors of `len(self.binary)`. Each factor is used to multiply the number of repititions as well as the length of that iteration's durational value. The parts are unified into a single `notes_data` DataFrame, now primed for to undergo further behavioral modification by the subclass which is calling the `set_notes_data` method.
 
 <table style='margin:0 auto;'>
     <tr>
@@ -119,22 +159,336 @@ The first integer in this list is 7. Since 7 is a positive number the method tra
 
 The second integer in this list is -4. Since -4 is a negative number the method traverses the columns 4 times, starting with the inversional pair of the last row of the previous transformation (in this case row B). The pointer then moves to the right 4 times to select the F column.
 
-Positive integers are intrepreted as rows of the matrix, and negative numbers as columns. This is meant to associate ascending intervals with the prime form of the tone-row, and descending intervals with the inversional form of the tone-row. If the number of movements from the current position exceeds the remaining spaces of the matrix, the position will cycle to the beginning of the matrix. Every time there is a cycling of the matrix a boolean value called `Retrograde` is updated. If `Retrograde == True` then the selected row will be appended to the `midi_pool` list backwards. All subsequent rows will be appended to the `midi_pool` list in retrograde form until there is another cycling of the matrix.
+Positive integers are intrepreted as rows of the matrix, and negative numbers as columns. This is meant to associate ascending intervals with the prime form of the tone-row, and descending intervals with the inversional form of the tone-row. If the number of movements from the current position exceeds the remaining spaces of the matrix, the position will cycle to the beginning of the matrix. Every time there is a cycling of the matrix a boolean value called `Retrograde` is updated. If `Retrograde == True` then the selected row will be appended to the `midi_pool` list in ther reverse order. All subsequent rows will be appended to the `midi_pool` list in retrograde form until there is another cycling of the matrix, at which point the `Retrograde` value will revert to `False`.
 
 ### <u>def __get_successive_diff__(lst):</u>
 
-### def __segment_octave_by_period__(period):
+### <u>def __segment_octave_by_period__(period):</u>
 
-### def __generate_pitchclass_matrix__(intervals):
+### <u>def __generate_pitchclass_matrix__(intervals):</u>
 ___
-## __class NonPitched(Texture):__
+## __class Monophonic(Texture):__
+The `Monophonic` class is the least complex musical texture and is characterized by single part voice leading. Upon initialization, the `Monophonic` class intreprets a `notes_data` DataFrame and transforms its values to create a melody. This processes of transformation occurs over the course of several steps. 
 
-Initializes a NonPitched instrument with specified sieves, grid, MIDI mapping and form.
-        
-- Args:
-    - sieves: A single sieve or a tuple of sieves representing the pitch content of the instrument.
-    - grid: A Grid object representing the rhythmic content of the instrument (optional).
-    - form: A Form object representing the formal structure of the instrument (optional).
+<table style='margin:0 auto;'>
+<caption style="font-size: 18px;text-decoration: underline;"><b>group_by_start</b>(dataframe):</caption>
+    <tr>
+        <th>MIDI</th>
+        <th>Start</th>
+        <th>End</th>
+    </tr>
+    <tr>
+        <td>[41.0]</td>
+        <td>13.0</td>
+        <td>[14.0]</td>
+    </tr>
+    <tr>
+        <td>[41.3]</td>
+        <td>14.0</td>
+        <td>[15.0]</td>
+    </tr>
+    <tr>
+        <td>[43.0]</td>
+        <td>15.0</td>
+        <td>[16.0]</td>
+    </tr>
+    <tr>
+        <td>"[43.1, 44.0, 45.5]"</td>
+        <td>16.0</td>
+        <td>[17.0]</td>
+    </tr>
+    <tr>
+        <td>[45.0]</td>
+        <td>17.0</td>
+        <td>[18.0]</td>
+    </tr>
+    <tr>
+        <td>[47.8]</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+        <tr>
+        <td>"[41.0, 43.0, 44.0, 48.8]"</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+        <tr>
+        <td>"[43.7, 45.4]"</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+</table>
+
+1) Group all the DataFrame rows that share the same `'Start'` value by using the `group_by_start` method. The resulting DataFrame will group all `'MIDI'` values that share the same `'Start'` value. In musical terms, `'MIDI'` note values that share the same `'Start'` value are commonly referred to as a 'chord'. 
+
+<table style='margin:0 auto;'>
+<caption style="font-size: 18px;text-decoration: underline;"><b>get_lowest_midi</b>(dataframe):</caption>
+    <tr>
+        <th>MIDI</th>
+        <th>Start</th>
+        <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>13.0</td>
+        <td>[14.0]</td>
+    </tr>
+    <tr>
+        <td>41.3</td>
+        <td>14.0</td>
+        <td>[15.0]</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>15.0</td>
+        <td>[16.0]</td>
+    </tr>
+    <tr>
+        <td>43.1</td>
+        <td>16.0</td>
+        <td>[17.0]</td>
+    </tr>
+    <tr>
+        <td>45.0</td>
+        <td>17.0</td>
+        <td>[18.0]</td>
+    </tr>
+    <tr>
+        <td>47.8</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+    <tr>
+        <td>43.7</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+</table>
+
+2) Call the `get_lowest_midi` method to transform the DataFrame so that only the lowest `'MIDI'` value remains in instances where multiple `'MIDI'` values share the same `'Start'` value. From this point forward the DataFrame is representing a monophonic musical texture.
+
+<table style='margin:0 auto;'>
+<caption style="font-size: 16px;text-decoration: underline;"><b>close_intervals</b>(dataframe):</caption>
+    <tr>
+        <th>MIDI</th>
+        <th>Start</th>
+        <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>13.0</td>
+        <td>[14.0]</td>
+    </tr>
+    <tr>
+        <td>41.3</td>
+        <td>14.0</td>
+        <td>[15.0]</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>15.0</td>
+        <td>[16.0]</td>
+    </tr>
+    <tr>
+        <td>43.1</td>
+        <td>16.0</td>
+        <td>[17.0]</td>
+    </tr>
+    <tr>
+        <td>45.0</td>
+        <td>17.0</td>
+        <td>[18.0]</td>
+    </tr>
+    <tr>
+        <td>47.8</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+    <tr>
+        <td>53.0</td>
+        <td>17.0</td>
+        <td>[18.0]</td>
+    </tr>
+    <tr>
+        <td>59.6</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+</table>
+
+3) Call the `close_intervals` method to transform the DataFrame to avoid intervals between successive `'MIDI'` values that are greater than 6 (a tritone). If the delta between successive notes is greater than 6 than the current `'MIDI'` value is transposed by 12 (an octave). The purpose of calling this method is to find the smallest possible distance between successive pitches in order to ensure the smoothest possible voiceleading. The method is called recursively until there are no intervals greater than 6.
+
+<table style='margin:0 auto;'>
+<caption style="font-size: 18px;text-decoration: underline;"><b>combine_consecutive_midi_values</b>(dataframe):</caption>
+    <tr>
+        <th>MIDI</th>
+        <th>Start</th>
+        <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>13.0</td>
+        <td>[14.0]</td>
+    </tr>
+    <tr>
+        <td>41.3</td>
+        <td>14.0</td>
+        <td>[15.0]</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>15.0</td>
+        <td>[16.0]</td>
+    </tr>
+    <tr>
+        <td>43.1</td>
+        <td>16.0</td>
+        <td>[17.0]</td>
+    </tr>
+    <tr>
+        <td>45.0</td>
+        <td>17.0</td>
+        <td>[18.0]</td>
+    </tr>
+        <tr>
+        <td>47.8</td>
+        <td>19.0</td>
+        <td>[20.0]</td>
+    </tr>
+    <tr>
+        <td>53.0</td>
+        <td>20.0</td>
+        <td>[21.0]</td>
+    </tr>
+    <tr>
+        <td>55.7</td>
+        <td>22.0</td>
+        <td>[23.0]</td>
+    </tr>
+</table>
+
+4) Utilize the `combine_consecutive_midi_values` method to find consecutive rows that share the same `'MIDI'` value. The method changes the `'End'` value of the first in the consecutive rows to the `'End'` value from the last row of the range of shared `'MIDI'` values. The method then deletes all rows except for the first row in the range of consecutive `'MIDI'`, and in this way combines all rows with consecutive `'MIDI'` values.
+
+<table style='margin:0 auto;'>
+<caption style="font-size: 18px;text-decoration: underline;"><b>convert_list_to_scalars</b>(dataframe):</caption>
+    <tr>
+        <th>MIDI</th>
+        <th>Start</th>
+        <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>13.0</td>
+        <td>14.0</td>
+    </tr>
+    <tr>
+        <td>41.3</td>
+        <td>14.0</td>
+        <td>15.0</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>15.0</td>
+        <td>16.0</td>
+    </tr>
+    <tr>
+        <td>43.1</td>
+        <td>16.0</td>
+        <td>17.0</td>
+    </tr>
+    <tr>
+        <td>45.0</td>
+        <td>17.0</td>
+        <td>18.0</td>
+    </tr>
+        <tr>
+        <td>47.8</td>
+        <td>19.0</td>
+        <td>20.0</td>
+    </tr>
+    <tr>
+        <td>53.0</td>
+        <td>20.0</td>
+        <td>21.0</td>
+    </tr>
+    <tr>
+        <td>55.7</td>
+        <td>22.0</td>
+        <td>23.0</td>
+    </tr>
+</table>
+
+5) Utilize the `convert_lists_to_scalars` method
+
+<table style='margin:0 auto;'>
+<caption style="font-size: 18px;text-decoration: underline;"><b>parse_pitch_data</b>(dataframe):</caption>
+    <tr>
+        <th>MIDI</th>
+        <th>Pitch</th>
+        <th>Start</th>
+        <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>0.0</td>
+        <td>13.0</td>
+        <td>14.0</td>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>0.3</td>
+        <td>14.0</td>
+        <td>15.0</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>0.0</td>
+        <td>15.0</td>
+        <td>16.0</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>0.1</td>
+        <td>16.0</td>
+        <td>17.0</td>
+    </tr>
+    <tr>
+        <td>45.0</td>
+        <td>0.0</td>
+        <td>17.0</td>
+        <td>18.0</td>
+    </tr>
+        <tr>
+        <td>47.0</td>
+        <td>0.8</td>
+        <td>19.0</td>
+        <td>20.0</td>
+    </tr>
+    <tr>
+        <td>53.0</td>
+        <td>0.0</td>
+        <td>20.0</td>
+        <td>21.0</td>
+    </tr>
+    <tr>
+        <td>55.0</td>
+        <td>0.7</td>
+        <td>22.0</td>
+        <td>23.0</td>
+    </tr>
+</table>
+
+6) Call the `parse_pitch_data` method
+
+This way we have all In turn, the transfromed DataFrame-- now representing a melody-- is passed to the `Homophonic`, `Heterophonic`, and `Polyphonic` classes as the basis for further contrapuntal development 
+___
+## __class Homophonic(Texture):__
+
 ___
 ## __class Heterophonic(Texture):__
 
@@ -142,43 +496,7 @@ ___
 ## __class Polyphonic(Texture):__
 
 ___
-## __class Score(Composition):__
-
-___
-### __def get_multiplier(arg):__
-
-___
-### __def normalize_numerator(arg, mult):__
-
-___
-### __def set_instrumentation(self):__
-
-___
-### __def normalize_periodicity(self):__
-
-___
-### __def write_score(self):__
-
-___
-### __def csv_to_note_object(dataframe):__
-
-___
-### __def csv_to_bend_object(dataframe):__
-
-___
-### __def combine_parts(self, *args):__
-The `combine_parts` method is designed to combine multiple `notes_data` pandas DataFrames into a single `notes_data` DataFrame.
-___
-### __def get_max_end_value(dataframe):__
-
-___
-### __def update_end_value(dataframe):__
-
-___
-### __def expand_midi_lists(dataframe):__
-
-___
-### __def filter_first_match(dataframe):__
+## __class NonPitched(Texture):__
 
 ___
 # Transformers

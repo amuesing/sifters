@@ -23,6 +23,16 @@ class Homophonic(Texture):
         
         self.notes_data = self.group_by_start(self.notes_data)
         
+        # Why get lowest midi?
         self.notes_data = self.get_lowest_midi(self.notes_data)
-                
-        self.notes_data.to_csv(f'Homophonic Texture {self.part_id}')
+        
+        self.notes_data = self.close_intervals(self.notes_data)
+        # How many voices will the Texture be? Is it a set number, derived from data?
+        
+        self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
+        
+        self.notes_data = self.convert_lists_to_scalars(self.notes_data)
+        
+        self.notes_data = self.parse_pitch_data(self.notes_data)
+        
+        self.notes_data.to_csv(f'.Combine Homophonic Texture {self.part_id}')
