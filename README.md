@@ -45,43 +45,43 @@ ___
 ### def __parse_pitch_data__(dataframe):
 
 ___
-## __class Score(Composition):__
+## class __Score__(Composition):
 
 ___
-### __def get_multiplier(arg):__
+### def __get_multiplier__(arg):
 
 ___
-### __def normalize_numerator(arg, mult):__
+### def __normalize_numerator__(arg, mult):
 
 ___
-### __def set_instrumentation(self):__
+### def __set_instrumentation__(self):
 
 ___
-### __def normalize_periodicity(self):__
+### def __normalize_periodicity__(self):
 
 ___
-### __def write_score(self):__
+### def __write_score__(self):
 
 ___
-### __def csv_to_note_object(dataframe):__
+### def __csv_to_note_object__(dataframe):
 
 ___
-### __def csv_to_bend_object(dataframe):__
+### def __csv_to_bend_object__(dataframe):
 
 ___
-### __def combine_parts(self, *args):__
+### def __combine_parts__(self, *args):
 The `combine_parts` method is designed to combine multiple `notes_data` pandas DataFrames into a single `notes_data` DataFrame.
 ___
-### __def get_max_end_value(dataframe):__
+### def __get_max_end_value__(dataframe):
 
 ___
-### __def update_end_value(dataframe):__
+### def __update_end_value__(dataframe):
 
 ___
-### __def expand_midi_lists(dataframe):__
+### def __expand_midi_lists__(dataframe):
 
 ___
-### __def filter_first_match(dataframe):__
+### def __filter_first_match__(dataframe):
 
 ___
 ## class __Texture__(Composition):
@@ -167,7 +167,7 @@ Positive integers are intrepreted as rows of the matrix, and negative numbers as
 
 ### <u>def __generate_pitchclass_matrix__(intervals):</u>
 ___
-## __class Monophonic(Texture):__
+## class __Monophonic__(Texture):
 The `Monophonic` class is the least complex musical texture and is characterized by single part voice leading. Upon initialization, the `Monophonic` class intreprets a `notes_data` DataFrame and transforms its values to create a melody. This processes of transformation occurs over the course of several steps. 
 
 <table style='margin:0 auto;'>
@@ -176,6 +176,26 @@ The `Monophonic` class is the least complex musical texture and is characterized
         <th>MIDI</th>
         <th>Start</th>
         <th>End</th>
+    </tr>
+    <tr>
+        <td>"[41.0, 43.1, 44.0]"</td>
+        <td>8.0</td>
+        <td>[9.0]</td>
+    </tr>
+    <tr>
+        <td>"[41.0, 43.0]"</td>
+        <td>10.0</td>
+        <td>[11.0]</td>
+    </tr>
+    <tr>
+        <td>[45.4]</td>
+        <td>11.0</td>
+        <td>[12.0]</td>
+    </tr>
+    <tr>
+        <td>"[43.0, 46.0, 46.4]"</td>
+        <td>12.0</td>
+        <td>[13.0]</td>
     </tr>
     <tr>
         <td>[41.0]</td>
@@ -209,13 +229,13 @@ The `Monophonic` class is the least complex musical texture and is characterized
     </tr>
         <tr>
         <td>"[41.0, 43.0, 44.0, 48.8]"</td>
-        <td>19.0</td>
-        <td>[20.0]</td>
+        <td>20.0</td>
+        <td>[21.0]</td>
     </tr>
         <tr>
         <td>"[43.7, 45.4]"</td>
-        <td>19.0</td>
-        <td>[20.0]</td>
+        <td>22.0</td>
+        <td>[23.0]</td>
     </tr>
 </table>
 
@@ -227,6 +247,26 @@ The `Monophonic` class is the least complex musical texture and is characterized
         <th>MIDI</th>
         <th>Start</th>
         <th>End</th>
+    </tr>
+        <tr>
+        <td>41.0</td>
+        <td>8.0</td>
+        <td>[9.0]</td>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>10.0</td>
+        <td>[11.0]</td>
+    </tr>
+    <tr>
+        <td>45.4</td>
+        <td>11.0</td>
+        <td>[12.0]</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>12.0</td>
+        <td>[13.0]</td>
     </tr>
     <tr>
         <td>41.0</td>
@@ -260,13 +300,13 @@ The `Monophonic` class is the least complex musical texture and is characterized
     </tr>
     <tr>
         <td>41.0</td>
-        <td>19.0</td>
-        <td>[20.0]</td>
+        <td>20.0</td>
+        <td>[21.0]</td>
     </tr>
     <tr>
         <td>43.7</td>
-        <td>19.0</td>
-        <td>[20.0]</td>
+        <td>22.0</td>
+        <td>[23.0]</td>
     </tr>
 </table>
 
@@ -278,6 +318,27 @@ The `Monophonic` class is the least complex musical texture and is characterized
         <th>MIDI</th>
         <th>Start</th>
         <th>End</th>
+    </tr>
+    </tr>
+        <tr>
+        <td>41.0</td>
+        <td>8.0</td>
+        <td>[9.0]</td>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>10.0</td>
+        <td>[11.0]</td>
+    </tr>
+    <tr>
+        <td>45.4</td>
+        <td>11.0</td>
+        <td>[12.0]</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>12.0</td>
+        <td>[13.0]</td>
     </tr>
     <tr>
         <td>41.0</td>
@@ -311,13 +372,13 @@ The `Monophonic` class is the least complex musical texture and is characterized
     </tr>
     <tr>
         <td>53.0</td>
-        <td>17.0</td>
-        <td>[18.0]</td>
+        <td>20.0</td>
+        <td>[21.0]</td>
     </tr>
     <tr>
-        <td>59.6</td>
-        <td>19.0</td>
-        <td>[20.0]</td>
+        <td>55.7</td>
+        <td>22.0</td>
+        <td>[23.0]</td>
     </tr>
 </table>
 
@@ -329,6 +390,22 @@ The `Monophonic` class is the least complex musical texture and is characterized
         <th>MIDI</th>
         <th>Start</th>
         <th>End</th>
+    </tr>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>8.0</td>
+        <td>[11.0]</td>
+    </tr>
+    <tr>
+        <td>45.4</td>
+        <td>11.0</td>
+        <td>[12.0]</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>12.0</td>
+        <td>[13.0]</td>
     </tr>
     <tr>
         <td>41.0</td>
@@ -372,7 +449,7 @@ The `Monophonic` class is the least complex musical texture and is characterized
     </tr>
 </table>
 
-4) Utilize the `combine_consecutive_midi_values` method to find consecutive rows that share the same `'MIDI'` value. The method changes the `'End'` value of the first in the consecutive rows to the `'End'` value from the last row of the range of shared `'MIDI'` values. The method then deletes all rows except for the first row in the range of consecutive `'MIDI'`, and in this way combines all rows with consecutive `'MIDI'` values.
+4) Utilize the `combine_consecutive_midi_values` method to find consecutive rows that share the same `'MIDI'` value. The method changes the `'End'` value of the first in the consecutive rows to the `'End'` value from the last row of the range of shared `'MIDI'` values. The method then deletes all rows except for the first row in the range of consecutive `'MIDI'`, and in this way combines all rows with consecutive `'MIDI'` values. 
 
 <table style='margin:0 auto;'>
 <caption style="font-size: 18px;text-decoration: underline;"><b>convert_list_to_scalars</b>(dataframe):</caption>
@@ -380,6 +457,21 @@ The `Monophonic` class is the least complex musical texture and is characterized
         <th>MIDI</th>
         <th>Start</th>
         <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>8.0</td>
+        <td>11.0</td>
+    </tr>
+    <tr>
+        <td>45.4</td>
+        <td>11.0</td>
+        <td>12.0</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>12.0</td>
+        <td>13.0</td>
     </tr>
     <tr>
         <td>41.0</td>
@@ -423,7 +515,7 @@ The `Monophonic` class is the least complex musical texture and is characterized
     </tr>
 </table>
 
-5) Utilize the `convert_lists_to_scalars` method
+5) Utilize the `convert_lists_to_scalars` method to change any data still being stored in a list to a scalar value within the DataFrame.
 
 <table style='margin:0 auto;'>
 <caption style="font-size: 18px;text-decoration: underline;"><b>parse_pitch_data</b>(dataframe):</caption>
@@ -432,6 +524,24 @@ The `Monophonic` class is the least complex musical texture and is characterized
         <th>Pitch</th>
         <th>Start</th>
         <th>End</th>
+    </tr>
+    <tr>
+        <td>41.0</td>
+        <td>0.0</td>
+        <td>8.0</td>
+        <td>11.0</td>
+    </tr>
+    <tr>
+        <td>45.0</td>
+        <td>0.4</td>
+        <td>11.0</td>
+        <td>12.0</td>
+    </tr>
+    <tr>
+        <td>43.0</td>
+        <td>0.0</td>
+        <td>12.0</td>
+        <td>13.0</td>
     </tr>
     <tr>
         <td>41.0</td>
@@ -483,20 +593,18 @@ The `Monophonic` class is the least complex musical texture and is characterized
     </tr>
 </table>
 
-6) Call the `parse_pitch_data` method
-
-This way we have all In turn, the transfromed DataFrame-- now representing a melody-- is passed to the `Homophonic`, `Heterophonic`, and `Polyphonic` classes as the basis for further contrapuntal development 
+6) Call the `parse_pitch_data` method on the `notes_data` DataFrame to create a new column called `'Pitch'`. `'MIDI'` values are typically whole numbers that lie between 0 and 127. Since the `generate_midi_pool` method is designed to subdivide an octave by the length equal to the length of that sieve's binary form (which is also equal to that sieve's periodicity), Sifters is designed to accommodate subdivisions of the octave other than 12. Because MIDI is bound to a 12 part subdivision of the octave the microtonal aspects of a sieve's intonation must be set by creating `PitchBend` objects that coorespond with every mircotonal value.
 ___
-## __class Homophonic(Texture):__
+## class __Homophonic__(Texture):
 
 ___
-## __class Heterophonic(Texture):__
+## class __Heterophonic__(Texture):
 
 ___
-## __class Polyphonic(Texture):__
+## class __Polyphonic__(Texture):
 
 ___
-## __class NonPitched(Texture):__
+## class __NonPitched__(Texture):
 
 ___
 # Transformers
