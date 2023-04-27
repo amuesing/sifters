@@ -7,7 +7,7 @@ The application's functionality falls into one of three categories: Generators, 
 # __Generators__
 Generators are responsible for deriving compositional materials from a logical sieve. There are three main classes of Generators: Composition, Texture, and Score. Composition is the superclass of Texture and Score. Texture is the superclass of five additional classes: NonPitched, Monophonic, Homophonic, Heterophonic, and Polyphonic.
 
-<img src='./images/generators.png' alt='generator classes' style='display:block;margin:auto;width:400px;'>
+<img src='./data/png/generators.png' alt='generator classes' style='display:block;margin:auto;width:400px;'>
 
 The Composition class is the superclass of all subsequent Generator classes. It holds methods for generating a serialized pitchclass matrix, as well as transforming a Pandas `DataFrame`. These methods are shared and utilized by the Score and Texture classes.
 
@@ -87,7 +87,7 @@ ___
 ## class __Texture__(Composition):
 The role of the `Texture` class is to create a `notes_data` DataFrame to be passed down to a subclass to be modified to approximate the behavior of a musical contrapuntal texture. The primary functionality of the `Texture` class lies within the `set_notes_data()` method, which generates the `notes_data` DataFrame for a `Texture` object. The `notes_data` DataFrame establishes the baseline MIDI data which will be passed to a subclass. Each subclass adapts the `notes_data` DataFrame to the behavior characteristic of a musical contrapuntal texture. The behaviors replicated are `Monophonic`, `Homophonic`, `Heterophonic`, and `Polyphonic` contrapuntal textures. There is also a `NonPitched` class which is meant to order nonpitched musical elements according to the same serial processes as the pitched textures.
 
-<img src='./images/texture.png' alt='texture class methods' style='display:block;margin:auto;width:500px;'>
+<img src='./data/png/texture.png' alt='texture class methods' style='display:block;margin:auto;width:500px;'>
 
 A `Texture` object accepts arguments for `sieves`, `grid`, and `form` values. The `sieves` value represents the generative logical sieve from which the `set_notes_data` method derives a musical structure. The `grid` value represents how the internal note duration of a single instance of a `Texture` object relates to the overall beat duration of the composition. The `form` value is a string input which sets the formal conditioning of the binary list that is passed to the `set_notes_data` method.
 
@@ -151,7 +151,7 @@ In this way, `set_notes_data` combines each version of a single iteration over `
 
 The `generate_midi_pool` method derives a MIDI pool from a binary list. A MIDI pool is a set of pitches that can be used to generate a composition. This function generates a MIDI pool for a given sieve by computing the interval list for the sieve, creating a pitch matrix based on the intervals in the sieve, and generating all possible combinations of the rows and columns in the matrix. The resulting MIDI pool is a list of MIDI note values that can be used to generate a composition.
 
-<img src='./images/matrix.png' alt='generate matrix' style='display:block;margin:auto;width:500px;'>
+<img src='./data/png/matrix.png' alt='generate matrix' style='display:block;margin:auto;width:500px;'>
 
 The above diagram illustrates how an interval structure will dictate row selection from a pitchclass matrix. Here we see how `genereate_midi_pool` will approach the first two movements in a pitchset of `[7, -4, 7, -4, 2]`. Ascending values between intervals are represented by a positive integer, and descending values between intervals are represented by a negative integer. The method computes the number of tone-rows needed and iterates over the matrix to derive rows as needed. Once a row is selected it is appended to a list of notes data called `midi_pool`. The purpose of `midi_pool` is to provide the MIDI note value for the construction of a `notes_data` DataFrame by the `set_notes_data` method. 
 
