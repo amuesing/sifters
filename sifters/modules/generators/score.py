@@ -1,4 +1,4 @@
-from modules.generators.composition import *
+from modules.composition import *
 from modules.generators.texture import *
 
 import pretty_midi
@@ -9,15 +9,7 @@ import math
 
 class Score(Composition):
     def __init__(self, **kwargs):
-        '''
-        Initializes a Score object with keyword arguments.
-        
-        Stores the keyword arguments in self.kwargs.
-        Normalizes the numerators for each argument and stores them in self.normalized_numerators.
-        Calculates the multipliers for each argument and stores them in self.multipliers.
-        Sets the instrumentation with self.set_instrumentation().
-        Normalizes the periodicity with self.normalize_periodicity().
-        '''
+
         self.kwargs = kwargs
         self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
@@ -27,20 +19,7 @@ class Score(Composition):
         
     @staticmethod
     def get_multiplier(arg):
-        '''
-        Calculates the multiplier for a given argument.
-        
-        Computes the least common multiple of the denominators in the grid_history fractions.
-        Divides the least common multiple by the denominator of each fraction in grid_history.
-        Returns the resulting list, indexed by the part_id of the argument minus one.
-        
-        Args:
-            arg (object): An object that contains a list of fractions (grid_history) and a part ID (part_id)
-        
-        Returns:
-            A list of integers representing the multipliers for each fraction in grid_history, 
-            indexed by the part_id of the argument minus one.
-        '''
+
         # Compute the least common multiple of the denominators in the grid_history fractions
         lcd = functools.reduce(math.lcm, (fraction.denominator for fraction in arg.grid_history))
         
@@ -53,28 +32,12 @@ class Score(Composition):
     
     @staticmethod
     def normalize_numerator(arg, mult):
-        '''
-        Normalizes the numerator of a given argument.
-        
-        Args:
-            arg (object): An object containing grid history and part id attributes.
-            mult (int): An integer to multiply the numerator by.
-        
-        Returns:
-            The numerator of the grid_history fraction at the part_id of the argument multiplied by the given multiplier.
-        '''
+
         return arg.grid_history[arg.part_id-1].numerator * mult
     
     
     def set_instrumentation(self):
-        '''
-        Sets the instrumentation for the object.
-        
-        Creates an empty list to store the instruments.
-        Iterates over self.kwargs.values() and creates a pretty_midi.Instrument for each one.
-        Appends the instrument to the instruments_list.
-        Stores the list in self.instrumentation.
-        '''
+
         instruments_list = []
         for kwarg in self.kwargs.values():
             instruments_list.append(pretty_midi.Instrument(program=0, name=f'{kwarg.name}'))
@@ -82,14 +45,7 @@ class Score(Composition):
         
         
     def normalize_periodicity(self):
-        '''
-        Normalizes the periodicity of notes_data in each argument in kwargs.
-        
-        Iterates over kwargs.values() and self.multipliers to create copies of notes_data.
-        Adjusts the Start and End columns of each copy based on the length of one repetition and grid value.
-        Concatenates the duplicates list into a single dataframe and removes duplicate rows.
-        Stores the normalized dataframes in self.normalized_parts_data.
-        '''
+
         normalized_parts_data = []
         
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
@@ -125,14 +81,9 @@ class Score(Composition):
         # Store the normalized_parts_data in self.normalized_parts_data.
         self.normalized_parts_data = normalized_parts_data
         
-        
+
     def write_score(self):
-        '''
-        Write the score to a MIDI file.
-        
-        This method creates a PrettyMIDI object, adds the TimeSignature and instrumentation to it,
-        and writes the score to a MIDI file.
-        '''
+
         # Create a PrettyMIDI object
         score = pretty_midi.PrettyMIDI()
         
@@ -158,19 +109,7 @@ class Score(Composition):
     
     @staticmethod
     def csv_to_note_object(dataframe):
-        '''
-        Convert a pandas DataFrame to a list of Note objects.
-        
-        This method takes a pandas DataFrame as input and returns a list of pretty_midi.Note objects.
-        The DataFrame should have columns named 'Start', 'End', 'MIDI', and 'Velocity', which correspond
-        to the start time, end time, MIDI pitch value, and velocity of each note, respectively.
-        
-        Args:
-            dataframe (pandas.DataFrame): The DataFrame to convert to Note objects.
-            
-        Returns:
-            list: A list of pretty_midi.Note objects.
-        '''
+
         # Use a list comprehension to generate a list of pretty_midi.Note objects from the input dataframe
         # The list comprehension iterates over each row in the dataframe and creates a new Note object with the specified attributes
         note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
@@ -181,19 +120,7 @@ class Score(Composition):
     
     @staticmethod
     def csv_to_bend_object(dataframe):
-        '''
-        Convert a pandas DataFrame to a list of PitchBend objects.
-        
-        This method takes a pandas DataFrame as input and returns a list of pretty_midi.PitchBend objects.
-        The DataFrame should have columns named 'Start' and 'Pitch', which correspond to the start time
-        and pitch bend value of each PitchBend object, respectively.
-        
-        Args:
-            dataframe (pandas.DataFrame): The DataFrame to convert to PitchBend objects.
-            
-        Returns:
-            list: A list of pretty_midi.PitchBend objects.
-        '''
+
         if 'Pitch' in dataframe.columns:
             # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
             # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
@@ -206,19 +133,11 @@ class Score(Composition):
     
     
     def combine_parts(self, *args):
-        '''
-        Combines multiple parts into one.
-        
-        Args:
-            *args: Positional arguments containing the names of the parts to combine.
-            
-        Returns:
-            None.
-        '''
+
         
         # Get objects and indices for the parts to combine.
         objects = [self.kwargs[key] for key in args if key in self.kwargs]
-        print(objects)
+
         # objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
         indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
         
@@ -261,16 +180,7 @@ class Score(Composition):
                 
     @staticmethod
     def get_max_end_value(dataframe):
-        '''
-        Returns a copy of the input dataframe with the 'End' column updated to contain the maximum value of the
-        'End' column if it contains a list, otherwise the original value is preserved.
-        
-        Args:
-            dataframe: pandas.DataFrame, the input dataframe
-            
-        Returns:
-            pandas.DataFrame, the updated dataframe
-        '''
+
         # Make a copy of the input dataframe to avoid modifying the original
         dataframe = dataframe.copy()
         
@@ -282,16 +192,7 @@ class Score(Composition):
     
     @staticmethod
     def update_end_value(dataframe):
-        '''
-        Returns a copy of the input dataframe with the 'End' column updated to contain the minimum value between 
-        the current 'End' value and the 'Start' value of the next row in the dataframe.
-        
-        Args:
-            dataframe: pandas.DataFrame, the input dataframe
-            
-        Returns:
-            pandas.DataFrame, the updated dataframe
-        '''
+
         # Make a copy of the input dataframe to avoid modifying the original
         dataframe = dataframe.copy()
         
@@ -307,15 +208,7 @@ class Score(Composition):
         
     @staticmethod
     def expand_midi_lists(dataframe):
-        '''
-        Given a dataframe with MIDI data where some values are in lists, expand the lists so that each row has only one value.
-        
-        Args:
-            dataframe: A pandas DataFrame containing MIDI data with some values in lists.
-            
-        Returns:
-            A pandas DataFrame where each row has only one value for MIDI data.
-        '''
+
         # Create a copy of the input dataframe to avoid modifying the original one.
         dataframe = dataframe.copy()
         
@@ -343,16 +236,7 @@ class Score(Composition):
     
     @staticmethod
     def filter_first_match(objects, indices):
-        '''
-        Given a list of objects and a list of indices, remove all objects except for the first one at each index in the list.
-        
-        Args:
-            objects: A list of objects.
-            indices: A list of indices to keep the first object at each index.
-            
-        Returns:
-            A new list of objects with only the first object at each index.
-        '''
+
         
         updated_objects = []
         first_match_found = False

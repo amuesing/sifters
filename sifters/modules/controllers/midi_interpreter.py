@@ -1,16 +1,33 @@
 import pretty_midi
+import pandas
 
-class midiInterpreter:
+from modules.composition import *
+
+class midiInterpreter(Composition):
     
-    def parse_midi(filename):
+    @staticmethod
+    def load_midi(filename):
+        midi_file = pretty_midi.PrettyMIDI(f'data/midi/{filename}')
+        return midi_file
         
-        midi_data = pretty_midi.PrettyMIDI(f'data/midi/{filename}')
+    def parse_midi(self, midi_file):
         
-        for instrument in midi_data.instruments:
+        notes_data = []
+        
+        for instrument in midi_file.instruments:
             
             for note in instrument.notes:
                 
-                print('MIDI:', note.pitch, 'Start:', note.start, 'End:', note.end)
+                notes_data.append({
+                        'Velocity': note.velocity,
+                        'MIDI': note.pitch,
+                        'Start': note.start, 
+                        'End': note.end
+                        })
+                
+        return self.group_by_start(pandas.DataFrame(notes_data))
                 
 if __name__ == '__main__':
-    midiInterpreter.parse_midi('.interlude1.mid')
+    midi_file = midiInterpreter.load_midi('interludes2.mid')
+    midi_data = midiInterpreter.parse_midi(midi_file)
+    print(midi_data)

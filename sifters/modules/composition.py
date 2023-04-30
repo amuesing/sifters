@@ -1,4 +1,3 @@
-import decimal
 import pandas
 import math
 
@@ -51,16 +50,6 @@ class Composition:
     
     @staticmethod
     def close_intervals(dataframe):
-        '''
-        Adjust the MIDI values in the dataframe to ensure that the interval between each
-        pair of consecutive MIDI values is no greater than a tritone (six semitones).
-        
-        Args:
-            dataframe (pandas.DataFrame): A dataframe containing MIDI data.
-            
-        Returns:
-            pandas.DataFrame: A copy of the input dataframe, with the MIDI values adjusted as necessary.
-        '''
         
         # Make a copy of the input dataframe.
         updated_df = dataframe.copy()

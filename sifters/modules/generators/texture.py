@@ -1,4 +1,4 @@
-from modules.generators.composition import *
+from modules.composition import *
 
 import music21
 import fractions

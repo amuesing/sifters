@@ -1,3 +1,3 @@
 __all__ = [
-    'analyzer'
+    'midi_interpreter'
 ]

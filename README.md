@@ -46,43 +46,151 @@ ___
 
 ___
 ## class __Score__(Composition):
-
+        '''
+        Initializes a Score object with keyword arguments.
+        
+        Stores the keyword arguments in self.kwargs.
+        Normalizes the numerators for each argument and stores them in self.normalized_numerators.
+        Calculates the multipliers for each argument and stores them in self.multipliers.
+        Sets the instrumentation with self.set_instrumentation().
+        Normalizes the periodicity with self.normalize_periodicity().
+        '''
 ___
 ### def __get_multiplier__(arg):
-
+        '''
+        Calculates the multiplier for a given argument.
+        
+        Computes the least common multiple of the denominators in the grid_history fractions.
+        Divides the least common multiple by the denominator of each fraction in grid_history.
+        Returns the resulting list, indexed by the part_id of the argument minus one.
+        
+        Args:
+            arg (object): An object that contains a list of fractions (grid_history) and a part ID (part_id)
+        
+        Returns:
+            A list of integers representing the multipliers for each fraction in grid_history, 
+            indexed by the part_id of the argument minus one.
+        '''
 ___
 ### def __normalize_numerator__(arg, mult):
-
+        '''
+        Normalizes the numerator of a given argument.
+        
+        Args:
+            arg (object): An object containing grid history and part id attributes.
+            mult (int): An integer to multiply the numerator by.
+        
+        Returns:
+            The numerator of the grid_history fraction at the part_id of the argument multiplied by the given multiplier.
+        '''
 ___
 ### def __set_instrumentation__(self):
-
+        '''
+        Sets the instrumentation for the object.
+        
+        Creates an empty list to store the instruments.
+        Iterates over self.kwargs.values() and creates a pretty_midi.Instrument for each one.
+        Appends the instrument to the instruments_list.
+        Stores the list in self.instrumentation.
+        '''
 ___
 ### def __normalize_periodicity__(self):
-
+        '''
+        Normalizes the periodicity of notes_data in each argument in kwargs.
+        
+        Iterates over kwargs.values() and self.multipliers to create copies of notes_data.
+        Adjusts the Start and End columns of each copy based on the length of one repetition and grid value.
+        Concatenates the duplicates list into a single dataframe and removes duplicate rows.
+        Stores the normalized dataframes in self.normalized_parts_data.
+        '''
 ___
 ### def __write_score__(self):
-
+        '''
+        Write the score to a MIDI file.
+        
+        This method creates a PrettyMIDI object, adds the TimeSignature and instrumentation to it,
+        and writes the score to a MIDI file.
+        '''
 ___
 ### def __csv_to_note_object__(dataframe):
-
+        '''
+        Convert a pandas DataFrame to a list of Note objects.
+        
+        This method takes a pandas DataFrame as input and returns a list of pretty_midi.Note objects.
+        The DataFrame should have columns named 'Start', 'End', 'MIDI', and 'Velocity', which correspond
+        to the start time, end time, MIDI pitch value, and velocity of each note, respectively.
+        
+        Args:
+            dataframe (pandas.DataFrame): The DataFrame to convert to Note objects.
+            
+        Returns:
+            list: A list of pretty_midi.Note objects.
+        '''
 ___
 ### def __csv_to_bend_object__(dataframe):
-
+        '''
+        Convert a pandas DataFrame to a list of PitchBend objects.
+        
+        This method takes a pandas DataFrame as input and returns a list of pretty_midi.PitchBend objects.
+        The DataFrame should have columns named 'Start' and 'Pitch', which correspond to the start time
+        and pitch bend value of each PitchBend object, respectively.
+        
+        Args:
+            dataframe (pandas.DataFrame): The DataFrame to convert to PitchBend objects.
+            
+        Returns:
+            list: A list of pretty_midi.PitchBend objects.
+        '''
 ___
 ### def __combine_parts__(self, *args):
 The `combine_parts` method is designed to combine multiple `notes_data` pandas DataFrames into a single `notes_data` DataFrame.
 ___
 ### def __get_max_end_value__(dataframe):
-
+        '''
+        Returns a copy of the input dataframe with the 'End' column updated to contain the maximum value of the
+        'End' column if it contains a list, otherwise the original value is preserved.
+        
+        Args:
+            dataframe: pandas.DataFrame, the input dataframe
+            
+        Returns:
+            pandas.DataFrame, the updated dataframe
+        '''
 ___
 ### def __update_end_value__(dataframe):
-
+        '''
+        Returns a copy of the input dataframe with the 'End' column updated to contain the minimum value between 
+        the current 'End' value and the 'Start' value of the next row in the dataframe.
+        
+        Args:
+            dataframe: pandas.DataFrame, the input dataframe
+            
+        Returns:
+            pandas.DataFrame, the updated dataframe
+        '''
 ___
 ### def __expand_midi_lists__(dataframe):
-
+        '''
+        Given a dataframe with MIDI data where some values are in lists, expand the lists so that each row has only one value.
+        
+        Args:
+            dataframe: A pandas DataFrame containing MIDI data with some values in lists.
+            
+        Returns:
+            A pandas DataFrame where each row has only one value for MIDI data.
+        '''
 ___
 ### def __filter_first_match__(dataframe):
-
+        '''
+        Given a list of objects and a list of indices, remove all objects except for the first one at each index in the list.
+        
+        Args:
+            objects: A list of objects.
+            indices: A list of indices to keep the first object at each index.
+            
+        Returns:
+            A new list of objects with only the first object at each index.
+        '''
 ___
 ## class __Texture__(Composition):
 The role of the `Texture` class is to create a `notes_data` DataFrame to be passed down to a subclass to be modified to approximate the behavior of a musical contrapuntal texture. The primary functionality of the `Texture` class lies within the `set_notes_data()` method, which generates the `notes_data` DataFrame for a `Texture` object. The `notes_data` DataFrame establishes the baseline MIDI data which will be passed to a subclass. Each subclass adapts the `notes_data` DataFrame to the behavior characteristic of a musical contrapuntal texture. The behaviors replicated are `Monophonic`, `Homophonic`, `Heterophonic`, and `Polyphonic` contrapuntal textures. There is also a `NonPitched` class which is meant to order nonpitched musical elements according to the same serial processes as the pitched textures.

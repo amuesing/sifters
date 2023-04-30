@@ -38,4 +38,4 @@ class Homophonic(Texture):
         # Homophonic texture should be based on a mapping of intervals onto a Monophonic texture
         # This is most likely preferable to generating multiple 'midi_notes' DataFrames
         # What are the rules for voiceleading? How to handle intervals?
-        self.notes_data.to_csv(f'.Homophonic Texture {self.part_id}')
+        self.notes_data.to_csv(f'Homophonic Texture {self.part_id}')
