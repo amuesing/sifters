@@ -43,7 +43,7 @@ class midiInterpreter(Composition):
     
     
     @staticmethod
-    def midi_to_pitchclass(dataframe):
+    def midi_to_pitch_class(dataframe):
         
         # Define a function to apply the modular 12 operation to a list of MIDI values
         def mod_12(midi_list):
@@ -76,20 +76,19 @@ class midiInterpreter(Composition):
         return unique_dataframe
     
     @staticmethod
-    def remove_repeated_pitchclass_values(dataframe):
-        unique_midi_lists = list(set([frozenset(x) for x in dataframe['Pitch Class']]))
-        unique_midi_lists = [list(x) for x in unique_midi_lists]
+    def remove_repeated_pitch_classes(dataframe):
+        """
+        Removes repeated integers from the 'pitch class' column of a DataFrame.
 
-        unique_midi_counts = []
+        Args:
+            dataframe: A pandas DataFrame with a 'pitch class' column containing lists of integers.
 
-        for midi_list in unique_midi_lists:
-            count = sum([set(x) == set(midi_list) for x in dataframe['Pitch Class']])
-            unique_midi_counts.append((midi_list, count))
-
-        unique_df = pandas.DataFrame(unique_midi_counts, columns=['Pitch Class', 'Count'])
-        # unique_df = unique_df.sort_values(by='MIDI')
-            
+        Returns:
+            A modified version of the input DataFrame with repeated integers removed from the 'pitch class' column.
+        """
+        dataframe['Pitch Class'] = dataframe['Pitch Class'].apply(lambda x: list(set(x)))
         return dataframe
+
 
 
     @staticmethod
