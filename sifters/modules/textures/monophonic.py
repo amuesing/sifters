@@ -1,4 +1,4 @@
-from modules.generators.texture import *
+from modules.textures.texture import *
 
 class Monophonic(Texture):
     # Initialize ID value for first instance of Monophonic object.

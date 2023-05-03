@@ -1,4 +1,6 @@
-from modules.generators.texture import *
+from modules.textures.texture import Texture
+
+import pandas
 
 class NonPitched(Texture):
     # Initialize ID for the first instance of NonPitched object.
@@ -24,7 +26,7 @@ class NonPitched(Texture):
         unique_midi_values = self.notes_data['MIDI'].unique()
         unique_midi_values_sorted = pandas.Series(unique_midi_values).sort_values().to_list()
         # What if there are more than 127 unique midi values?
-        int_dict = {val: i + 40 for i, val in enumerate(unique_midi_values_sorted)}
+        int_dict = {val: i for i, val in enumerate(unique_midi_values_sorted)}
         self.notes_data['MIDI'] = self.notes_data['MIDI'].map(int_dict)
         
-        self.notes_data.to_csv(f'{self.part_id}')
+        # self.notes_data.to_csv(f'data/csv/{self.part_id}.csv')

@@ -74,20 +74,6 @@ class midiInterpreter(Composition):
         # unique_dataframe = unique_dataframe.sort_values(by='MIDI')
         
         return unique_dataframe
-    
-    @staticmethod
-    def remove_repeated_pitch_classes(dataframe):
-        """
-        Removes repeated integers from the 'pitch class' column of a DataFrame.
-
-        Args:
-            dataframe: A pandas DataFrame with a 'pitch class' column containing lists of integers.
-
-        Returns:
-            A modified version of the input DataFrame with repeated integers removed from the 'pitch class' column.
-        """
-        dataframe['Pitch Class'] = dataframe['Pitch Class'].apply(lambda x: list(set(x)))
-        return dataframe
 
 
 
@@ -99,7 +85,7 @@ class midiInterpreter(Composition):
         midi_data = dataframe['Pitch Class'].tolist()
         
         for i, _ in enumerate(midi_data):
-            sieves.append(music21.sieve.CompressionSegment(midi_data[i]))
+            sieves.append(str(music21.sieve.CompressionSegment(midi_data[i])))
         
         dataframe['Sieves'] = sieves
         
