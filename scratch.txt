@@ -1,1 +1,23 @@
-sieves = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)']
+Psappha Sieve: sieves = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)']
+
+Copy -> Transform -> Combine
+MIDI Input -> Texture -> Synthesize MIDI Input and derived texture. Repeat?
+
+Transformers are designed to take the input of a Score Object and transform it.
+How to synthesize input MIDI data and Score Object?
+
+Derive Transition Matrix from Score Object. Markov Chains.
+
+What are other transformation techniques?
+
+How to create a Structure Object/Form Object
+
+Sample(MIDI) -> Transform(Texture) -> Combine(MIDI) (-> Sample)
+
+Decomposition and Forecast classes
+
+Can the MIDO library store tempo changes?
+
+Sifters is a collection of analytical processes which are 
+designed to deconstruct a MIDI dataset and generate musical compositions
+based on probabilistic interpretations of the originating MIDI dataset.

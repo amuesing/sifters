@@ -106,7 +106,7 @@ class Score(Composition):
             score.instruments.append(self.instrumentation[i])
         
         # Write the MIDI file
-        score.write(f'data/midi/score.mid')
+        score.write(f'data/midi/score.midi')
     
     
     @staticmethod

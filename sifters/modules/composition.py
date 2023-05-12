@@ -28,6 +28,30 @@ class Composition:
     
     
     @staticmethod
+    def group_by_start_and_end(dataframe):
+        
+        # Group the notes_data dataframe by the 'Start' and 'End' columns and return the unique values
+        # for each column for each start and end time.
+        grouped_velocity = dataframe.groupby(['Start', 'End'])['Velocity'].apply(lambda x: sorted(set(x)))
+        grouped_midi = dataframe.groupby(['Start', 'End'])['MIDI'].apply(lambda x: sorted(set(x)))
+        
+        # If the 'Pitch' column exists in the dataframe, group it by 'Start' and 'End' and get the unique values.
+        if 'Pitch' in dataframe.columns:
+            grouped_pitch = dataframe.groupby(['Start', 'End'])['Pitch'].apply(lambda x: sorted(set(x)))
+            # Concatenate the grouped data into a new dataframe, and re-order the columns.
+            result = pandas.concat([grouped_velocity, grouped_midi, grouped_pitch], axis=1).reset_index()
+            result = result[['Velocity', 'MIDI', 'Pitch', 'Start', 'End']]
+        else:
+            # Concatenate the grouped data into a new dataframe, and re-order the columns.
+            result = pandas.concat([grouped_velocity, grouped_midi], axis=1).reset_index()
+            result = result[['Velocity', 'MIDI', 'Start', 'End']]
+        
+        # Return the result dataframe.
+        return result
+
+    
+    
+    @staticmethod
     def get_lowest_midi(dataframe):
         
         dataframe['MIDI'] = dataframe['MIDI'].apply(lambda x: min(x) if x else None)
