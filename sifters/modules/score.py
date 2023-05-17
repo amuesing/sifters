@@ -1,6 +1,7 @@
 from modules.composition import Composition
 from modules.textures.monophonic import Monophonic
 
+import mido
 import pretty_midi
 import functools
 import pandas
@@ -15,7 +16,7 @@ class Score(Composition):
         self.kwargs = kwargs
         self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
-        self.set_instrumentation()
+        self.set_track_list()
         self.normalize_periodicity()
         
         
@@ -38,16 +39,27 @@ class Score(Composition):
         return arg.grid_history[arg.part_id-1].numerator * mult
     
     
-    def set_instrumentation(self):
+    # def set_track_list(self):
 
-        instruments_list = []
-        for kwarg in self.kwargs.values():
-            instruments_list.append(pretty_midi.Instrument(program=0, name=f'{kwarg.name}'))
-        self.instrumentation = instruments_list
+    #     track_list = []
+    #     for kwarg in self.kwargs.values():
+    #         track_list.append(pretty_midi.Instrument(program=0, name=f'{kwarg.name}'))
+    #     self.instrumentation = track_list
+    
+    
+    def set_track_list(self):
+        track_list = []
         
+        for kwarg in self.kwargs.values():
+            midi_track = mido.MidiTrack()
+            # midi_track.append(mido.Message('program_change', program=0))
+            midi_track.name = f'{kwarg.name}'
+            track_list.append(midi_track)
+            
+        self.track_list = track_list
+
         
     def normalize_periodicity(self):
-
         normalized_parts_data = []
         
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
@@ -82,56 +94,128 @@ class Score(Composition):
         
         # Store the normalized_parts_data in self.normalized_parts_data.
         self.normalized_parts_data = normalized_parts_data
+        self.normalized_parts_data[0].to_csv('data/csv/norm.csv')
         
-
+    
+    # def write_score(self):
+    #     # Create a new MIDI file objecth
+    #     score = mido.MidiFile()
+        
+    #     score.ticks_per_beat = 480
+        
+    #     print(self.track_list)
     def write_score(self):
+        # Create a new MIDI file object
+        score = mido.MidiFile()
 
-        # Create a PrettyMIDI object
-        score = pretty_midi.PrettyMIDI()
+        # Set the ticks per beat resolution
+        score.ticks_per_beat = 480
+
+        # # Write method to determine TimeSignature
+        time_sig = mido.MetaMessage('time_signature', numerator=5, denominator=4)
+        self.track_list[0].append(time_sig)
+
+        # Convert the CSV data to Note messages and PitchBend messages
+        note_msgs = [self.csv_to_note_msg(part) for part in self.normalized_parts_data]
+        bend_msgs = [self.csv_to_bend_msg(part) for part in self.normalized_parts_data]
         
-        # Write method to determine TimeSignature
-        score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
+        # Add the Tracks to the MIDI File
+        for track in self.track_list:
+            score.tracks.append(track)
         
-        # Double the resolution of the MIDI file
-        score.resolution = score.resolution * 2
         
-        # Convert the CSV data to Note objects and PitchBend objects
-        note_objects = [self.csv_to_note_object(part) for part in self.normalized_parts_data]
-        bend_objects = [self.csv_to_bend_object(part) for part in self.normalized_parts_data]
-        
-        # Add the Note objects and PitchBend objects to the instrumentation
-        for i, _ in enumerate(note_objects):
-            self.instrumentation[i].notes = note_objects[i]
-            self.instrumentation[i].pitch_bends = bend_objects[i]
-            score.instruments.append(self.instrumentation[i])
+
+        # # Add the Note messages and PitchBend messages to the MIDI file
+        # for i, _ in enumerate(self.track_list):
+        #     for msg in note_msgs:
+        #         self.track_list[i].append(msg)
+        # for msg in bend_msgs:
+        #         self.track_list[i].append(msg)
+                
         
         # Write the MIDI file
-        score.write(f'data/midi/score.midi')
-    
-    
-    @staticmethod
-    def csv_to_note_object(dataframe):
+        # score.save('data/mid/score.mid')
 
-        # Use a list comprehension to generate a list of pretty_midi.Note objects from the input dataframe
-        # The list comprehension iterates over each row in the dataframe and creates a new Note object with the specified attributes
-        note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
+
+    @staticmethod
+    def csv_to_note_msg(dataframe):
+        # print(dataframe)
+        # dataframe['Duration'] = [round(row['End'] - row['Start'], 6) for _, row in dataframe.iterrows()]
+
         
-        # Return the list of Note objects
-        return note_data
-    
-    
-    @staticmethod
-    def csv_to_bend_object(dataframe):
+        note_messages = [mido.Message('note_on',)]
+        # dataframe.to_csv('duration.csv')
+        # # Use a list comprehension to generate a list of Note messages from the input dataframe
+        # # The list comprehension iterates over each row in the dataframe and creates a new Note message with the specified attributes
+        # note_msgs = [mido.Message('note_on', note=int(row['MIDI']), velocity=int(row['Velocity']), time=int(row['Start']*480)) for _, row in dataframe.iterrows()]
+        # note_off_msgs = [mido.Message('note_off', note=int(row['MIDI']), velocity=int(row['Velocity']), time=int(row['End']*480)) for _, row in dataframe.iterrows()]
+        
+        # # Return the list of Note messages
+        # return note_msgs + note_off_msgs
 
+
+    @staticmethod
+    def csv_to_bend_msg(dataframe):
         if 'Pitch' in dataframe.columns:
-            # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
-            # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
-            bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
+            # Use a list comprehension to generate a list of PitchBend messages from the input dataframe
+            # The list comprehension iterates over each row in the dataframe and creates a new PitchBend message with the specified attributes
+            bend_msgs = [mido.Message('pitchwheel', pitch=int(8192 * row['Pitch']), time=int(row['Start']*480)) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
         else:
-            # If the 'Pitch' column does not exist, create a list of PitchBend objects with default pitch values
-            bend_objects = [pretty_midi.PitchBend(pitch=0, time=row['Start']) for _, row in dataframe.iterrows()]
+            # If the 'Pitch' column does not exist, create a list of PitchBend messages with default pitch values
+            bend_msgs = [mido.Message('pitchwheel', pitch=0, time=int(row['Start']*480)) for _, row in dataframe.iterrows()]
+
+        # Return the list of PitchBend messages
+        return bend_msgs
+
+
+    # def write_score(self):
+
+    #     # Create a PrettyMIDI object
+    #     score = pretty_midi.PrettyMIDI()
+        
+    #     # Write method to determine TimeSignature
+    #     score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
+        
+    #     # Double the resolution of the MIDI file
+    #     score.resolution = score.resolution * 2
+        
+    #     # Convert the CSV data to Note objects and PitchBend objects
+    #     note_objects = [self.csv_to_note_object(part) for part in self.normalized_parts_data]
+    #     bend_objects = [self.csv_to_bend_object(part) for part in self.normalized_parts_data]
+        
+    #     # Add the Note objects and PitchBend objects to the instrumentation
+    #     for i, _ in enumerate(note_objects):
+    #         self.instrumentation[i].notes = note_objects[i]
+    #         self.instrumentation[i].pitch_bends = bend_objects[i]
+    #         score.instruments.append(self.instrumentation[i])
+        
+    #     # Write the MIDI file
+    #     score.write(f'data/mid/score.mid')
+    
+    
+    # @staticmethod
+    # def csv_to_note_object(dataframe):
+
+    #     # Use a list comprehension to generate a list of pretty_midi.Note objects from the input dataframe
+    #     # The list comprehension iterates over each row in the dataframe and creates a new Note object with the specified attributes
+    #     note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
+        
+    #     # Return the list of Note objects
+    #     return note_data
+    
+    
+    # @staticmethod
+    # def csv_to_bend_object(dataframe):
+
+    #     if 'Pitch' in dataframe.columns:
+    #         # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
+    #         # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
+    #         bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
+    #     else:
+    #         # If the 'Pitch' column does not exist, create a list of PitchBend objects with default pitch values
+    #         bend_objects = [pretty_midi.PitchBend(pitch=0, time=row['Start']) for _, row in dataframe.iterrows()]
             
-        return bend_objects
+    #     return bend_objects
     
     
     def combine_parts(self, *args):

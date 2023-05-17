@@ -36,5 +36,6 @@ class Monophonic(Texture):
         # Convert lists of pitch data into scalar pitch data.
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
         
-        # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
-        self.notes_data = self.parse_pitch_data(self.notes_data)
+        # Move parse_pitch_data method to score
+        # # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
+        # self.notes_data = self.parse_pitch_data(self.notes_data)

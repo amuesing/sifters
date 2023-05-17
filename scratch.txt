@@ -21,3 +21,10 @@ Can the MIDO library store tempo changes?
 Sifters is a collection of analytical processes which are 
 designed to deconstruct a MIDI dataset and generate musical compositions
 based on probabilistic interpretations of the originating MIDI dataset.
+
+Player class which is similar to Forecast class, emulates a player within a set a musical perameters.
+
+create a dictionary for each note_on message and it's complimentary notes_off 
+
+what if you include a Duration collumn instead of an 'End' Column. Just change End to Duration.
+This may be more accurate rendition of the data.

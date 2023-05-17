@@ -219,10 +219,10 @@ class Texture(Composition):
                 
                 # For each non-zero indice append notes_data list with corresponding midi information.
                 for k in indices:
-                    velocity = 127
+                    velocity = 64
                     offset = k * duration
                     notes_data.append([velocity, next(midi_pool), offset, offset + self.grid])
                     
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         
-        self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by='Start').drop_duplicates()
+        self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'End']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)

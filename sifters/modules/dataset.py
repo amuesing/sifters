@@ -4,37 +4,61 @@ Preprocesses MIDI files
 
 import music21
 import pretty_midi
+import mido
 import pandas
 
 
 from modules.composition import *
 
+# def load_midi(filename):
+    
+#     midi_file = pretty_midi.PrettyMIDI(f'data/midi/{filename}')
+    
+#     return midi_file
+
+
+# def parse_midi(midi_file):
+#     notes_data = []
+    
+#     for instrument in midi_file.instruments:
+        
+#         for note in instrument.notes:
+#             print(note)
+#             # notes_data.append({
+#             #         'Velocity': note.velocity,
+#             #         'MIDI': note.pitch,
+#             #         'Start': round(note.start, 3), 
+#             #         'End': round(note.end, 3)
+#             #         })
+    
+#     return Composition.group_by_start_and_end(pandas.DataFrame(notes_data))
+
 def load_midi(filename):
-    
-    midi_file = pretty_midi.PrettyMIDI(f'data/midi/{filename}')
-    
+    midi_file = mido.MidiFile(f'data/midi/{filename}')
     return midi_file
 
 
 def parse_midi(midi_file):
-    notes_data = []
     
-    for instrument in midi_file.instruments:
-        
-        for note in instrument.notes:
-            
-            notes_data.append({
-                    'Velocity': note.velocity,
-                    'MIDI': note.pitch,
-                    'Start': round(note.start, 3), 
-                    'End': round(note.end, 3)
-                    })
-    
-    # Call group_by_start method (inherited from Composition class) on DataFrame.
-    # Sort the DataFrame by 'Start' value using .sort_values
-    return Composition.group_by_start_and_end(pandas.DataFrame(notes_data))
-    # return pandas.DataFrame(notes_data)
-
+    # Iterate over all the tracks in the MIDI file
+    for track in midi_file.tracks:
+        # Iterate over all the events in the track
+        for event in track:
+            # Get the delta time value for the event
+            delta_time = event.time
+            # Print the delta time value
+            print(delta_time)
+                # if event.type == 'note_on':
+                #     timestamp = event.time
+                #     print(timestamp)
+    # # Iterate over all the tracks in the MIDI file
+    # for i, track in enumerate(midi_file.tracks):
+    #     print(f"Track {i}: {track.name}")
+    #     # Iterate over all the messages in the track
+    #     for message in track:
+    #         # If the message is a note_on or note_off event, print the note number and velocity
+    #         if message.type in ['note_on', 'note_off']:
+    #             print(f"Note: {message.note}, Velocity: {message.velocity}, On: {message.start}")
 
 def extract_chords(dataframe):
     
