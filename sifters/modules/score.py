@@ -39,14 +39,6 @@ class Score(Composition):
         return arg.grid_history[arg.part_id-1].numerator * mult
     
     
-    # def set_track_list(self):
-
-    #     track_list = []
-    #     for kwarg in self.kwargs.values():
-    #         track_list.append(pretty_midi.Instrument(program=0, name=f'{kwarg.name}'))
-    #     self.instrumentation = track_list
-    
-    
     def set_track_list(self):
         track_list = []
         
@@ -96,14 +88,7 @@ class Score(Composition):
         self.normalized_parts_data = normalized_parts_data
         self.normalized_parts_data[0].to_csv('data/csv/norm.csv')
         
-    
-    # def write_score(self):
-    #     # Create a new MIDI file objecth
-    #     score = mido.MidiFile()
-        
-    #     score.ticks_per_beat = 480
-        
-    #     print(self.track_list)
+
     def write_score(self):
         # Create a new MIDI file object
         score = mido.MidiFile()
