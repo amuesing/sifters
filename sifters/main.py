@@ -16,8 +16,8 @@ def main():
     
     textures = {
 
-        'np1': nonpitched.NonPitched(sieves),
-        # 'mono1': monophonic.Monophonic(sieves),
+        # 'np1': nonpitched.NonPitched(sieves),
+        'mono1': monophonic.Monophonic(sieves),
 
     }
     

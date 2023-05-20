@@ -16,9 +16,10 @@ class Score(Composition):
         self.kwargs = kwargs
         self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
-        self.set_track_list()
+        self.ticks_per_beat = 480
         self.normalize_periodicity()
-        self.get_on_and_off_messages()
+        self.set_track_list()
+        self.set_midi_messages()
         
         
     @staticmethod
@@ -87,32 +88,37 @@ class Score(Composition):
         self.normalized_parts_data[0].to_csv('data/csv/norm.csv')
     
     
-    def get_on_and_off_messages(self):
+    def set_midi_messages(self):
         for part in self.normalized_parts_data:
-            # no need to make a new dataframe, just update the original one with Message column
             new_rows = []
+            
             for _, row in part.iterrows():
                 part['Message'] = 'note_on'
+                part['Time'] = 0
+                
             for _, row in part.iterrows():
                 new_rows.append(row)
                 if row['Message'] == 'note_on':
                     note_off_row = row.copy()
                     note_off_row['Message'] = 'note_off'
+                    note_off_row['Time'] = int(note_off_row['Duration'] * self.ticks_per_beat)
                     new_rows.append(note_off_row)
                     
             # Check if the DataFrame begins with a note or a rest.
             # If the compostion begins with a rest, create a 'note_off' message that is equal to the duration of the rest.
-            if part.iloc[0]['Start'] == 0.0:
+            if part.iloc[0]['Start'] != 0.0:
                 note_off_row = part.iloc[0].copy()
                 note_off_row['Velocity'] = 0
-                note_off_row['MIDI'] = 0
+                note_off_row['Note'] = 0
                 note_off_row['Message'] = 'note_off'
                 note_off_row['Duration'] = part.iloc[0]['Start']
+                note_off_row['Time'] = note_off_row['Duration'] * self.ticks_per_beat
                 note_off_row['Start'] = 0.0
                 new_rows.insert(0, note_off_row)
-            new_df = pandas.DataFrame(new_rows)
-            new_df.reset_index(drop=True, inplace=True)
-            new_df.to_csv('data/csv/note_on.csv')
+                
+            self.normalized_parts_data = pandas.DataFrame(new_rows)
+            self.normalized_parts_data.reset_index(drop=True, inplace=True)
+            self.normalized_parts_data.to_csv('data/csv/note_on.csv')
             
                 
     def write_score(self):

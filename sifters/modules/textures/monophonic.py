@@ -25,7 +25,7 @@ class Monophonic(Texture):
         self.notes_data = self.group_by_start(self.notes_data)
         
         # Get the lowest MIDI note for each start time.
-        self.notes_data = self.get_closest_midi(self.notes_data)
+        self.notes_data = self.get_closest_note(self.notes_data)
         
         # Convert lists of pitch data into scalar pitch data.
         self.notes_data = self.convert_lists_to_scalars(self.notes_data)
@@ -34,7 +34,7 @@ class Monophonic(Texture):
         self.notes_data = self.close_intervals(self.notes_data)
         
         # Combine consecutive MIDI values into a single note with a longer duration.
-        self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
+        self.notes_data = self.combine_consecutive_note_values(self.notes_data)
 
         # Move parse_pitch_data method to score
         # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
