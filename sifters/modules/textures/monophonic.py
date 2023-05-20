@@ -35,9 +35,7 @@ class Monophonic(Texture):
         
         # Combine consecutive MIDI values into a single note with a longer duration.
         self.notes_data = self.combine_consecutive_midi_values(self.notes_data)
-        
 
-        
         # Move parse_pitch_data method to score
         # Add a Pitch column to the dataframe which seperates and tracks the decimal from the MIDI column values.
         # self.notes_data = self.parse_pitch_data(self.notes_data)

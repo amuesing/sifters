@@ -18,6 +18,7 @@ class Score(Composition):
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
         self.set_track_list()
         self.normalize_periodicity()
+        self.get_on_and_off_messages()
         
         
     @staticmethod
@@ -69,9 +70,6 @@ class Score(Composition):
                 # Adjust the Start column of the copy based on the length of one repitition and grid value.
                 dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
                 
-                # Adjust the End column of the copy based on the length of one repitition and grid value.
-                dataframe_copy['End'] = round(dataframe_copy['End'] + (length_of_one_rep * arg.grid) * i, 6)
-                
                 # Append the copy to the duplicates list.
                 duplicates.append(dataframe_copy)
             
@@ -87,8 +85,36 @@ class Score(Composition):
         # Store the normalized_parts_data in self.normalized_parts_data.
         self.normalized_parts_data = normalized_parts_data
         self.normalized_parts_data[0].to_csv('data/csv/norm.csv')
-        
-
+    
+    
+    def get_on_and_off_messages(self):
+        for part in self.normalized_parts_data:
+            # no need to make a new dataframe, just update the original one with Message column
+            new_rows = []
+            for _, row in part.iterrows():
+                part['Message'] = 'note_on'
+            for _, row in part.iterrows():
+                new_rows.append(row)
+                if row['Message'] == 'note_on':
+                    note_off_row = row.copy()
+                    note_off_row['Message'] = 'note_off'
+                    new_rows.append(note_off_row)
+                    
+            # Check if the DataFrame begins with a note or a rest.
+            # If the compostion begins with a rest, create a 'note_off' message that is equal to the duration of the rest.
+            if part.iloc[0]['Start'] == 0.0:
+                note_off_row = part.iloc[0].copy()
+                note_off_row['Velocity'] = 0
+                note_off_row['MIDI'] = 0
+                note_off_row['Message'] = 'note_off'
+                note_off_row['Duration'] = part.iloc[0]['Start']
+                note_off_row['Start'] = 0.0
+                new_rows.insert(0, note_off_row)
+            new_df = pandas.DataFrame(new_rows)
+            new_df.reset_index(drop=True, inplace=True)
+            new_df.to_csv('data/csv/note_on.csv')
+            
+                
     def write_score(self):
         # Create a new MIDI file object
         score = mido.MidiFile()
@@ -109,7 +135,6 @@ class Score(Composition):
             score.tracks.append(track)
         
         
-
         # # Add the Note messages and PitchBend messages to the MIDI file
         # for i, _ in enumerate(self.track_list):
         #     for msg in note_msgs:
@@ -151,56 +176,6 @@ class Score(Composition):
 
         # Return the list of PitchBend messages
         return bend_msgs
-
-
-    # def write_score(self):
-
-    #     # Create a PrettyMIDI object
-    #     score = pretty_midi.PrettyMIDI()
-        
-    #     # Write method to determine TimeSignature
-    #     score.time_signature_changes.append(pretty_midi.TimeSignature(5, 4, 0))
-        
-    #     # Double the resolution of the MIDI file
-    #     score.resolution = score.resolution * 2
-        
-    #     # Convert the CSV data to Note objects and PitchBend objects
-    #     note_objects = [self.csv_to_note_object(part) for part in self.normalized_parts_data]
-    #     bend_objects = [self.csv_to_bend_object(part) for part in self.normalized_parts_data]
-        
-    #     # Add the Note objects and PitchBend objects to the instrumentation
-    #     for i, _ in enumerate(note_objects):
-    #         self.instrumentation[i].notes = note_objects[i]
-    #         self.instrumentation[i].pitch_bends = bend_objects[i]
-    #         score.instruments.append(self.instrumentation[i])
-        
-    #     # Write the MIDI file
-    #     score.write(f'data/mid/score.mid')
-    
-    
-    # @staticmethod
-    # def csv_to_note_object(dataframe):
-
-    #     # Use a list comprehension to generate a list of pretty_midi.Note objects from the input dataframe
-    #     # The list comprehension iterates over each row in the dataframe and creates a new Note object with the specified attributes
-    #     note_data = [pretty_midi.Note(velocity=int(row['Velocity']), pitch=int(row['MIDI']), start=row['Start'], end=row['End']) for _, row in dataframe.iterrows()]
-        
-    #     # Return the list of Note objects
-    #     return note_data
-    
-    
-    # @staticmethod
-    # def csv_to_bend_object(dataframe):
-
-    #     if 'Pitch' in dataframe.columns:
-    #         # Use a list comprehension to generate a list of pretty_midi.PitchBend objects from the input dataframe
-    #         # The list comprehension iterates over each row in the dataframe and creates a new PitchBend object with the specified attributes
-    #         bend_objects = [pretty_midi.PitchBend(pitch=int(4096 * row['Pitch']), time=row['Start']) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
-    #     else:
-    #         # If the 'Pitch' column does not exist, create a list of PitchBend objects with default pitch values
-    #         bend_objects = [pretty_midi.PitchBend(pitch=0, time=row['Start']) for _, row in dataframe.iterrows()]
-            
-    #     return bend_objects
     
     
     def combine_parts(self, *args):
@@ -234,7 +209,7 @@ class Score(Composition):
             
             
         @staticmethod
-        def expand_midi_lists(dataframe):
+        def expand_note_lists(dataframe):
 
             # Create a copy of the input dataframe to avoid modifying the original one.
             dataframe = dataframe.copy()
@@ -247,11 +222,11 @@ class Score(Composition):
                 dataframe['Pitch'] = dataframe['Pitch'].apply(lambda x: x[0] if isinstance(x, list) else x)
                 
             # Separate rows with list values in MIDI column from rows without.
-            start_not_lists = dataframe[~dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
-            start_lists = dataframe[dataframe['MIDI'].apply(lambda x: isinstance(x, list))]
+            start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
+            start_lists = dataframe[dataframe['Note'].apply(lambda x: isinstance(x, list))]
             
             # Expand rows with list values in MIDI column so that each row has only one value.
-            start_lists = start_lists.explode('MIDI')
+            start_lists = start_lists.explode('Note')
             start_lists = start_lists.reset_index(drop=True)
             
             # Concatenate rows back together and sort by start time.
@@ -301,15 +276,15 @@ class Score(Composition):
         combined_notes_data = update_end_value(combined_notes_data)
         
         # Expand lists of MIDI values into individual rows.
-        combined_notes_data = expand_midi_lists(combined_notes_data)
+        combined_notes_data = expand_note_lists(combined_notes_data)
         
         # If all parts are monophonic, further process the combined notes.
         if all(isinstance(obj, Monophonic) for obj in objects):
             combined_notes_data = self.group_by_start(combined_notes_data)
-            combined_notes_data = self.get_lowest_midi(combined_notes_data)
+            combined_notes_data = self.get_lowest_note(combined_notes_data)
             combined_notes_data = self.check_and_close_intervals(combined_notes_data)
-            combined_notes_data = self.adjust_midi_range(combined_notes_data)
-            combined_notes_data = self.combine_consecutive_midi_values(combined_notes_data)
+            combined_notes_data = self.adjust_note_range(combined_notes_data)
+            combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
             combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
             
         # Update instrumentation to match the combined parts.

@@ -91,7 +91,7 @@ class Texture(Composition):
     
     def set_notes_data(self):
         
-        def generate_midi_pool(binary_index, factor_index):
+        def generate_note_pool(binary_index, factor_index):
             
             def get_successive_diff(lst):
                 return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
@@ -156,7 +156,7 @@ class Texture(Composition):
             num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
             
-            # Generate the MIDI pool by iterating through the steps and matrix.
+            # Generate the note pool by iterating through the steps and matrix.
             pool = []
             current_index = 0
             retrograde = False
@@ -188,7 +188,7 @@ class Texture(Composition):
                 
                 current_index = wrapped_index
             
-            # Flatten the pool into a 1D list of MIDI values.
+            # Flatten the pool into a 1D list of note values.
             flattened_pool = [num for list in pool for num in list]
             return flattened_pool
         
@@ -202,8 +202,8 @@ class Texture(Composition):
             # Create an iterator which is equal to the length of a list of factors (for self.period).
             for j in range(len(self.factors)):
                 
-                # Create a midi_pool for each sieve represented in self.binary.
-                midi_pool = itertools.cycle(generate_midi_pool(i, j))
+                # Create a note_pool for each sieve represented in self.binary.
+                note_pool = itertools.cycle(generate_note_pool(i, j))
                 
                 # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
                 pattern = numpy.tile(self.binary[i], self.factors[j])
@@ -217,12 +217,12 @@ class Texture(Composition):
                 # Find the duration of each note represented as a float.
                 duration = self.grid * duration_multiplier
                 
-                # For each non-zero indice append notes_data list with corresponding midi information.
+                # For each non-zero indice append notes_data list with corresponding note information.
                 for k in indices:
                     velocity = 64
                     offset = k * duration
-                    notes_data.append([velocity, next(midi_pool), offset, float(self.grid)])
+                    notes_data.append([velocity, next(note_pool), offset, float(self.grid)])
                     
         notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
         
-        self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'MIDI', 'Start', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'Note', 'Start', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)

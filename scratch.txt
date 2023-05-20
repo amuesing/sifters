@@ -26,5 +26,5 @@ Player class which is similar to Forecast class, emulates a player within a set 
 
 create a dictionary for each note_on message and it's complimentary notes_off 
 
-what if you include a Duration collumn instead of an 'End' Column. Just change End to Duration.
-This may be more accurate rendition of the data.
+Create a DataFrame that represents the note_on and note_off messages. This helps represent a rest
+.. what if a piece begins with a rest? this keeps track of rests and notes equally.

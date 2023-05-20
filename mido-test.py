@@ -7,7 +7,7 @@ track = mido.MidiTrack()
 mid.tracks.append(track)
 
 track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(69)))
-
+track.append(mido.Message('note_off', velocity=64, time=480))
 notes = [(60, 1), (62, 1), (64, 1), (65, 1)]
 for note, duration in notes:
     ticks = int(duration * mid.ticks_per_beat)
@@ -36,4 +36,4 @@ for note, duration in notes:
 
 print(mid)
 # Save the MIDI file
-# mid.save('tempo_change.mid')
+mid.save('tempo_change.mid')
