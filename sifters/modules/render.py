@@ -18,7 +18,7 @@ class Render(Composition):
         self.ticks_per_beat = 480
         self.normalize_periodicity()
         self.set_track_list()
-        self.set_messages()
+        self.set_midi_messages()
         
         
     @staticmethod
@@ -88,24 +88,30 @@ class Render(Composition):
         self.normalized_parts_data[0].to_csv('data/csv/norm.csv')
     
     
-    def set_messages(self):
-        def parse_pitch_data(dataframe):
+    def set_midi_messages(self):
         
+        messages_data = []
+
+        def parse_pitch_data(dataframe):
             # Compute 'Pitch' and 'Note' columns for each row
             for index, row in dataframe.iterrows():
                 pitch = round(row['Note'] - math.floor(row['Note']), 4)
                 note = math.floor(row['Note'])
                 dataframe.at[index, 'Note'] = note
-                dataframe.at[index, 'Pitch'] = pitch
-            # Reorder the columns
-            column_order = ['Velocity', 'Note', 'Pitch', 'Start', 'Duration']
-            dataframe = dataframe.reindex(columns=column_order)
+                dataframe.at[index, 'Pitch'] = pitch * 4095
+            
+            # Convert 'Note' column to integer data type
+            dataframe['Note'] = dataframe['Note'].astype(int)
+            dataframe['Pitch'] = dataframe['Pitch'].astype(int)
+            
             # Return the updated dataframe
             return dataframe
+        
     
         for part in self.normalized_parts_data:
             new_rows = []
             part = parse_pitch_data(part)
+
             for _, row in part.iterrows():
                 part['Message'] = 'note_on'
                 part['Time'] = 0
@@ -113,6 +119,12 @@ class Render(Composition):
             for _, row in part.iterrows():
                 new_rows.append(row)
                 if row['Message'] == 'note_on':
+                    if row['Pitch'] != 0.0:
+                        pitchwheel_row = row.copy()
+                        pitchwheel_row['Message'] = 'pitchwheel'
+                        # Why us this creating a float and not an integer
+                        # pitchwheel_row['Pitch'] = pitchwheel_row['Pitch'] * 4095
+                        new_rows.append(pitchwheel_row)
                     note_off_row = row.copy()
                     note_off_row['Message'] = 'note_off'
                     note_off_row['Time'] = int(note_off_row['Duration'] * self.ticks_per_beat)
@@ -130,75 +142,57 @@ class Render(Composition):
                 note_off_row['Start'] = 0.0
                 new_rows.insert(0, note_off_row)
                 
-            self.normalized_parts_data = pandas.DataFrame(new_rows)
-            self.normalized_parts_data.reset_index(drop=True, inplace=True)
-            self.normalized_parts_data.to_csv('data/csv/norm.csv')
+            messages_dataframe = pandas.DataFrame(new_rows)
+            column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
+            messages_dataframe = messages_dataframe.reindex(columns=column_order)
+            messages_dataframe.reset_index(drop=True, inplace=True)
+            messages_dataframe.to_csv('data/csv/norm.csv')
+            
+            messages_data.append(messages_dataframe)
+            self.messages_data = messages_data
     
              
     def render_midi(self):
+        
+        def csv_to_midi_messages(dataframe):
+
+            messages = []
+            for _, row in dataframe.iterrows():
+                if row['Message'] == 'note_on':
+                    messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+                elif row['Message'] == 'pitchwheel':
+                    messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
+                elif row['Message'] == 'note_off':
+                    messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+
+            return messages
+        
         # Create a new MIDI file object
-        score = mido.MidiFile()
+        render = mido.MidiFile()
 
         # Set the ticks per beat resolution
-        score.ticks_per_beat = 480
+        render.ticks_per_beat = 480
 
         # # Write method to determine TimeSignature
         time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
         self.track_list[0].append(time_signature)
 
         # Convert the CSV data to Note messages and PitchBend messages
-        note_msgs = [self.csv_to_note_msg(part) for part in self.normalized_parts_data]
-        # bend_msgs = [self.csv_to_bend_msg(part) for part in self.normalized_parts_data]
+        midi_messages = [csv_to_midi_messages(part) for part in self.messages_data]
         
         # Add the Tracks to the MIDI File
         for track in self.track_list:
-            score.tracks.append(track)
-            
-        # print(note_msgs)
-        
-        
-        # # Add the Note messages and PitchBend messages to the MIDI file
-        # for i, _ in enumerate(self.track_list):
-        #     for msg in note_msgs:
-        #         self.track_list[i].append(msg)
-        # for msg in bend_msgs:
-        #         self.track_list[i].append(msg)
-                
-        
+            render.tracks.append(track)
+
+        # Add the Note messages and PitchBend messages to the MIDI file
+        for i, _ in enumerate(self.track_list):
+            for message in midi_messages:
+                for msg in message:
+                    self.track_list[i].append(msg)
+
         # Write the MIDI file
-        # score.save('data/mid/score.mid')
+        render.save('data/mid/render.mid')
 
-
-    @staticmethod
-    def csv_to_note_msg(dataframe):
-        # print(dataframe)
-        # dataframe['Duration'] = [round(row['End'] - row['Start'], 6) for _, row in dataframe.iterrows()]
-
-        
-        note_messages = [mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=row['Time']) for _, row in dataframe.iterrows()]
-        return note_messages
-        # dataframe.to_csv('duration.csv')
-        # # Use a list comprehension to generate a list of Note messages from the input dataframe
-        # # The list comprehension iterates over each row in the dataframe and creates a new Note message with the specified attributes
-        # note_msgs = [mido.Message('note_on', note=int(row['MIDI']), velocity=int(row['Velocity']), time=int(row['Start']*480)) for _, row in dataframe.iterrows()]
-        # note_off_msgs = [mido.Message('note_off', note=int(row['MIDI']), velocity=int(row['Velocity']), time=int(row['End']*480)) for _, row in dataframe.iterrows()]
-        
-        # # Return the list of Note messages
-        # return note_msgs + note_off_msgs
-
-
-    @staticmethod
-    def csv_to_bend_msg(dataframe):
-        if 'Pitch' in dataframe.columns:
-            # Use a list comprehension to generate a list of PitchBend messages from the input dataframe
-            # The list comprehension iterates over each row in the dataframe and creates a new PitchBend message with the specified attributes
-            bend_msgs = [mido.Message('pitchwheel', pitch=int(8192 * row['Pitch']), time=int(row['Start']*480)) for _, row in dataframe[dataframe['Pitch'] != 0.0].iterrows()]
-        else:
-            # If the 'Pitch' column does not exist, create a list of PitchBend messages with default pitch values
-            bend_msgs = [mido.Message('pitchwheel', pitch=0, time=int(row['Start']*480)) for _, row in dataframe.iterrows()]
-
-        # Return the list of PitchBend messages
-        return bend_msgs
     
     
     def combine_parts(self, *args):
