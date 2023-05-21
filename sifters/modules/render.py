@@ -2,13 +2,12 @@ from modules.composition import Composition
 from modules.textures.monophonic import Monophonic
 
 import mido
-import pretty_midi
 import functools
 import pandas
 import numpy
 import math
 
-class Score(Composition):
+class Render(Composition):
     
     
     def __init__(self, **kwargs):
@@ -19,7 +18,7 @@ class Score(Composition):
         self.ticks_per_beat = 480
         self.normalize_periodicity()
         self.set_track_list()
-        self.set_midi_messages()
+        self.set_messages()
         
         
     @staticmethod
@@ -54,6 +53,7 @@ class Score(Composition):
 
         
     def normalize_periodicity(self):
+        
         normalized_parts_data = []
         
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
@@ -88,10 +88,24 @@ class Score(Composition):
         self.normalized_parts_data[0].to_csv('data/csv/norm.csv')
     
     
-    def set_midi_messages(self):
+    def set_messages(self):
+        def parse_pitch_data(dataframe):
+        
+            # Compute 'Pitch' and 'Note' columns for each row
+            for index, row in dataframe.iterrows():
+                pitch = round(row['Note'] - math.floor(row['Note']), 4)
+                note = math.floor(row['Note'])
+                dataframe.at[index, 'Note'] = note
+                dataframe.at[index, 'Pitch'] = pitch
+            # Reorder the columns
+            column_order = ['Velocity', 'Note', 'Pitch', 'Start', 'Duration']
+            dataframe = dataframe.reindex(columns=column_order)
+            # Return the updated dataframe
+            return dataframe
+    
         for part in self.normalized_parts_data:
             new_rows = []
-            
+            part = parse_pitch_data(part)
             for _, row in part.iterrows():
                 part['Message'] = 'note_on'
                 part['Time'] = 0
@@ -112,16 +126,16 @@ class Score(Composition):
                 note_off_row['Note'] = 0
                 note_off_row['Message'] = 'note_off'
                 note_off_row['Duration'] = part.iloc[0]['Start']
-                note_off_row['Time'] = note_off_row['Duration'] * self.ticks_per_beat
+                note_off_row['Time'] = int(note_off_row['Duration']) * self.ticks_per_beat
                 note_off_row['Start'] = 0.0
                 new_rows.insert(0, note_off_row)
                 
             self.normalized_parts_data = pandas.DataFrame(new_rows)
             self.normalized_parts_data.reset_index(drop=True, inplace=True)
-            self.normalized_parts_data.to_csv('data/csv/note_on.csv')
-            
-                
-    def write_score(self):
+            self.normalized_parts_data.to_csv('data/csv/norm.csv')
+    
+             
+    def render_midi(self):
         # Create a new MIDI file object
         score = mido.MidiFile()
 
@@ -129,16 +143,18 @@ class Score(Composition):
         score.ticks_per_beat = 480
 
         # # Write method to determine TimeSignature
-        time_sig = mido.MetaMessage('time_signature', numerator=5, denominator=4)
-        self.track_list[0].append(time_sig)
+        time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
+        self.track_list[0].append(time_signature)
 
         # Convert the CSV data to Note messages and PitchBend messages
         note_msgs = [self.csv_to_note_msg(part) for part in self.normalized_parts_data]
-        bend_msgs = [self.csv_to_bend_msg(part) for part in self.normalized_parts_data]
+        # bend_msgs = [self.csv_to_bend_msg(part) for part in self.normalized_parts_data]
         
         # Add the Tracks to the MIDI File
         for track in self.track_list:
             score.tracks.append(track)
+            
+        # print(note_msgs)
         
         
         # # Add the Note messages and PitchBend messages to the MIDI file
@@ -159,7 +175,8 @@ class Score(Composition):
         # dataframe['Duration'] = [round(row['End'] - row['Start'], 6) for _, row in dataframe.iterrows()]
 
         
-        note_messages = [mido.Message('note_on',)]
+        note_messages = [mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=row['Time']) for _, row in dataframe.iterrows()]
+        return note_messages
         # dataframe.to_csv('duration.csv')
         # # Use a list comprehension to generate a list of Note messages from the input dataframe
         # # The list comprehension iterates over each row in the dataframe and creates a new Note message with the specified attributes

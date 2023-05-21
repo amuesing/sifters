@@ -21,9 +21,10 @@ def main():
 
     }
     
-    output = score.Score(**textures)
+    # Does it make sense to have a seperate class for this, why not just have as methods and call from main.py?
+    output = render.Render(**textures)
     # output.combine_parts('np1', 'np2')
-    # output.write_score()
+    output.render_midi()
     
 if __name__ == '__main__':
     main()

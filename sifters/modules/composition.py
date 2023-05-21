@@ -120,22 +120,6 @@ class Composition:
         return dataframe
     
     
-    @staticmethod
-    def parse_pitch_data(dataframe):
-        
-        # Compute 'Pitch' and 'Note' columns for each row
-        for index, row in dataframe.iterrows():
-            pitch = round(row['Note'] - math.floor(row['Note']), 4)
-            note = math.floor(row['Note'])
-            dataframe.at[index, 'Note'] = note
-            dataframe.at[index, 'Pitch'] = pitch
-        # Reorder the columns
-        column_order = ['Velocity', 'Note', 'Pitch', 'Start', 'Duration']
-        dataframe = dataframe.reindex(columns=column_order)
-        # Return the updated dataframe
-        return dataframe
-    
-    
     def get_least_common_multiple(self, nums):
         if len(nums) == 2:
             return nums[0] * nums[1] // math.gcd(nums[0], nums[1])

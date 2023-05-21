@@ -28,3 +28,7 @@ create a dictionary for each note_on message and it's complimentary notes_off
 
 Create a DataFrame that represents the note_on and note_off messages. This helps represent a rest
 .. what if a piece begins with a rest? this keeps track of rests and notes equally.
+
+render.Score/render.Graph or render.Render
+
+check the normalize_notes_data method. Why do we create an initial copy of the dataframe in the duplicates list before appending?
