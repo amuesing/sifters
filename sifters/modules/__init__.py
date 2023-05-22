@@ -2,6 +2,6 @@ __all__ = [
     'composition',
     'dataset',
     'generator',
-    'render',
+    'score',
     'visualize',
     ]

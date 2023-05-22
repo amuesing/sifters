@@ -18,13 +18,14 @@ def main():
 
         # 'np1': nonpitched.NonPitched(sieves),
         'mono1': monophonic.Monophonic(sieves),
+        'mono2': monophonic.Monophonic(sieves, '2/3'),
 
     }
     
     # Does it make sense to have a seperate class for this, why not just have as methods and call from main.py?
-    output = render.Render(**textures)
-    # output.combine_parts('np1', 'np2')
-    output.render_midi()
+    output = score.Score(**textures)
+    output.combine_parts('mono1', 'mono2')
+    # output.write_midi()
     
 if __name__ == '__main__':
     main()

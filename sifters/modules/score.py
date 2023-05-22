@@ -7,7 +7,7 @@ import pandas
 import numpy
 import math
 
-class Render(Composition):
+class Score(Composition):
     
     
     def __init__(self, **kwargs):
@@ -109,6 +109,7 @@ class Render(Composition):
         
     
         for part in self.normalized_parts_data:
+
             new_rows = []
             part = parse_pitch_data(part)
 
@@ -152,7 +153,7 @@ class Render(Composition):
             self.messages_data = messages_data
     
              
-    def render_midi(self):
+    def write_midi(self):
         
         def csv_to_midi_messages(dataframe):
 
@@ -168,10 +169,10 @@ class Render(Composition):
             return messages
         
         # Create a new MIDI file object
-        render = mido.MidiFile()
+        score = mido.MidiFile()
 
         # Set the ticks per beat resolution
-        render.ticks_per_beat = 480
+        score.ticks_per_beat = 480
 
         # # Write method to determine TimeSignature
         time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
@@ -182,7 +183,7 @@ class Render(Composition):
         
         # Add the Tracks to the MIDI File
         for track in self.track_list:
-            render.tracks.append(track)
+            score.tracks.append(track)
 
         # Add the Note messages and PitchBend messages to the MIDI file
         for i, _ in enumerate(self.track_list):
@@ -191,33 +192,28 @@ class Render(Composition):
                     self.track_list[i].append(msg)
 
         # Write the MIDI file
-        render.save('data/mid/render.mid')
+        score.save('data/mid/score.mid')
 
     
     
     def combine_parts(self, *args):
         
         @staticmethod
-        def get_max_end_value(dataframe):
-
-            # Make a copy of the input dataframe to avoid modifying the original
-            dataframe = dataframe.copy()
+        def get_max_duration(dataframe):
             
             # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
-            dataframe['End'] = dataframe['End'].apply(lambda x: max(x) if isinstance(x, list) else x)
+            dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
             
             return dataframe
         
         
         @staticmethod
         def update_end_value(dataframe):
-
-            # Make a copy of the input dataframe to avoid modifying the original
-            dataframe = dataframe.copy()
             
             # Update the 'End' column using numpy to take the minimum value between the current 'End' value and 
             # the 'Start' value of the next row in the dataframe
-            dataframe['End'] = numpy.minimum(dataframe['Start'].shift(-1), dataframe['End'])
+            end = numpy.minimum(dataframe['Start'].shift(-1), dataframe['Start'] + dataframe['Duration'])
+            dataframe['Duration'] = end - dataframe['Start']
             
             # Drop the last row of the dataframe since it's no longer needed
             dataframe = dataframe.iloc[:-1]
@@ -227,16 +223,18 @@ class Render(Composition):
             
         @staticmethod
         def expand_note_lists(dataframe):
-
-            # Create a copy of the input dataframe to avoid modifying the original one.
-            dataframe = dataframe.copy()
             
             # Convert list values in Velocity column to single values.
             dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
             
-            # Convert list values in Pitch column to single values, if the column exists.
-            if 'Pitch' in dataframe.columns:
-                dataframe['Pitch'] = dataframe['Pitch'].apply(lambda x: x[0] if isinstance(x, list) else x)
+            # Convert list values in Pitch column to single values.
+            dataframe['Pitch'] = dataframe['Pitch'].apply(lambda x: x[0] if isinstance(x, list) else x)
+            
+            # Convert list values in Message column to single values.
+            dataframe['Message'] = dataframe['Message'].apply(lambda x: x[0] if isinstance(x, list) else x)
+            
+            # Convert list values in Time column to single values.
+            dataframe['Time'] = dataframe['Time'].apply(lambda x: x[0] if isinstance(x, list) else x)
                 
             # Separate rows with list values in MIDI column from rows without.
             start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
@@ -250,7 +248,7 @@ class Render(Composition):
             result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
             result.sort_values('Start', inplace=True)
             result.reset_index(drop=True, inplace=True)
-            return result
+            return result.drop_duplicates()
         
         
         @staticmethod
@@ -287,7 +285,7 @@ class Render(Composition):
         combined_notes_data = self.group_by_start(combined_notes_data)
         
         # Get the maximum end value for notes that overlap in time.
-        combined_notes_data = get_max_end_value(combined_notes_data)
+        combined_notes_data = get_max_duration(combined_notes_data)
         
         # Update end values for notes that overlap in time.
         combined_notes_data = update_end_value(combined_notes_data)
@@ -297,21 +295,26 @@ class Render(Composition):
         
         # If all parts are monophonic, further process the combined notes.
         if all(isinstance(obj, Monophonic) for obj in objects):
+            # Why is group_by_start behaving strangely when I try to run it again?
             combined_notes_data = self.group_by_start(combined_notes_data)
-            combined_notes_data = self.get_lowest_note(combined_notes_data)
-            combined_notes_data = self.check_and_close_intervals(combined_notes_data)
-            combined_notes_data = self.adjust_note_range(combined_notes_data)
-            combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
-            combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
+            combined_notes_data = self.get_closest_note(combined_notes_data)
+        #     combined_notes_data = self.check_and_close_intervals(combined_notes_data)
+        #     combined_notes_data = self.adjust_note_range(combined_notes_data)
+        #     combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
+        #     combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
+            print(combined_notes_data)
             
-        # Update instrumentation to match the combined parts.
-        self.instrumentation = filter_first_match(self.instrumentation, indices)
+        # # Update instrumentation to match the combined parts.
+        # self.instrumentation = filter_first_match(self.instrumentation, indices)
         
-        # Filter notes data to match the combined parts and update it with the combined notes.
-        filtered_notes_data = filter_first_match(self.normalized_parts_data, indices)
-        filtered_notes_data[indices[0]] = combined_notes_data
-        self.normalized_parts_data = filtered_notes_data
+        # # Filter notes data to match the combined parts and update it with the combined notes.
+        # filtered_notes_data = filter_first_match(self.normalized_parts_data, indices)
+        # filtered_notes_data[indices[0]] = combined_notes_data
+        # self.normalized_parts_data = filtered_notes_data
         
-        # Remove the arguments for the combined parts from self.kwargs.
-        for arg in args[1:]:
-            del self.kwargs[arg]
+        # # Remove the arguments for the combined parts from self.kwargs.
+        # for arg in args[1:]:
+        #     del self.kwargs[arg]
+        
+        # print(combined_notes_data.drop_duplicates().reset_index(drop=True))
+        # print(combined_notes_data)
