@@ -3,8 +3,8 @@ from modules import *
 
 def main():
     
-    data = dataset.load_midi('score.mid')
-    data = dataset.parse_midi(data)
+    # data = dataset.load_midi('score.mid')
+    # data = dataset.parse_midi(data)
     # data = dataset.extract_chords(data)
     # data = dataset.midi_to_pitch_class(data)
     # data = dataset.extract_single_occurrences(data)
@@ -13,19 +13,23 @@ def main():
     # sieves = data.iloc[6:7]['Sieves'].tolist()
     # data.to_csv('data/csv/dataframe.csv')
     
-    # textures = {
-
-    #     # 'np1': nonpitched.NonPitched(sieves),
-    #     # 'np2': nonpitched.NonPitched(sieves, '2/3'),
-    #     'mono1': monophonic.Monophonic(sieves),
-    #     'mono2': monophonic.Monophonic(sieves, '2/3'),
-
-    # }
+    sieves = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)']
     
-    # output = score.Score(**textures)
-    # output.combine_parts('mono1', 'mono2')
-    # # output.combine_parts('np1', 'np2')
-    # output.write_midi()
+    textures = {
+
+        # 'np1': nonpitched.NonPitched(sieves),
+        # 'np2': nonpitched.NonPitched(sieves, '2/3'),
+        'mono1': monophonic.Monophonic(sieves),
+        'mono2': monophonic.Monophonic(sieves, '2/3'),
+
+    }
+    
+    output = score.Score(**textures)
+    
+    ## Why is the Time slightly off when I combine two dataframes?
+    output.combine_parts('mono1', 'mono2')
+    # output.combine_parts('np1', 'np2')
+    output.write_midi()
     
 if __name__ == '__main__':
     main()

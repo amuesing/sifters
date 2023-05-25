@@ -132,7 +132,7 @@ class Score(Composition):
                         new_rows.append(pitchwheel_row)
                     note_off_row = row.copy()
                     note_off_row['Message'] = 'note_off'
-                    note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+                    note_off_row['Time'] = int(note_off_row['Duration'] * self.ticks_per_beat)
                     new_rows.append(note_off_row)
                     
             # Check if the DataFrame begins with a note or a rest.
@@ -143,7 +143,7 @@ class Score(Composition):
                 note_off_row['Note'] = 0
                 note_off_row['Message'] = 'note_off'
                 note_off_row['Duration'] = part.iloc[0]['Start']
-                note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+                note_off_row['Time'] = round((note_off_row['Duration']) * self.ticks_per_beat)
                 note_off_row['Start'] = 0.0
                 new_rows.insert(0, note_off_row)
                 

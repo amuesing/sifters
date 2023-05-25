@@ -42,12 +42,13 @@ def parse_midi(midi_file):
     
     # Iterate over all the tracks in the MIDI file
     for track in midi_file.tracks:
+        print(track)
         # Iterate over all the events in the track
         for event in track:
             # Get the delta time value for the event
             delta_time = event.time
             # Print the delta time value
-            print(delta_time)
+            # print(delta_time)
                 # if event.type == 'note_on':
                 #     timestamp = event.time
                 #     print(timestamp)
