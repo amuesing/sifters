@@ -221,8 +221,8 @@ class Texture(Composition):
                 for k in indices:
                     velocity = 64
                     offset = k * duration
-                    notes_data.append([velocity, next(note_pool), offset, float(self.grid)])
+                    notes_data.append([offset, velocity, next(note_pool), float(self.grid)])
                     
-        notes_data = [[data[0], data[1], round(data[2], 6), round(data[3], 6)] for data in notes_data]
+        notes_data = [[round(data[0], 6), data[1], data[2], round(data[3], 6)] for data in notes_data]
         
-        self.notes_data = pandas.DataFrame(notes_data, columns=['Velocity', 'Note', 'Start', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        self.notes_data = pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)

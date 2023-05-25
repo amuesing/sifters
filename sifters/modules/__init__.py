@@ -1,7 +1,7 @@
 __all__ = [
     'composition',
     'dataset',
-    'generator',
+    'transform',
     'score',
     'visualize',
     ]

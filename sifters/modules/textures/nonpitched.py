@@ -27,4 +27,4 @@ class NonPitched(Texture):
         int_dict = {val: i for i, val in enumerate(unique_midi_values_sorted)}
         self.notes_data['Note'] = self.notes_data['Note'].map(int_dict)
         
-        self.notes_data.to_csv(f'data/csv/{self.part_id}.csv')
+        self.notes_data.to_csv(f'data/csv/NonPitched{self.part_id}.csv')

@@ -34,7 +34,7 @@ from modules.composition import *
 #     return Composition.group_by_start_and_end(pandas.DataFrame(notes_data))
 
 def load_midi(filename):
-    midi_file = mido.MidiFile(f'data/midi/{filename}')
+    midi_file = mido.MidiFile(f'data/mid/{filename}')
     return midi_file
 
 
@@ -62,7 +62,7 @@ def parse_midi(midi_file):
 
 def extract_chords(dataframe):
     
-    filtered_dataframe = dataframe[dataframe['MIDI'].apply(lambda x: len(x) > 2)]
+    filtered_dataframe = dataframe[dataframe['Note'].apply(lambda x: len(x) > 2)]
     return filtered_dataframe
 
 

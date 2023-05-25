@@ -1,4 +1,3 @@
-import pandas
 import math
 
 class Composition:
