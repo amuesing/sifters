@@ -3,50 +3,60 @@ Preprocesses MIDI files
 '''
 
 import music21
-import pretty_midi
 import mido
 import pandas
 
 
 from modules.composition import *
 
-# def load_midi(filename):
-    
-#     midi_file = pretty_midi.PrettyMIDI(f'data/midi/{filename}')
-    
-#     return midi_file
-
-
-# def parse_midi(midi_file):
-#     notes_data = []
-    
-#     for instrument in midi_file.instruments:
-        
-#         for note in instrument.notes:
-#             print(note)
-#             # notes_data.append({
-#             #         'Velocity': note.velocity,
-#             #         'MIDI': note.pitch,
-#             #         'Start': round(note.start, 3), 
-#             #         'End': round(note.end, 3)
-#             #         })
-    
-#     return Composition.group_by_start_and_end(pandas.DataFrame(notes_data))
 
 def load_midi(filename):
     midi_file = mido.MidiFile(f'data/mid/{filename}')
+    print(midi_file)
     return midi_file
 
 
 def parse_midi(midi_file):
-    
+    messages = {
+        'Type': [],
+        'Channel': [],
+        'Note': [],
+        'Pitch': [],
+        'Velocity': [],
+        'Time': [],
+    }
+    event_types = ['note_on', 'pitchwheel', 'note_off']
+
     # Iterate over all the tracks in the MIDI file
     for track in midi_file.tracks:
-        print(track)
+        
         # Iterate over all the events in the track
         for event in track:
+            
+            if event.type in ['note_on', 'note_off']:
+
+                messages['Type'].append(event.type)
+                messages['Channel'].append(event.channel)
+                messages['Note'].append(event.note)
+                messages['Pitch'].append(None)
+                messages['Velocity'].append(event.velocity)
+                messages['Time'].append(event.time)
+                
+            if event.type == 'pitchwheel':
+                messages['Type'].append(event.type)
+                messages['Channel'].append(event.channel)
+                messages['Note'].append(None)
+                messages['Pitch'].append(event.pitch)
+                messages['Velocity'].append(None)
+                messages['Time'].append(event.time)
+                
+    messages_dataframe = pandas.DataFrame.from_dict(messages, orient='index').T
+    
+    return messages_dataframe
+
+                
             # Get the delta time value for the event
-            delta_time = event.time
+            # delta_time = event.time
             # Print the delta time value
             # print(delta_time)
                 # if event.type == 'note_on':
@@ -60,6 +70,10 @@ def parse_midi(midi_file):
     #         # If the message is a note_on or note_off event, print the note number and velocity
     #         if message.type in ['note_on', 'note_off']:
     #             print(f"Note: {message.note}, Velocity: {message.velocity}, On: {message.start}")
+    
+    print(messages)
+    # events = pandas.DataFrame(messages)
+    # events.to_csv('data/csv/parsed.csv')
 
 def extract_chords(dataframe):
     

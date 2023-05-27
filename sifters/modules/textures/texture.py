@@ -192,10 +192,9 @@ class Texture(Composition):
             flattened_pool = [num for list in pool for num in list]
             return flattened_pool
         
-        
         # Create a list container for notes_data.
         notes_data = []
-        
+
         # Create an iterator which is equal to the length of a list of forms represented in binary.
         for i in range(len(self.binary)):
             
@@ -211,18 +210,18 @@ class Texture(Composition):
                 # Create a list of indices where non-zero elements occur within the pattern.
                 indices = numpy.nonzero(pattern)[0]
                 
-                # Find the multiplier for self.grid to normalize duration length against number of repititions of sieve in pattern.
+                # Find the multiplier for self.grid to normalize duration length against number of repetitions of sieve in pattern.
                 duration_multiplier = self.period / self.factors[j]
                 
-                # Find the duration of each note represented as a float.
-                duration = self.grid * duration_multiplier
+                # Find the duration of each note represented as a decimal.
+                duration = decimal.Decimal(str(self.grid)) * decimal.Decimal(str(duration_multiplier))
                 
                 # For each non-zero indice append notes_data list with corresponding note information.
                 for k in indices:
                     velocity = 64
-                    offset = k * duration
-                    notes_data.append([offset, velocity, next(note_pool), float(self.grid)])
-                    
-        notes_data = [[round(data[0], 6), data[1], data[2], round(data[3], 6)] for data in notes_data]
-        
+                    offset = decimal.Decimal(str(k)) * duration
+                    notes_data.append([offset, velocity, next(note_pool), decimal.Decimal(str(self.grid))])
+
+        notes_data = [[data[0], data[1], data[2], data[3]] for data in notes_data]
+
         self.notes_data = pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
