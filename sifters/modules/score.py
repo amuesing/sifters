@@ -134,7 +134,8 @@ class Score(Composition):
                     note_off_row['Message'] = 'note_off'
                     note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
                     new_rows.append(note_off_row)
-                    
+            
+            ### THERE IS AN EASIER WAY TO DO THIS BY SIMPLY ASSIGNING THE STARTS OFFSET TO THE TIME OF THE FIRST NOTE_ON MESSAGE    
             # Check if the DataFrame begins with a note or a rest.
             # If the compostion begins with a rest, create a 'note_off' message that is equal to the duration of the rest.
             if part.iloc[0]['Start'] != 0.0:

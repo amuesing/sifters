@@ -3,8 +3,7 @@ from modules import *
 
 def main():
     
-    data = dataset.load_midi('score.mid')
-    data = dataset.parse_midi(data)
+    data = dataset.parse_midi('score.mid')
     # print(data)
     # data = dataset.extract_chords(data)
     # data = dataset.midi_to_pitch_class(data)
