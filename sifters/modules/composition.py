@@ -1,4 +1,5 @@
 import math
+import decimal
 
 class Composition:
 
@@ -82,7 +83,7 @@ class Composition:
         # Return the updated dataframe.
         return updated_dataframe
     
-    
+        
     @staticmethod
     def adjust_note_range(dataframe):
         
@@ -94,6 +95,7 @@ class Composition:
             dataframe['Note'] = dataframe['Note'].apply(adjust_value)
             
         return dataframe
+    
     
     @staticmethod
     def combine_consecutive_note_values(dataframe):

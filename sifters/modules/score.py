@@ -17,8 +17,8 @@ class Score(Composition):
         self.normalized_numerators = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         self.multipliers = list(self.kwargs.values())[-1].get_least_common_multiple(self.normalized_numerators) // self.normalized_numerators
         self.ticks_per_beat = 480
-        self.normalize_periodicity()
-        self.set_track_list()
+        self.normalized_parts_data = self.normalize_periodicity()
+        self.track_list = self.set_track_list()
         
         
     @staticmethod
@@ -49,7 +49,7 @@ class Score(Composition):
             midi_track.name = f'{kwarg.name}'
             track_list.append(midi_track)
             
-        self.track_list = track_list
+        return track_list
 
         
     def normalize_periodicity(self):
@@ -62,14 +62,14 @@ class Score(Composition):
             
             # Calculate the length of one repetition.
             length_of_one_rep = math.pow(arg.period, 2)
-            
+
             # Iterate over the range of multipliers to create copies of notes_data.
             for i in range(multiplier):
                 # Create a copy of notes_data.
                 dataframe_copy = arg.notes_data.copy()
-                
+
                 # Adjust the Start column of the copy based on the length of one repitition and grid value.
-                dataframe_copy['Start'] = round(dataframe_copy['Start'] + (length_of_one_rep * arg.grid) * i, 6)
+                dataframe_copy['Start'] = dataframe_copy['Start'] + round((decimal.Decimal(length_of_one_rep) * decimal.Decimal(arg.grid.numerator) / decimal.Decimal(arg.grid.denominator) * i), 6)
                 
                 # Append the copy to the duplicates list.
                 duplicates.append(dataframe_copy)
@@ -84,7 +84,7 @@ class Score(Composition):
             normalized_parts_data.append(result)
             
         # Store the normalized_parts_data in self.normalized_parts_data.
-        self.normalized_parts_data = normalized_parts_data
+        return normalized_parts_data
     
     
     def set_midi_messages(self):
@@ -154,13 +154,15 @@ class Score(Composition):
             messages_dataframe.reset_index(drop=True, inplace=True)
             
             messages_data.append(messages_dataframe)
-            self.messages_data = messages_data
-            messages_dataframe.to_csv('data/csv/messages.csv')
+            
+            messages_data.to_csv('data/csv/messages.csv')
+                        
+            return messages_data
     
              
     def write_midi(self):
         
-        self.set_midi_messages()
+        messages_data = self.set_midi_messages()
         
         def csv_to_midi_messages(dataframe):
 
@@ -186,7 +188,7 @@ class Score(Composition):
         self.track_list[0].append(time_signature)
 
         # Convert the CSV data to Note messages and PitchBend messages
-        midi_messages = [csv_to_midi_messages(part) for part in self.messages_data]
+        midi_messages = [csv_to_midi_messages(part) for part in messages_data]
         
         # Add the Tracks to the MIDI File
         for track in self.track_list:
@@ -215,13 +217,12 @@ class Score(Composition):
         
         @staticmethod
         def update_duration_value(dataframe):
-            
-            # Calculate the end value of a note by summing a row's Start and Duration columns.
-            end = dataframe['Start'] + dataframe['Duration']
-            
+
             # Update the 'Duration' column using numpy to take the minimum value between the current end of
             # the current note and the start of the next note.
-            end = numpy.minimum(dataframe['Start'].shift(-1), dataframe['Start'] + dataframe['Duration'])
+            current_end = dataframe['Start'] + dataframe['Duration']
+            next_start = dataframe['Start'].shift(-1)
+            end = numpy.minimum(next_start, current_end)
             
             # Convert the 'Start' and ' columns to decimal objects in order to prevent floating point error.
             end = end.apply(lambda x: decimal.Decimal(str(x)))
@@ -254,6 +255,7 @@ class Score(Composition):
             result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
             result.sort_values('Start', inplace=True)
             result.reset_index(drop=True, inplace=True)
+            
             return result.drop_duplicates()
         
         
@@ -288,7 +290,7 @@ class Score(Composition):
         
         # Combine the notes data from the selected parts.
         combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
-        
+
         # Group notes by their start times.
         combined_notes_data = self.group_by_start(combined_notes_data)
         

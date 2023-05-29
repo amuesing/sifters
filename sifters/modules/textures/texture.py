@@ -39,6 +39,10 @@ class Texture(Composition):
         # Set the texture ID attribute of the Texture object
         self.texture_id = Texture.texture_id
         
+        self.notes_data = self.set_notes_data()
+        
+        self.notes_data.to_csv('data/csv/notes_data.csv')
+        
         # Increment the texture ID for the next Texture object
         Texture.texture_id += 1
         
@@ -103,30 +107,30 @@ class Texture(Composition):
             
             
             def generate_pitchclass_matrix(intervals):
-                        
+
                 # Calculate the interval between each pair of consecutive pitches.
                 next_interval = intervals[1:]
                 row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
-                
+
                 # Normalize the tone row so that it starts with 0 and has no negative values.
                 row = [decimal.Decimal(n) % decimal.Decimal('12') for n in row]
-                
+
                 # Generate the rows of the pitch class matrix.
-                matrix = [[abs(note - decimal.Decimal('12')) % decimal.Decimal('12')] for note in row]
-                
+                matrix = [[decimal.Decimal(abs(note - decimal.Decimal('12')) % decimal.Decimal('12'))] for note in row]
+
                 # Generate the columns of the pitch class matrix.
                 matrix = [r * len(intervals) for r in matrix]
-                
+
                 # Update the matrix with the correct pitch class values.
-                matrix = [[(matrix[i][j] + row[j]) % decimal.Decimal('12')
+                matrix = [[(matrix[i][j] + decimal.Decimal(row[j])) % decimal.Decimal('12')
                         for j, _ in enumerate(range(len(row)))]
                         for i in range(len(row))]
-                
+
                 # Label the rows and columns of the matrix.
                 matrix = pandas.DataFrame(matrix,
                                         index=[f'P{m[0]}' for m in matrix], 
-                                        columns=[f'I{i}' for i in matrix[0]]).astype(float)
-                
+                                        columns=[f'I{i}' for i in matrix[0]])
+
                 return matrix
             
             
@@ -187,9 +191,10 @@ class Texture(Composition):
                         pool.append(matrix.iloc[:, wrapped_index].tolist())
                 
                 current_index = wrapped_index
-            
+
             # Flatten the pool into a 1D list of note values.
             flattened_pool = [num for list in pool for num in list]
+
             return flattened_pool
         
         # Create a list container for notes_data.
@@ -211,17 +216,20 @@ class Texture(Composition):
                 indices = numpy.nonzero(pattern)[0]
                 
                 # Find the multiplier for self.grid to normalize duration length against number of repetitions of sieve in pattern.
-                duration_multiplier = self.period / self.factors[j]
+                duration_multiplier = self.period // self.factors[j]
+                
+                # Convert the grid Fraction object into a Decimal object.
+                grid = decimal.Decimal(self.grid.numerator) / decimal.Decimal(self.grid.denominator)
                 
                 # Find the duration of each note represented as a decimal.
-                duration = decimal.Decimal(str(self.grid)) * decimal.Decimal(str(duration_multiplier))
-                
+                duration = grid * duration_multiplier
+
                 # For each non-zero indice append notes_data list with corresponding note information.
                 for k in indices:
                     velocity = 64
-                    offset = decimal.Decimal(str(k)) * duration
-                    notes_data.append([offset, velocity, next(note_pool), decimal.Decimal(str(self.grid))])
+                    offset = decimal.Decimal(int(k)) * duration
+                    notes_data.append([round(offset, 6), velocity, next(note_pool), round(grid, 6)])
 
         notes_data = [[data[0], data[1], data[2], data[3]] for data in notes_data]
-
-        self.notes_data = pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        
+        return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
