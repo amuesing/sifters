@@ -1,4 +1,2 @@
-Bugs:
+There is still some strangeness in the number of decimals when producing monophonic dataframes.
 
-5/28/23, why are the decimals on note value behaving strangely (see row 587) when initializing a monophonic texture?
--- Solve by changing note values to Decimal objects also?

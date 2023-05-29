@@ -1,5 +1,4 @@
 import math
-import decimal
 
 class Composition:
 

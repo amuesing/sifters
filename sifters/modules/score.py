@@ -155,7 +155,7 @@ class Score(Composition):
             
             messages_data.append(messages_dataframe)
             
-            messages_data.to_csv('data/csv/messages.csv')
+            messages_data[0].to_csv('data/csv/messages.csv')
                         
             return messages_data
     
@@ -214,26 +214,21 @@ class Score(Composition):
             
             return dataframe
         
-        
         @staticmethod
         def update_duration_value(dataframe):
-
-            # Update the 'Duration' column using numpy to take the minimum value between the current end of
-            # the current note and the start of the next note.
             current_end = dataframe['Start'] + dataframe['Duration']
             next_start = dataframe['Start'].shift(-1)
+
+            # Replace None values with appropriate values for comparison
+            next_start = next_start.mask(next_start.isnull(), numpy.inf)
             end = numpy.minimum(next_start, current_end)
             
-            # Convert the 'Start' and ' columns to decimal objects in order to prevent floating point error.
-            end = end.apply(lambda x: decimal.Decimal(str(x)))
-            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
+            end = end.apply(lambda x: decimal.Decimal(str(x))) if not end.isnull().values.any() else end
+            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x))) if not dataframe['Start'].isnull().values.any() else dataframe['Start']
             
-            # Calculate the Duration value by subtracting the end value from each row's Start value.
             dataframe['Duration'] = end - dataframe['Start']
-
-            # Drop the last row of the dataframe since it's no longer needed.
             dataframe = dataframe.iloc[:-1]
-
+            
             return dataframe
             
             

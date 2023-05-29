@@ -25,15 +25,14 @@ def main():
 
     }   
     
-    # output = score.Score(**textures)
+    output = score.Score(**textures)
     
-    # print(output.normalized_parts_data)
+    print(output.normalized_parts_data)
     
-    # # Why is the Time slightly off when I combine two dataframes?
-    # output.combine_parts('mono1', 'mono2')
+    # Why is the Time slightly off when I combine two dataframes?
+    output.combine_parts('mono1', 'mono2')
     
-    # output.combine_parts('np1', 'np2')
-    # output.write_midi()
+    output.write_midi()
     
 if __name__ == '__main__':
     main()

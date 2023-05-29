@@ -18,9 +18,6 @@ class Monophonic(Texture):
         # Increment ID value.
         Monophonic.part_id += 1
         
-        # Create a part for the instrument in the musical texture.
-        self.set_notes_data()
-        
         # Group notes with the same start time into a single row.
         self.notes_data = self.group_by_start(self.notes_data)
         

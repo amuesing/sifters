@@ -110,19 +110,19 @@ class Texture(Composition):
 
                 # Calculate the interval between each pair of consecutive pitches.
                 next_interval = intervals[1:]
-                row = [0] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
+                row = [decimal.Decimal('0.0')] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
 
                 # Normalize the tone row so that it starts with 0 and has no negative values.
-                row = [decimal.Decimal(n) % decimal.Decimal('12') for n in row]
+                row = [n % 12 for n in row]
 
                 # Generate the rows of the pitch class matrix.
-                matrix = [[decimal.Decimal(abs(note - decimal.Decimal('12')) % decimal.Decimal('12'))] for note in row]
+                matrix = [[(abs(note - 12) % 12)] for note in row]
 
                 # Generate the columns of the pitch class matrix.
                 matrix = [r * len(intervals) for r in matrix]
 
                 # Update the matrix with the correct pitch class values.
-                matrix = [[(matrix[i][j] + decimal.Decimal(row[j])) % decimal.Decimal('12')
+                matrix = [[(matrix[i][j] + row[j]) % 12
                         for j, _ in enumerate(range(len(row)))]
                         for i in range(len(row))]
 
@@ -135,17 +135,17 @@ class Texture(Composition):
             
             
             # Set the base tonality value.
-            tonality = 40
+            tonality = decimal.Decimal(40.0)
             
             # Generate a list of successieve differences between the intervals.
             steps = get_successive_diff(self.closed_intervals[binary_index])
-            
+
             # Create a cycle iterator for the steps list.
             steps_cycle = itertools.cycle(steps)
             
             # Compute the starting pitch for the sieve.
             first_pitch = tonality + self.closed_intervals[binary_index][0]
-            
+
             # Get the indices of non-zero elements in the sieve.
             indices = numpy.nonzero(self.binary[binary_index])[0]
             
@@ -155,11 +155,11 @@ class Texture(Composition):
             
             # Generate a pitch matrix based on the intervals.
             matrix = first_pitch + generate_pitchclass_matrix(intervals)
-            
+
             # Compute the number of events and positions needed for the sieve.
             num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
-            
+
             # Generate the note pool by iterating through the steps and matrix.
             pool = []
             current_index = 0
@@ -167,7 +167,7 @@ class Texture(Composition):
             for _ in range(num_of_positions):
                 step = next(steps_cycle)
                 wrapped_index = (current_index + abs(step)) % len(self.intervals[binary_index])
-                
+
                 # Check if the intervals have wrapped around the range of the matrix.
                 wrap_count = (abs(step) + current_index) // len(self.intervals[binary_index])
                 

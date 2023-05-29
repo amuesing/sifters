@@ -2,7 +2,6 @@ import music21
 import mido
 import pandas
 
-
 from modules.composition import *
 
 class Dataset:
