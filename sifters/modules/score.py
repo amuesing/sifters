@@ -61,15 +61,16 @@ class Score(Composition):
             duplicates = [arg.notes_data.copy()]
             
             # Calculate the length of one repetition.
-            length_of_one_rep = math.pow(arg.period, 2)
+            length_of_one_rep = decimal.Decimal(math.pow(arg.period, 2))
 
             # Iterate over the range of multipliers to create copies of notes_data.
             for i in range(multiplier):
                 # Create a copy of notes_data.
                 dataframe_copy = arg.notes_data.copy()
-
+                grid = decimal.Decimal(arg.grid.numerator) / decimal.Decimal(arg.grid.denominator)
+                
                 # Adjust the Start column of the copy based on the length of one repitition and grid value.
-                dataframe_copy['Start'] = dataframe_copy['Start'] + round((decimal.Decimal(length_of_one_rep) * decimal.Decimal(arg.grid.numerator) / decimal.Decimal(arg.grid.denominator) * i), 6)
+                dataframe_copy['Start'] = dataframe_copy['Start'] + (round(length_of_one_rep * grid, 6) * i)
                 
                 # Append the copy to the duplicates list.
                 duplicates.append(dataframe_copy)
@@ -211,27 +212,28 @@ class Score(Composition):
             
             # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
             dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
-            
+
             return dataframe
         
         @staticmethod
         def update_duration_value(dataframe):
             current_end = dataframe['Start'] + dataframe['Duration']
             next_start = dataframe['Start'].shift(-1)
+            next_start.to_csv('data/csv/test.csv')
+            print(next_start)
+
 
             # Replace None values with appropriate values for comparison
-            next_start = next_start.mask(next_start.isnull(), numpy.inf)
+            next_start = next_start.fillna(float('inf'))
             end = numpy.minimum(next_start, current_end)
-            
-            end = end.apply(lambda x: decimal.Decimal(str(x))) if not end.isnull().values.any() else end
-            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x))) if not dataframe['Start'].isnull().values.any() else dataframe['Start']
-            
+            end = end.apply(lambda x: decimal.Decimal(str(x)))
+            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
+
             dataframe['Duration'] = end - dataframe['Start']
             dataframe = dataframe.iloc[:-1]
-            
             return dataframe
-            
-            
+
+
         @staticmethod
         def expand_note_lists(dataframe):
             

@@ -72,12 +72,12 @@ class Composition:
             # If the increase between note notes is greater than a tritone, transpose
             # the next note note up one octave.
             if note - next_note > 6:
-                updated_dataframe.at[i + 1, 'Note'] = round(next_note + 12, 3)
+                updated_dataframe.at[i + 1, 'Note'] = next_note + 12
             
             # If the decrease between note notes is greater than a tritone, transpose
             # the next note note down one octave.
             elif note - next_note < -6:
-                updated_dataframe.at[i + 1, 'Note'] = round(next_note - 12, 3)
+                updated_dataframe.at[i + 1, 'Note'] = next_note - 12
         
         # Return the updated dataframe.
         return updated_dataframe

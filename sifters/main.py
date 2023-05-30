@@ -27,9 +27,7 @@ def main():
     
     output = score.Score(**textures)
     
-    print(output.normalized_parts_data)
-    
-    # Why is the Time slightly off when I combine two dataframes?
+    # Why is the Time slightly off when I combine two dataframes? -- Why is there .666667 as well as .666666?
     output.combine_parts('mono1', 'mono2')
     
     output.write_midi()
