@@ -1,2 +1,7 @@
-There is still some strangeness in the number of decimals when producing monophonic dataframes.
+What is structure?
 
+Silence (rest) -> Something (sound)
+
+tempo
+
+Need method to determine time signature

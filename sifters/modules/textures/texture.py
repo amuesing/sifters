@@ -41,8 +41,6 @@ class Texture(Composition):
         
         self.notes_data = self.set_notes_data()
         
-        self.notes_data.to_csv('data/csv/notes_data.csv')
-        
         # Increment the texture ID for the next Texture object
         Texture.texture_id += 1
         

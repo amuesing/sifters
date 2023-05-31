@@ -50,10 +50,9 @@ class Score(Composition):
             track_list.append(midi_track)
             
         return track_list
-
-        
+    
     def normalize_periodicity(self):
-        
+    
         normalized_parts_data = []
         
         for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
@@ -70,7 +69,8 @@ class Score(Composition):
                 grid = decimal.Decimal(arg.grid.numerator) / decimal.Decimal(arg.grid.denominator)
                 
                 # Adjust the Start column of the copy based on the length of one repitition and grid value.
-                dataframe_copy['Start'] = dataframe_copy['Start'] + (round(length_of_one_rep * grid, 6) * i)
+                dataframe_copy['Start'] = dataframe_copy['Start'] + round((length_of_one_rep * grid) * i, 6)
+
                 
                 # Append the copy to the duplicates list.
                 duplicates.append(dataframe_copy)
@@ -155,8 +155,6 @@ class Score(Composition):
             messages_dataframe.reset_index(drop=True, inplace=True)
             
             messages_data.append(messages_dataframe)
-            
-            messages_data[0].to_csv('data/csv/messages.csv')
                         
             return messages_data
     
@@ -209,28 +207,30 @@ class Score(Composition):
         
         @staticmethod
         def get_max_duration(dataframe):
-            
+
             # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
             dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
 
             return dataframe
         
+        
         @staticmethod
         def update_duration_value(dataframe):
+            
             current_end = dataframe['Start'] + dataframe['Duration']
             next_start = dataframe['Start'].shift(-1)
-            next_start.to_csv('data/csv/test.csv')
-            print(next_start)
-
 
             # Replace None values with appropriate values for comparison
             next_start = next_start.fillna(float('inf'))
             end = numpy.minimum(next_start, current_end)
             end = end.apply(lambda x: decimal.Decimal(str(x)))
+
             dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
 
             dataframe['Duration'] = end - dataframe['Start']
+
             dataframe = dataframe.iloc[:-1]
+            
             return dataframe
 
 
@@ -293,7 +293,7 @@ class Score(Composition):
         
         # Get the maximum end value for notes that overlap in time.
         combined_notes_data = get_max_duration(combined_notes_data)
-        
+
         # Update end values for notes that overlap in time.
         combined_notes_data = update_duration_value(combined_notes_data)
         
@@ -326,5 +326,3 @@ class Score(Composition):
         # Remove the arguments for the combined parts from self.kwargs.
         for arg in args[1:]:
             del self.kwargs[arg]
-            
-        combined_notes_data.to_csv('data/csv/combined.csv')

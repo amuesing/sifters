@@ -8,14 +8,14 @@ class Composition:
         # Get all column names in the DataFrame
         columns = dataframe.columns
 
-        # Check if "Start" is one of the column names
-        if "Start" in columns:
-            # Sort the DataFrame based on the "Start" column
-            dataframe = dataframe.sort_values("Start")
+        # Check if 'Start' is one of the column names
+        if 'Start' in columns:
+            # Sort the DataFrame based on the 'Start' column
+            dataframe = dataframe.sort_values('Start')
             
-            # Group the sorted DataFrame by the "Start" column and create a new DataFrame with lists of values
-            agg_dict = {col: list for col in columns if col != "Start"}  # Exclude "Start" column from aggregation
-            dataframe = dataframe.groupby("Start").agg(agg_dict).reset_index()
+            # Group the sorted DataFrame by the 'Start' column and create a new DataFrame with lists of values
+            agg_dict = {col: list for col in columns if col != 'Start'}  # Exclude 'Start' column from aggregation
+            dataframe = dataframe.groupby('Start').agg(agg_dict).reset_index()
 
         return dataframe
 
