@@ -3,16 +3,15 @@ from modules import *
 
 def main():
     
-    data = dataset.Dataset('sentimental.mid')
-    print(data.midi_messages)
-    # data = dataset.calculate_start_value(data)
-    # data = dataset.extract_chords(data)
-    # data = dataset.midi_to_pitch_class(data)
-    # data = dataset.extract_single_occurrences(data)
-    # data = dataset.chords_to_sieves(data)
-    # data = dataset.sort_values(by='Start')
+    midifile = dataset.Dataset('sentimental.mid')
+    dataframe = midifile.calculate_start_value(midifile.midi_messages)
+    # dataframe = midifile.extract_chords(dataframe)
+    # data = data.midi_to_pitch_class(data)
+    # data = data.extract_single_occurrences(data)
+    # data = data.chords_to_sieves(data)
+
     # sieves = data.iloc[6:7]['Sieves'].tolist()
-    # data.to_csv('data/csv/dataframe.csv')
+    dataframe.to_csv('data/csv/dataframe.csv')
     
     # sieves = ['((8@0|8@1|8@7)&(5@1|5@3))', '((8@0|8@1|8@2)&5@0)', '((8@5|8@6)&(5@2|5@3|5@4))', '(8@6&5@1)', '(8@3)', '(8@4)', '(8@1&5@2)']
     

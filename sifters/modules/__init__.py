@@ -3,5 +3,4 @@ __all__ = [
     'dataset',
     'transform',
     'score',
-    'visualize',
     ]

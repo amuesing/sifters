@@ -4,7 +4,7 @@ import pandas
 
 from modules.composition import *
 
-class Dataset:
+class Dataset(Composition):
     
     
     def __init__(self, midi_file):
@@ -45,18 +45,31 @@ class Dataset:
         messages_dataframe = pandas.DataFrame(messages)
         
         return messages_dataframe
-
-    # def calculate_start_value(dataframe):
-    #     for _, row in dataframe.iterrows():
-    #         print(row['Time'] / 480)
+    
+    
+    def calculate_start_value(self, dataframe):
         
-    def extract_chords(dataframe):
+        ## This is not note start time, it is just duration
+        for _, row in dataframe.iterrows():
+            if row['Type'] in ['note_on', 'note_off']:
+                dataframe['Duration'] = [row['Time'] / self.ticks_per_beat for _, row in self.midi_messages.iterrows()]
+                # dataframe['Start'] = []
+            else:
+                continue
+            
+        return dataframe
         
-        filtered_dataframe = dataframe[dataframe['Note'].apply(lambda x: len(x) > 2)]
-        return filtered_dataframe
+       
+    def extract_chords(self, dataframe):
+        ## use group by start method from composition class
+        dataframe = self.group_by_start(dataframe)
+        
+        dataframe = dataframe[dataframe['Note'].apply(lambda x: len(x) > 2)]
+        
+        return dataframe
 
 
-
+    @staticmethod
     def midi_to_pitch_class(dataframe):
         
         # Define a function to apply the modular 12 operation to a list of MIDI values
@@ -69,6 +82,7 @@ class Dataset:
         return dataframe
 
 
+    @staticmethod
     def extract_single_occurrences(dataframe):
         
         unique_midi_lists = list(set([frozenset(x) for x in dataframe['Pitch Class']]))
@@ -83,7 +97,7 @@ class Dataset:
         return unique_dataframe
 
 
-
+    @staticmethod
     def chords_to_sieves(dataframe):
         
         sieves = []

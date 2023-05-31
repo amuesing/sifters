@@ -300,7 +300,7 @@ class Score(Composition):
         # Expand lists of MIDI values into individual rows.
         combined_notes_data = expand_note_lists(combined_notes_data)
         
-        # If all parts are monophonic, further process the combined notes.
+        # If all parts are Monophonic, further process the combined notes to match Monophonic texture.
         if all(isinstance(obj, Monophonic) for obj in objects):
 
             combined_notes_data = self.group_by_start(combined_notes_data)
