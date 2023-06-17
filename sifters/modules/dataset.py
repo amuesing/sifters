@@ -1,5 +1,6 @@
 import music21
 import mido
+import decimal
 import pandas
 
 from modules.composition import *
@@ -27,7 +28,7 @@ class Dataset(Composition):
                         'Pitch': '--',
                         'Velocity': event.velocity,
                         'Time': event.time
-                    }
+                    } 
                 elif event.type == 'pitchwheel':
                     message = {
                         'Type': event.type,
@@ -48,18 +49,13 @@ class Dataset(Composition):
     
     
     def calculate_start_value(self, dataframe):
-        
-        ## This is not note start time, it is just duration
-        for _, row in dataframe.iterrows():
-            if row['Type'] in ['note_on', 'note_off']:
-                dataframe['Duration'] = [row['Time'] / self.ticks_per_beat for _, row in self.midi_messages.iterrows()]
-                # dataframe['Start'] = []
-            else:
-                continue
-            
+        mask = dataframe['Type'].isin(['note_on', 'note_off'])
+        dataframe.loc[mask, 'Duration'] = dataframe.loc[mask, 'Time'] / self.ticks_per_beat
+        dataframe.loc[~mask, 'Duration'] = '--'  # Assign '--' to Duration where the mask is False
+        ## HOW DO I CALCULATE START VALUE FOR EACH ROW, BASED ON DURATION?
         return dataframe
-        
-       
+
+
     def extract_chords(self, dataframe):
         ## use group by start method from composition class
         dataframe = self.group_by_start(dataframe)
