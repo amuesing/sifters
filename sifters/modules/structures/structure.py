@@ -13,8 +13,9 @@ class Structure(Composition):
         self.period = None
         self.binary = self.get_binary(sieves)
         self.consecutive_changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
-        self.distributed_changes = self.distribute_changes(self.consecutive_changes)
-        self.cardinatlity = len(self.flatten_list(self.distributed_changes))
+        self.structure_list = self.distribute_changes(self.consecutive_changes)
+        self.length_of_form = [sum(self.flatten_list(self.structure_list[i])) for i in range(len(self.structure_list))]
+        self.grids = self.get_grids()
 
 
     def get_binary(self, sieves):
@@ -72,23 +73,35 @@ class Structure(Composition):
         
         for lst in changes:
             
+            sieve_layer = []
+            
             for num in lst:
                 sublist = lst.copy() # Create a copy of the original list
+                
                 repeated_list = []
+                
                 for _ in range(num):
                     repeated_list.append(sublist) # Append the elements of sublist to repeated_list
-                structured_lists.append(repeated_list)
+                    
+                sieve_layer.append(repeated_list)
+                
+            structured_lists.append(sieve_layer)
         
         return structured_lists
     
     
     def flatten_list(self, nested_list):
+        
         flattened_list = []
+        
         for item in nested_list:
+            
             if isinstance(item, list):
                 flattened_list.extend(self.flatten_list(item))
+                
             else:
                 flattened_list.append(item)
+                
         return flattened_list
 
     
@@ -101,13 +114,16 @@ class Structure(Composition):
 
     @staticmethod
     def convert_decimal_to_fraction(decimal_list):
+        
         fraction_list = []
 
         for sublist in decimal_list:
             fraction_sublist = []
+            
             for decimal in sublist:
                 fraction = fractions.Fraction(decimal)
                 fraction_sublist.append(fraction)
+                
             fraction_list.append(fraction_sublist)
 
         return fraction_list
@@ -115,14 +131,17 @@ class Structure(Composition):
     
     @staticmethod
     def get_unique_fractions(input_list):
+        
         unique_fractions = []
         
         for sublist in input_list:
+            
             unique_sublist = []
             unique_set = set()
             
             for fraction in sublist:
                 fraction_str = str(fraction)
+                
                 if fraction_str not in unique_set:
                     unique_set.add(fraction_str)
                     unique_sublist.append(fraction)
@@ -134,6 +153,7 @@ class Structure(Composition):
     
     @staticmethod
     def lcm_of_decimals(decimals):
+        
         max_decimal_places = max([str(decimal)[::-1].find('.') for decimal in decimals])
         integers = [round(decimal * 10 ** max_decimal_places) for decimal in decimals]
         lcm_of_integers = math.lcm(*integers)
@@ -141,34 +161,20 @@ class Structure(Composition):
         return lcm_of_decimals
 
     
-    # percent = struct.get_percent_of_period(changes)
-    
-    # grids = struct.convert_decimal_to_fraction(percent)
-    
-    # grids = struct.get_unique_fractions(grids)
-    
-    # Flatten the nested lists into a single list
-    # flat_list = [item for sublist in percent for item in sublist]
-
-    # Remove duplicates and get the unique values
-    # unique_values = list(set(flat_list))
-    
-    # lcm = [struct.lcm_of_decimals(lst) for lst in percent]
-    
-    # # print(set(flat_list))
-    # print(struct.lcm_of_decimals(lcm))
-    
-    # print(struct.lcm_of_decimals(unique_values))
-    
-    # result_list = []
-
-    # for lst in changes:
-
-    #     for num in lst:
-    #         sublist = lst.copy()  # Create a copy of the original list
-    #         repeated_list = []
-    #         for _ in range(num):
-    #             repeated_list.append(sublist)  # Append the elements of sublist to repeated_list
-    #         result_list.append(repeated_list)
-            
-    # print(result_list)
+    def get_grids(self):
+        
+        percent = self.get_percent_of_period(self.consecutive_changes)
+        
+        grids = self.convert_decimal_to_fraction(percent)
+        
+        grids = self.get_unique_fractions(grids)
+        
+        # # Flatten the nested lists into a single list
+        # flat_list = self.flatten_list(percent)
+        
+        # # Remove duplicates and get the unique values
+        # unique_values = list(set(flat_list))
+        
+        # lcm = [self.lcm_of_decimals(lst) for lst in percent]
+        
+        return percent

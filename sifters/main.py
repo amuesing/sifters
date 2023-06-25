@@ -17,11 +17,24 @@ def main():
         
         ]
     
-    # sieves = ['|'.join(sieves)]
+    sieves = ['|'.join(sieves)]
     
     struct = structure.Structure(sieves)
     
-    print(struct.distributed_changes)
+    # print(struct.consecutive_changes)
+    # print(struct.grids)
+    
+    print(struct.structure_list)
+    
+    
+import math
+
+def lcm(numbers):
+    result = numbers[0]
+    for number in numbers[1:]:
+        result = result * number // math.gcd(result, number)
+    return result
+
     
     # midifile = dataset.Dataset('score.mid')
     # dataframe = midifile.calculate_start_value(midifile.midi_messages)
