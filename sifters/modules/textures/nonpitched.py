@@ -1,4 +1,4 @@
-from modules.textures.texture import Texture
+from textures.texture import Texture
 
 import pandas
 

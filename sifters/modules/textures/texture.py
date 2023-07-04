@@ -1,27 +1,22 @@
-from modules.composition import Composition
-
-import music21
-import fractions
 import itertools
 import decimal
 import pandas
 import numpy
 
-class Texture(Composition):
+class Texture:
     
     grid_history = []
     texture_id = 1
         
-    def __init__(self, sieves, grid=None, form=None):
+    def __init__(self, binary, form, grid):
         
-        # Set the grid attribute of the Texture object
-        self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
+        self.binary = binary
         
         # Set the form attribute of the Texture object
-        self.form = form if form is not None else 'Prime'
+        self.form = form
         
-        # Set the binary attribute of the Texture object
-        self.binary = self.set_binary(sieves)
+        # Set the grid attribute of the Texture object
+        self.grid = grid
         
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [[j for j in range(len(self.binary[i])) if self.binary[i][j] == 1] for i in range(len(self.binary))]
@@ -43,52 +38,6 @@ class Texture(Composition):
         
         # Increment the texture ID for the next Texture object
         Texture.texture_id += 1
-        
-        
-    def set_binary(self, sieves):
-
-        def get_binary(sieves):
-                    
-            binary = []
-            
-            # If the input is a tuple, compute the binary representation for each sieve.
-            if isinstance(sieves, list):
-                periods = []
-                objects = []
-                for siev in sieves:
-                    obj = music21.sieve.Sieve(siev)
-                    objects.append(obj)
-                    periods.append(obj.period())
-                    
-                # Compute the least common multiple of the periods of the input sieves.
-                self.period = self.get_least_common_multiple(periods)
-                
-                # Set the Z range of each Sieve object and append its binary representation to the list.
-                for obj in objects:
-                    obj.setZRange(0, self.period - 1)
-                    binary.append(obj.segment(segmentFormat='binary'))
-            else:
-                # Compute the binary representation for the single input sieve.
-                for siv in sieves:
-                    object = music21.sieve.Sieve(siv)
-                    object.setZRange(0, object.period() - 1)
-                    binary.append(object.segment(segmentFormat='binary'))
-                
-            return binary
-        
-        # Convert the list of sets of intervals to their binary forms
-        binary = get_binary(sieves)
-        
-        # Define a dictionary with lambda functions to transform the binary forms into different forms
-        forms = {
-            'Prime': lambda bin: bin,
-            'Inversion': lambda bin: [1 if x == 0 else 0 for x in bin],
-            'Retrograde': lambda bin: bin[::-1],
-            'Retrograde-Inversion': lambda bin: [1 if x == 0 else 1 for x in bin][::-1]
-        }
-        
-        # Apply the selected form to each binary form in the list, and return the resulting list
-        return [forms[self.form](bin) for bin in binary]
     
     
     def set_notes_data(self):

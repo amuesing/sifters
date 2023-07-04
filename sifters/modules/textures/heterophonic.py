@@ -1,1 +1,1 @@
-from modules.textures.texture import *
+from textures.texture import Texture

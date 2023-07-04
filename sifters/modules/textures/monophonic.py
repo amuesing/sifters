@@ -1,13 +1,13 @@
-from modules.textures.texture import *
+from textures.texture import Texture
 
 class Monophonic(Texture):
     # Initialize ID value for first instance of Monophonic object.
     part_id = 1
     
-    def __init__(self, sieves, grid=None, form=None):
+    def __init__(self, sieves, form=None):
         
         # Call superclass constructor.
-        super().__init__(sieves, grid, form)
+        super().__init__(sieves, form)
         
         # Set name of instrument.
         self.name = 'Monophonic'

@@ -9,35 +9,51 @@ import math
 class Structure(Composition):
     
     
-    def __init__(self, sieves):
+    def __init__(self, sieves, form=None):
         self.period = None
-        self.binary = self.get_binary(sieves)
-        self.consecutive_changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
-        self.structure_list = self.distribute_changes(self.consecutive_changes)
-        self.length_of_form = [sum(self.flatten_list(self.structure_list[i])) for i in range(len(self.structure_list))]
+        self.form = form if form is not None else 'Prime'
+        self.binary = self.set_binary(sieves)
+        self.changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
+        self.form = self.distribute_changes(self.changes)
         self.grids = self.get_grids()
 
 
-    def get_binary(self, sieves):
+    def set_binary(self, sieves):
+
+        def get_binary(sieves):
+             
+            binary = []
+            periods = []
+            objects = []
+            
+            for siev in sieves:
+                obj = music21.sieve.Sieve(siev)
+                objects.append(obj)
+                periods.append(obj.period())
                 
-        binary = []
-        
-        periods = []
-        objects = []
-        for siev in sieves:
-            obj = music21.sieve.Sieve(siev)
-            objects.append(obj)
-            periods.append(obj.period())
+            # Compute the least common multiple of the periods of the input sieves.
+            self.period = self.get_least_common_multiple(periods)
             
-        # Compute the least common multiple of the periods of the input sieves.
-        self.period = self.get_least_common_multiple(periods)
+            # Set the Z range of each Sieve object and append its binary representation to the list.
+            for obj in objects:
+                obj.setZRange(0, self.period - 1)
+                binary.append(obj.segment(segmentFormat='binary'))
+
+            return binary
         
-        # Set the Z range of each Sieve object and append its binary representation to the list.
-        for obj in objects:
-            obj.setZRange(0, self.period - 1)
-            binary.append(obj.segment(segmentFormat='binary'))
-            
-        return binary
+        # Convert the list of sets of intervals to their binary forms
+        binary = get_binary(sieves)
+        
+        # Define a dictionary with lambda functions to transform the binary forms into different forms
+        forms = {
+            'Prime': lambda bin: bin,
+            'Inversion': lambda bin: [1 if x == 0 else 0 for x in bin],
+            'Retrograde': lambda bin: bin[::-1],
+            'Retrograde-Inversion': lambda bin: [1 if x == 0 else 1 for x in bin][::-1]
+        }
+        
+        # Apply the selected form to each binary form in the list, and return the resulting list
+        return [forms[self.form](bin) for bin in binary]
     
 
     def get_consecutive_count(self):
@@ -163,7 +179,7 @@ class Structure(Composition):
     
     def get_grids(self):
         
-        percent = self.get_percent_of_period(self.consecutive_changes)
+        percent = self.get_percent_of_period(self.changes)
         
         grids = self.convert_decimal_to_fraction(percent)
         
@@ -177,4 +193,4 @@ class Structure(Composition):
         
         # lcm = [self.lcm_of_decimals(lst) for lst in percent]
         
-        return percent
+        return grids

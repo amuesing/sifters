@@ -21,21 +21,9 @@ def main():
     
     struct = structure.Structure(sieves)
     
-    # print(struct.consecutive_changes)
-    # print(struct.grids)
-    
-    print(struct.structure_list)
-    
-    
-import math
+    print(struct.grids)
+    print(struct.form)
 
-def lcm(numbers):
-    result = numbers[0]
-    for number in numbers[1:]:
-        result = result * number // math.gcd(result, number)
-    return result
-
-    
     # midifile = dataset.Dataset('score.mid')
     # dataframe = midifile.calculate_start_value(midifile.midi_messages)
     # dataframe = midifile.extract_chords(dataframe)
@@ -46,20 +34,20 @@ def lcm(numbers):
     # sieves = data.iloc[6:7]['Sieves'].tolist()
     # dataframe.to_csv('data/csv/dataframe.csv')
     
-    # textures = {
+    textures = {
 
-    #     # 'np1': nonpitched.NonPitched(sieves),
-    #     # 'np2': nonpitched.NonPitched(sieves, '2/3'),
-    #     'mono1': monophonic.Monophonic(sieves, '33/40'),
-    #     # 'mono2': monophonic.Monophonic(sieves, '1/8'),
+        # 'np1': nonpitched.NonPitched(sieves),
+        # 'np2': nonpitched.NonPitched(sieves, '2/3'),
+        'mono1': monophonic.Monophonic(sieves, '33/40'),
+        # 'mono2': monophonic.Monophonic(sieves, '1/8'),
 
-    # }   
+    }   
     
-    # output = score.Score(**textures)
+    output = score.Score(**textures)
     
-    # # output.combine_parts('mono1', 'mono2')
+    # output.combine_parts('mono1', 'mono2')
     
-    # output.write_midi()
+    output.write_midi()
     
 if __name__ == '__main__':
     main()
