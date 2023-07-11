@@ -1,4 +1,4 @@
-from modules.composition import Composition
+from composition import Composition
 
 import music21
 import decimal

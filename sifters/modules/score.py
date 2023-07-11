@@ -19,8 +19,8 @@ class Score(Composition):
         self.ticks_per_beat = 480
         self.normalized_parts_data = self.normalize_periodicity()
         self.track_list = self.set_track_list()
-        
-        
+    
+
     @staticmethod
     def get_multiplier(arg):
 
@@ -39,7 +39,7 @@ class Score(Composition):
 
         return arg.grid_history[arg.part_id-1].numerator * mult
     
-    
+
     def set_track_list(self):
         track_list = []
         

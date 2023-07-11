@@ -1,4 +1,4 @@
-from textures.texture import Texture
+from textures.texture import *
 
 class Monophonic(Texture):
     # Initialize ID value for first instance of Monophonic object.

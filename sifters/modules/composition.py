@@ -3,7 +3,9 @@ from textures import *
 import music21
 import decimal
 import fractions
+import functools
 import decimal
+import numpy
 import math
 
 class Composition:
@@ -16,10 +18,15 @@ class Composition:
         self.binary = self.set_binary(sieves)
         self.changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
         self.form = self.distribute_changes(self.changes)
-        self.grids = self.set_grids()
-        self.textures = self.set_textures()
+        self.grids_set = self.set_grids()
+        self.normalized_numerators = self.set_normalized_numerators()
+        self.multipliers = self.get_least_common_multiple(self.normalized_numerators)
+
+        # self.normalized_numerator = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
+        # self.set_textures()
+        # self.textures = self.set_textures()
         
-        
+
     def set_binary(self, sieves):
 
         def get_binary(sieves):
@@ -52,7 +59,7 @@ class Composition:
             'Inversion': lambda bin: [1 if x == 0 else 0 for x in bin],
             'Retrograde': lambda bin: bin[::-1],
             'Retrograde-Inversion': lambda bin: [1 if x == 0 else 1 for x in bin][::-1]
-        }
+            }
         
         # Apply the selected form to each binary form in the list, and return the resulting list
         return [forms[self.form](bin) for bin in binary]
@@ -198,10 +205,26 @@ class Composition:
         return grids
     
     def set_textures(self):
+        for sieve, grids in zip(self.sieves, self.grids):
+            for grid in grids:
+                print(sieve, grid)
+
         
-        return monophonic.Monophonic(self.sieves, binary = self.binary)
+        # return monophonic.Monophonic(self.sieves, self.grids)
+
+
+    def set_normalized_numerators(self):
+
+        denominators = [fraction.denominator for sublist in self.grids_set for fraction in sublist]
+        lcd = functools.reduce(math.lcm, denominators)
+        multipliers = [lcd // fraction.denominator for sublist in self.grids_set for fraction in sublist]
     
-    
+        return numpy.array([multipliers[i] * fract.numerator
+                for grid in self.grids_set
+                for i, fract in enumerate(grid)])
+
+
+    #######################
     @staticmethod
     def group_by_start(dataframe):
         # Get all column names in the DataFrame
@@ -355,5 +378,5 @@ if __name__ == '__main__':
     sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
-    
-    print(comp.textures)
+
+    print(comp.normalized_numerators)

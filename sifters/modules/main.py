@@ -1,6 +1,6 @@
-from modules.textures import *
-from modules.structures import *
-from modules import *
+from textures import *
+from structures import *
+
 
 
 def main():
@@ -43,11 +43,11 @@ def main():
 
     }   
     
-    output = score.Score(**textures)
+    # output = score.Score(**textures)
     
-    # output.combine_parts('mono1', 'mono2')
+    # # output.combine_parts('mono1', 'mono2')
     
-    output.write_midi()
+    # output.write_midi()
     
 if __name__ == '__main__':
     main()
