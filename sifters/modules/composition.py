@@ -21,6 +21,7 @@ class Composition:
         self.grids_set = self.set_grids()
         self.normalized_numerators = self.set_normalized_numerators()
         self.multipliers = self.get_least_common_multiple(self.normalized_numerators)
+        self.ticks_per_beat = 480
 
         # self.normalized_numerator = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
         # self.set_textures()
@@ -375,8 +376,16 @@ if __name__ == '__main__':
     
     ]
     
-    sieves = ['|'.join(sieves)]
+    # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
 
-    print(comp.normalized_numerators)
+    lcm = comp.get_least_common_multiple(comp.normalized_numerators)
+
+    # print([num / lcm for num in comp.normalized_numerators])
+
+    print(numpy.array([lcm // num for num in comp.normalized_numerators]))
+
+    # print(comp.grids_set)
+
+    print(comp.binary)
