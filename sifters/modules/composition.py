@@ -31,7 +31,7 @@ class Composition:
         # Derive modular-12 values from self.intervals. 
         mod12 = list(range(12))
         self.closed_intervals = [[mod12[j % len(mod12)] for j in i] for i in self.intervals]
-        self.normalized_numerators = self.set_normalized_numerators()
+        self.repeats = self.set_repeats()
         # self.multipliers = self.get_least_common_multiple(self.normalized_numerators)
         # self.ticks_per_beat = 480
         # self.notes_data = self.set_notes_data()
@@ -285,12 +285,13 @@ class Composition:
                 flattened_list.append(item)
                 
         return flattened_list
-
     
+
+
     def get_percent_of_period(self, lst):
-        
-        percent_of_period = [[(decimal.Decimal(num) / decimal.Decimal(self.period)) for num in l] for l in lst]
-        
+
+        percent_of_period = [[(decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) for num in l] for l in lst]
+
         return percent_of_period
 
 
@@ -369,24 +370,41 @@ class Composition:
         
         # return monophonic.Monophonic(self.sieves, self.grids)
 
+    def set_repeats(self):
 
-    def set_normalized_numerators(self):
+        def set_normalized_numerators(grids):
 
-        denominators = [[fraction.denominator for fraction in sublist] for sublist in self.grids_set]
-        ### WHAT IF DIFFERENT SIEVE LIST HAVE DIFFERENT LCD
-        lcd = [functools.reduce(math.lcm, lst) for lst in denominators]
-        # multipliers = [lcd // fraction.denominator for sublist in self.grids_set for fraction in sublist]
+            def find_lcd(denominators):
+                if isinstance(denominators, list):
+                    sub_lcd = [find_lcd(lst) for lst in denominators]
+                    return functools.reduce(math.lcm, sub_lcd)
+                else:
+                    return denominators
+            
+            numerators = [[fraction.numerator for fraction in sublist] for sublist in grids]
 
-        print(lcd)
-        # print(denominators)
-        for lst in denominators:
-            return functools.reduce(math.lcm, lst)
-        # return numpy.array([multipliers[i] * fract.numerator
-        #         for grid in self.grids_set
-        #         for i, fract in enumerate(grid)])
+            denominators = [[fraction.denominator for fraction in sublist] for sublist in grids]
+            
+            lcd = find_lcd(denominators)
+
+            multipliers = [[lcd // fraction.denominator for fraction in sublist] for sublist in grids]
+
+            normalized_numerators = [[num * mult for num, mult in zip(num_list, mult_list)] for num_list, mult_list in zip(numerators, multipliers)]
+
+            return normalized_numerators
+        
+        normalized_numerators = set_normalized_numerators(self.grids_set)
+
+        multipliers = []
+
+        for lst in normalized_numerators:
+            lcm = self.get_least_common_multiple(lst)
+            multipliers.append([lcm // num for num in lst])
+
+        print(multipliers)
 
 
-    #######################
+
     @staticmethod
     def group_by_start(dataframe):
         # Get all column names in the DataFrame
@@ -532,7 +550,7 @@ if __name__ == '__main__':
     '((8@5|8@6)&(5@2|5@3|5@4))',
     '(8@6&5@1)',
     '(8@3)',
-    '(7@4)',
+    '(8@4)',
     '(8@1&5@2)'
     
     ]
@@ -540,18 +558,3 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
-
-    # lcm = comp.get_least_common_multiple(comp.normalized_numerators)
-
-    # print([num / lcm for num in comp.normalized_numerators])
-
-    # why is the LCD so high when I have multiple sieves
-    
-    # print(numpy.array([lcm // num for num in comp.normalized_numerators]))
-
-    print(comp.sieves)
-
-    for lst in comp.changes:
-        print(sum(lst))
-
-    # print(comp.normalized_numerators)
