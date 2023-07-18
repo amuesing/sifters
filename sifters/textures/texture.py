@@ -1,68 +1,80 @@
-from textures import *
 
 import music21
-import decimal
 import fractions
-import functools
 import itertools
+import functools
 import decimal
 import pandas
 import numpy
 import math
 
-class Composition:
+class Texture():
     
-    
-    def __init__(self, sieves, form=None):
-        self.sieves = sieves
-        self.period = None
+    grid_history = []
+    texture_id = 1
+        
+    def __init__(self, sieves, grid=None, form=None):
+        
+        # Set the grid attribute of the Texture object
+        self.grid = fractions.Fraction(grid) if grid is not None else fractions.Fraction(1, 1)
+        
+        # Set the form attribute of the Texture object
         self.form = form if form is not None else 'Prime'
+        
+        # Set the binary attribute of the Texture object
         self.binary = self.set_binary(sieves)
-
-
-        self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
-        self.changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
-        self.form = self.distribute_changes(self.changes)
-        self.grids_set = self.set_grids()
-
+        
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [[j for j in range(len(self.binary[i])) if self.binary[i][j] == 1] for i in range(len(self.binary))]
         
         # Derive modular-12 values from self.intervals. 
         mod12 = list(range(12))
         self.closed_intervals = [[mod12[j % len(mod12)] for j in i] for i in self.intervals]
-        self.repeats = self.set_repeats()
-        # self.multipliers = self.get_least_common_multiple(self.normalized_numerators)
-        # self.ticks_per_beat = 480
-        # self.notes_data = self.set_notes_data()
-
-
-        # self.normalized_numerator = numpy.array([self.normalize_numerator(arg, self.get_multiplier(arg)) for arg in self.kwargs.values()])
-        # self.set_textures()
-        # self.textures = self.set_textures()
         
-
+        # Set the factors attribute of the Texture object
+        self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
+        
+        # Add the current grid value to the grid history list
+        self.grid_history.append(self.grid)
+        
+        # Set the texture ID attribute of the Texture object
+        self.texture_id = Texture.texture_id
+        
+        self.notes_data = self.set_notes_data()
+        
+        # Increment the texture ID for the next Texture object
+        Texture.texture_id += 1
+        
+        
     def set_binary(self, sieves):
 
         def get_binary(sieves):
-             
+                    
             binary = []
-            periods = []
-            objects = []
             
-            for siev in sieves:
-                obj = music21.sieve.Sieve(siev)
-                objects.append(obj)
-                periods.append(obj.period())
+            # If the input is a tuple, compute the binary representation for each sieve.
+            if isinstance(sieves, list):
+                periods = []
+                objects = []
+                for siev in sieves:
+                    obj = music21.sieve.Sieve(siev)
+                    objects.append(obj)
+                    periods.append(obj.period())
+                    
+                # Compute the least common multiple of the periods of the input sieves.
+                self.period = self.get_least_common_multiple(periods)
                 
-            # Compute the least common multiple of the periods of the input sieves.
-            self.period = self.get_least_common_multiple(periods)
-            
-            # Set the Z range of each Sieve object and append its binary representation to the list.
-            for obj in objects:
-                obj.setZRange(0, self.period - 1)
-                binary.append(obj.segment(segmentFormat='binary'))
-
+                # Set the Z range of each Sieve object and append its binary representation to the list.
+                for obj in objects:
+                    obj.setZRange(0, self.period - 1)
+                    binary.append(obj.segment(segmentFormat='binary'))
+            else:
+                # Compute the binary representation for the single input sieve.
+                for siv in sieves:
+                    object = music21.sieve.Sieve(siv)
+                    object.setZRange(0, object.period() - 1)
+                    binary.append(object.segment(segmentFormat='binary'))
+                
             return binary
         
         # Convert the list of sets of intervals to their binary forms
@@ -74,7 +86,7 @@ class Composition:
             'Inversion': lambda bin: [1 if x == 0 else 0 for x in bin],
             'Retrograde': lambda bin: bin[::-1],
             'Retrograde-Inversion': lambda bin: [1 if x == 0 else 1 for x in bin][::-1]
-            }
+        }
         
         # Apply the selected form to each binary form in the list, and return the resulting list
         return [forms[self.form](bin) for bin in binary]
@@ -222,189 +234,6 @@ class Composition:
         return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
     
 
-    def get_consecutive_count(self):
-        lst = self.binary
-        result = []  # List to store the consecutive counts for each original list.
-
-        for sieve in lst:
-            consecutive_counts = []  # List to store the consecutive counts for the current original list.
-            consecutive_count = 1  # Initialize the count with 1 since the first element is always consecutive.
-            current_num = sieve[0]  # Initialize the current number with the first element.
-
-            # Iterate over the elements starting from the second one.
-            for num in sieve[1:]:
-                if num == current_num:  # If the current number is the same as the previous one.
-                    consecutive_count += 1
-                else:  # If the current number is different than the previous one.
-                    consecutive_counts.append((current_num, consecutive_count))  # Store the number and its consecutive count.
-                    consecutive_count = 1  # Reset the count for the new number.
-                    current_num = num  # Update the current number.
-
-            # Add the count for the last number.
-            consecutive_counts.append((current_num, consecutive_count))
-
-            # Add the consecutive counts for the current original list to the result.
-            result.append(consecutive_counts)
-
-        return result
-    
-    
-    def distribute_changes(self, changes):
-        
-        structured_lists = []
-        
-        for lst in changes:
-            
-            sieve_layer = []
-            
-            for num in lst:
-                sublist = lst.copy() # Create a copy of the original list
-                
-                repeated_list = []
-                
-                for _ in range(num):
-                    repeated_list.append(sublist) # Append the elements of sublist to repeated_list
-                    
-                sieve_layer.append(repeated_list)
-                
-            structured_lists.append(sieve_layer)
-        
-        return structured_lists
-    
-    
-    def flatten_list(self, nested_list):
-        
-        flattened_list = []
-        
-        for item in nested_list:
-            
-            if isinstance(item, list):
-                flattened_list.extend(self.flatten_list(item))
-                
-            else:
-                flattened_list.append(item)
-                
-        return flattened_list
-    
-
-
-    def get_percent_of_period(self, lst):
-
-        percent_of_period = [[(decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) for num in l] for l in lst]
-
-        return percent_of_period
-
-
-    @staticmethod
-    def convert_decimal_to_fraction(decimal_list):
-        
-        fraction_list = []
-
-        for sublist in decimal_list:
-            fraction_sublist = []
-            
-            for decimal in sublist:
-                fraction = fractions.Fraction(decimal)
-                fraction_sublist.append(fraction)
-                
-            fraction_list.append(fraction_sublist)
-
-        return fraction_list
-    
-    
-    @staticmethod
-    def get_unique_fractions(input_list):
-        
-        unique_fractions = []
-        
-        for sublist in input_list:
-            
-            unique_sublist = []
-            unique_set = set()
-            
-            for fraction in sublist:
-                fraction_str = str(fraction)
-                
-                if fraction_str not in unique_set:
-                    unique_set.add(fraction_str)
-                    unique_sublist.append(fraction)
-            
-            unique_fractions.append(unique_sublist)
-        
-        return unique_fractions
-    
-    
-    @staticmethod
-    def lcm_of_decimals(decimals):
-        
-        max_decimal_places = max([str(decimal)[::-1].find('.') for decimal in decimals])
-        integers = [round(decimal * 10 ** max_decimal_places) for decimal in decimals]
-        lcm_of_integers = math.lcm(*integers)
-        lcm_of_decimals = lcm_of_integers / (10 ** max_decimal_places)
-        return lcm_of_decimals
-
-    
-    def set_grids(self):
-        
-        percent = self.get_percent_of_period(self.changes)
-        
-        grids = self.convert_decimal_to_fraction(percent)
-        
-        grids = self.get_unique_fractions(grids)
-        
-        # # Flatten the nested lists into a single list
-        # flat_list = self.flatten_list(percent)
-        
-        # # Remove duplicates and get the unique values
-        # unique_values = list(set(flat_list))
-        
-        # lcm = [self.lcm_of_decimals(lst) for lst in percent]
-        
-        return grids
-    
-    def set_textures(self):
-        for sieve, grids in zip(self.sieves, self.grids):
-            for grid in grids:
-                print(sieve, grid)
-
-        
-        # return monophonic.Monophonic(self.sieves, self.grids)
-
-    def set_repeats(self):
-
-        def set_normalized_numerators(grids):
-
-            def find_lcd(denominators):
-                if isinstance(denominators, list):
-                    sub_lcd = [find_lcd(lst) for lst in denominators]
-                    return functools.reduce(math.lcm, sub_lcd)
-                else:
-                    return denominators
-            
-            numerators = [[fraction.numerator for fraction in sublist] for sublist in grids]
-
-            denominators = [[fraction.denominator for fraction in sublist] for sublist in grids]
-            
-            lcd = find_lcd(denominators)
-
-            multipliers = [[lcd // fraction.denominator for fraction in sublist] for sublist in grids]
-
-            normalized_numerators = [[num * mult for num, mult in zip(num_list, mult_list)] for num_list, mult_list in zip(numerators, multipliers)]
-
-            return normalized_numerators
-        
-        normalized_numerators = set_normalized_numerators(self.grids_set)
-
-        multipliers = []
-
-        for lst in normalized_numerators:
-            lcm = self.get_least_common_multiple(lst)
-            multipliers.append([lcm // num for num in lst])
-
-        print(multipliers)
-
-
-
     @staticmethod
     def group_by_start(dataframe):
         # Get all column names in the DataFrame
@@ -449,7 +278,8 @@ class Composition:
 
         # Print the updated dataframe
         return dataframe
-        
+    
+
     # If I run check_and_close_intervals I will get values that are too low or too high. (negative numbers)
     def check_and_close_intervals(self, dataframe):
         
@@ -527,34 +357,3 @@ class Composition:
                 dataframe[col] = dataframe[col].apply(lambda x: x[0] if isinstance(x, (list, tuple)) else x)
         
         return dataframe
-    
-    
-    def get_least_common_multiple(self, nums):
-        if len(nums) == 2:
-            return nums[0] * nums[1] // math.gcd(nums[0], nums[1])
-        elif len(nums) > 2:
-            middle = len(nums) // 2
-            left_lcm = self.get_least_common_multiple(nums[:middle])
-            right_lcm = self.get_least_common_multiple(nums[middle:])
-            return left_lcm * right_lcm // math.gcd(left_lcm, right_lcm)
-        else:
-            return nums[0]
-        
-        
-if __name__ == '__main__':
-    
-    sieves = [
-    
-    '((8@0|8@1|8@7)&(5@1|5@3))', 
-    '((8@0|8@1|8@2)&5@0)',
-    '((8@5|8@6)&(5@2|5@3|5@4))',
-    '(8@6&5@1)',
-    '(8@3)',
-    '(8@4)',
-    '(8@1&5@2)'
-    
-    ]
-    
-    # sieves = ['|'.join(sieves)]
-        
-    comp = Composition(sieves)
