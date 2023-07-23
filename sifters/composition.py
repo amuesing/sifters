@@ -12,23 +12,34 @@ class Composition:
     
     def __init__(self, sieves):
 
-        self.utility = Utility()
-
+        # Assign sieves argument to self.
         self.sieves = sieves
 
+        # Initialize an instance of the Utility class to call helper methods from.
+        self.utility = Utility()
+
+        # Initialize a period variable which will be assigned to an integer within the set_binary method.
         self.period = None
 
+        # Derive normalized binary list(s) from the given sieve(s).
         self.binary = self.set_binary(sieves)
 
+        # Interpolate a dictionary which tracks the indicies of pattern changes within self.binary.
         self.changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
 
+        # Derive self-similar lists of integers based on the self.changes attribute.
         self.form = self.distribute_changes(self.changes)
 
+        # Derive a list of metric grids based on the percent of change that each integer with self.changes represents.
         self.grids_set = self.set_grids()
 
+        # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
 
-        
+        # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
+        self.textures = self.set_textures()
+
+
     def set_binary(self, sieves):
 
         def get_binary(sieves):
@@ -111,6 +122,7 @@ class Composition:
 
     def set_grids(self):
 
+
         def get_percent_of_period(lst):
 
             percent_of_period = [[(decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) for num in l] for l in lst]
@@ -184,31 +196,31 @@ class Composition:
             normalized_numerators = [[num * mult for num, mult in zip(num_list, mult_list)] for num_list, mult_list in zip(numerators, multipliers)]
 
             return normalized_numerators
-        
+
         # Normalize numerators across Fraction objects which comprise the Composition's grid_set attribute. 
         normalized_numerators = set_normalized_numerators(self.grids_set)
+
+        flattened_list = self.utility.flatten_list(normalized_numerators)
+
+        least_common_multiple = self.utility.get_least_common_multiple(flattened_list)
 
         # Initialize a list to contain integers which represent the number of repeats needed for normalization within a list.
         repeats = []
 
         # Calculate Least Common Multiple among normalized_numerators and calculate the multiplier needed for normalization.
         for lst in normalized_numerators:
-            least_common_multiple = self.utility.get_least_common_multiple(lst)
+
             repeats.append([least_common_multiple // num for num in lst])
 
-        # Calculate the Least Common Multiple among all repeats.
-        lcm = self.utility.get_least_common_multiple(repeats)
-
-        # Calculate repeats needed for each Fraction object to achieve parity.
-        normalized_repeats = [[lcm // repeat for repeat in sublist] for sublist in repeats]
-
-        return normalized_repeats
+        return repeats
     
 
     def set_textures(self):
-        for sieve, grids in zip(self.sieves, self.grids):
-            for grid in grids:
-                print(sieve, grid)
+
+
+        for source_data in zip(self.binary, self.grids_set, self.repeats):
+            test = polyphonic.Polyphonic(source_data)
+            print(list(source_data))
 
 ######
 
@@ -517,5 +529,3 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
-
-    print(comp.changes)
