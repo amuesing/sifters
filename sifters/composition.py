@@ -217,7 +217,6 @@ class Composition:
 
     def set_textures(self):
 
-
         for source_data in zip(self.binary, self.grids_set, self.repeats):
             test = polyphonic.Polyphonic(source_data)
             print(list(source_data))
