@@ -215,11 +215,17 @@ class Composition:
         return repeats
     
 
+
+
     def set_textures(self):
 
-        for source_data in zip(self.binary, self.grids_set, self.repeats):
-            test = polyphonic.Polyphonic(source_data)
-            print(list(source_data))
+        source_data = []
+
+        for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats):
+            for data in zip(grids, repeats):
+                source_data.append([bin_lst, *data])
+
+        return source_data
 
 ######
 
@@ -528,3 +534,5 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
+
+    print(comp.textures)
