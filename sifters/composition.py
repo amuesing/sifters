@@ -215,17 +215,29 @@ class Composition:
         return repeats
     
 
-
-
     def set_textures(self):
 
+        textures = {
+            # 'heterophonic': heterophonic.Heterophonic,
+            # 'homophonic': homophonic.Homophonic,
+            # 'monophonic': monophonic.Monophonic,
+            # 'nonpitched': nonpitched.NonPitched,
+            'polyphonic': polyphonic.Polyphonic,
+            }
+        
         source_data = []
 
         for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats):
             for data in zip(grids, repeats):
                 source_data.append([bin_lst, *data])
 
-        return source_data
+        results = {}
+
+        for texture_name, texture_instance in textures.items():
+            for i, data in enumerate(source_data):
+                results[f'{texture_name}_{i}'] = texture_instance(data)
+
+        return results
 
 ######
 
