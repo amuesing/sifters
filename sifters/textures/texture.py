@@ -8,25 +8,27 @@ import pandas
 import numpy
 import math
 
-class Texture():
+class Texture:
     
     grid_history = []
     texture_id = 1
         
-    def __init__(self, sieves, grid=None, form=None):
+    def __init__(self, source_data):
         
+        self.binary = source_data[0]
+        self.period = len(self.binary)
+        self.grid = source_data[1]
+        self.repeats = source_data[2]
+
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
-        self.intervals = [[j for j in range(len(self.binary[i])) if self.binary[i][j] == 1] for i in range(len(self.binary))]
+        self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
         
         # Derive modular-12 values from self.intervals. 
         mod12 = list(range(12))
-        self.closed_intervals = [[mod12[j % len(mod12)] for j in i] for i in self.intervals]
+        self.closed_intervals = [mod12[i % len(mod12)] for i in self.intervals]
         
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
-        
-        # Add the current grid value to the grid history list
-        self.grid_history.append(self.grid)
         
         # Set the texture ID attribute of the Texture object
         self.texture_id = Texture.texture_id
@@ -38,6 +40,7 @@ class Texture():
     
     
     def set_notes_data(self):
+
         
         def generate_note_pool(binary_index, factor_index):
             

@@ -231,13 +231,15 @@ class Composition:
             for data in zip(grids, repeats):
                 source_data.append([bin_lst, *data])
 
-        results = {}
+        texture_objects = {
+            'polyphonic': {}
+        }
 
         for texture_name, texture_instance in textures.items():
             for i, data in enumerate(source_data):
-                results[f'{texture_name}_{i}'] = texture_instance(data)
+                texture_objects[f'{texture_name}'][f'{texture_name}_{i}'] = texture_instance(data)
 
-        return results
+        return texture_objects
 
 ######
 
@@ -546,5 +548,3 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
-
-    print(comp.textures)
