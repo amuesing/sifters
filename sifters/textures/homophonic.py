@@ -18,9 +18,6 @@ class Homophonic(Texture):
         # Increment ID value.
         Homophonic.part_id += 1
         
-        # Create a part for the instrument in the musical texture.
-        self.set_notes_data()
-        
         # self.notes_data = self.group_by_start(self.notes_data)
         
         # # Why get lowest midi? -- What if 'get_closest_midi' instead of 'get_lowest_midi' where the closest to the last MIDI value is given

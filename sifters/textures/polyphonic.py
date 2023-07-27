@@ -12,5 +12,3 @@ class Polyphonic(Texture):
         self.part_id = Polyphonic.part_id
 
         Polyphonic.part_id += 1
-
-        self.notes_data = self.set_notes_data()

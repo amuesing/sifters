@@ -1,10 +1,9 @@
-from textures import *
-from utility import Utility
-
+import utility
 import music21
 import decimal
 import fractions
-import decimal
+
+from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
 
 
 class Composition:
@@ -16,7 +15,7 @@ class Composition:
         self.sieves = sieves
 
         # Initialize an instance of the Utility class to call helper methods from.
-        self.utility = Utility()
+        self.utility = utility.Utility()
 
         # Initialize a period variable which will be assigned to an integer within the set_binary method.
         self.period = None
@@ -552,3 +551,5 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
+
+    print(comp.textures)

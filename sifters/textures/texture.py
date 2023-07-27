@@ -1,12 +1,7 @@
-
-import music21
-import fractions
 import itertools
-import functools
 import decimal
 import pandas
 import numpy
-import math
 
 class Texture:
     
