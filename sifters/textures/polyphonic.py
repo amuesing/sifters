@@ -1,4 +1,4 @@
-from textures.texture import *
+from textures.texture import Texture
 
 class Polyphonic(Texture):
 
@@ -13,8 +13,4 @@ class Polyphonic(Texture):
 
         Polyphonic.part_id += 1
 
-        # self.set_notes_data()
-
-        # self.binary = source_data[0]
-        # self.grid = source_data[1]
-        # self.repeats = source_data[2]
+        self.notes_data = self.set_notes_data()

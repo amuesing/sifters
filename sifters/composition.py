@@ -218,10 +218,10 @@ class Composition:
     def set_textures(self):
 
         textures = {
-            # 'heterophonic': heterophonic.Heterophonic,
-            # 'homophonic': homophonic.Homophonic,
-            # 'monophonic': monophonic.Monophonic,
-            # 'nonpitched': nonpitched.NonPitched,
+            'heterophonic': heterophonic.Heterophonic,
+            'homophonic': homophonic.Homophonic,
+            'monophonic': monophonic.Monophonic,
+            'nonpitched': nonpitched.NonPitched,
             'polyphonic': polyphonic.Polyphonic,
             }
         
@@ -232,7 +232,11 @@ class Composition:
                 source_data.append([bin_lst, *data])
 
         texture_objects = {
-            'polyphonic': {}
+            'heterophonic': {},
+            'homophonic': {},
+            'monophonic': {},
+            'nonpitched': {},
+            'polyphonic': {},
         }
 
         for texture_name, texture_instance in textures.items():

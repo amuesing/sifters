@@ -1,13 +1,13 @@
-from textures.texture import *
+from textures.texture import Texture
 
 class Monophonic(Texture):
     # Initialize ID value for first instance of Monophonic object.
     part_id = 1
     
-    def __init__(self, sieves, form=None):
+    def __init__(self, source_data):
         
         # Call superclass constructor.
-        super().__init__(sieves, form)
+        super().__init__(source_data)
         
         # Set name of instrument.
         self.name = 'Monophonic'
@@ -35,4 +35,4 @@ class Monophonic(Texture):
         
         self.notes_data = self.adjust_note_range(self.notes_data)
         
-        self.notes_data.to_csv(f'data/csv/monophonic{self.part_id}.csv')
+        self.notes_data.to_csv(f'data/csv/.monophonic{self.part_id}.csv')

@@ -42,7 +42,7 @@ class Texture:
     def set_notes_data(self):
 
         
-        def generate_note_pool(binary_index, factor_index):
+        def generate_note_pool(factor_index):
             
             def get_successive_diff(lst):
                 return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
@@ -85,16 +85,16 @@ class Texture:
             tonality = decimal.Decimal(40.0)
             
             # Generate a list of successieve differences between the intervals.
-            steps = get_successive_diff(self.closed_intervals[binary_index])
+            steps = get_successive_diff(self.closed_intervals)
 
             # Create a cycle iterator for the steps list.
             steps_cycle = itertools.cycle(steps)
             
             # Compute the starting pitch for the sieve.
-            first_pitch = tonality + self.closed_intervals[binary_index][0]
+            first_pitch = tonality + self.closed_intervals[0]
 
             # Get the indices of non-zero elements in the sieve.
-            indices = numpy.nonzero(self.binary[binary_index])[0]
+            indices = numpy.nonzero(self.binary)[0]
             
             # Get the intervals associated with the non-zero elements.
             segment = segment_octave_by_period(self.period)
@@ -104,7 +104,7 @@ class Texture:
             matrix = first_pitch + generate_pitchclass_matrix(intervals)
 
             # Compute the number of events and positions needed for the sieve.
-            num_of_events = (len(self.closed_intervals[binary_index]) * self.factors[factor_index])
+            num_of_events = (len(self.closed_intervals) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
 
             # Generate the note pool by iterating through the steps and matrix.
@@ -113,10 +113,10 @@ class Texture:
             retrograde = False
             for _ in range(num_of_positions):
                 step = next(steps_cycle)
-                wrapped_index = (current_index + abs(step)) % len(self.intervals[binary_index])
+                wrapped_index = (current_index + abs(step)) % len(self.intervals)
 
                 # Check if the intervals have wrapped around the range of the matrix.
-                wrap_count = (abs(step) + current_index) // len(self.intervals[binary_index])
+                wrap_count = (abs(step) + current_index) // len(self.intervals)
                 
                 # If the interval wraps the length of the matrix an odd number of times update retrograde.
                 if wrap_count % 2 == 1:
@@ -146,36 +146,31 @@ class Texture:
         
         # Create a list container for notes_data.
         notes_data = []
+        
+        for factor_index in range(len(self.factors)):
 
-        # Create an iterator which is equal to the length of a list of forms represented in binary.
-        for i in range(len(self.binary)):
+            note_pool = itertools.cycle(generate_note_pool(factor_index))
             
-            # Create an iterator which is equal to the length of a list of factors (for self.period).
-            for j in range(len(self.factors)):
-                
-                # Create a note_pool for each sieve represented in self.binary.
-                note_pool = itertools.cycle(generate_note_pool(i, j))
-                
-                # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
-                pattern = numpy.tile(self.binary[i], self.factors[j])
-                
-                # Create a list of indices where non-zero elements occur within the pattern.
-                indices = numpy.nonzero(pattern)[0]
-                
-                # Find the multiplier for self.grid to normalize duration length against number of repetitions of sieve in pattern.
-                duration_multiplier = self.period // self.factors[j]
-                
-                # Convert the grid Fraction object into a Decimal object.
-                grid = decimal.Decimal(self.grid.numerator) / decimal.Decimal(self.grid.denominator)
-                
-                # Find the duration of each note represented as a decimal.
-                duration = grid * duration_multiplier
+            # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
+            pattern = numpy.tile(self.binary, self.factors[factor_index])
+            
+            # Create a list of indices where non-zero elements occur within the pattern.
+            indices = numpy.nonzero(pattern)[0]
+            
+            # Find the multiplier for self.grid to normalize duration length against number of repetitions of sieve in pattern.
+            duration_multiplier = self.period // self.factors[factor_index]
+            
+            # Convert the grid Fraction object into a Decimal object.
+            grid = decimal.Decimal(self.grid.numerator) / decimal.Decimal(self.grid.denominator)
+            
+            # Find the duration of each note represented as a decimal.
+            duration = grid * duration_multiplier
 
-                # For each non-zero indice append notes_data list with corresponding note information.
-                for k in indices:
-                    velocity = 64
-                    offset = decimal.Decimal(int(k)) * duration
-                    notes_data.append([round(offset, 6), velocity, next(note_pool), round(grid, 6)])
+            # For each non-zero indice append notes_data list with corresponding note information.
+            for k in indices:
+                velocity = 64
+                offset = decimal.Decimal(int(k)) * duration
+                notes_data.append([round(offset, 6), velocity, next(note_pool), round(grid, 6)])
 
         notes_data = [[data[0], data[1], data[2], data[3]] for data in notes_data]
         

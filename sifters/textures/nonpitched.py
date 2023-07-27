@@ -6,8 +6,10 @@ class NonPitched(Texture):
     # Initialize ID for the first instance of NonPitched object.
     part_id = 1
     
-    def __init__(self, sieves, grid=None, form=None):
-        super().__init__(sieves, grid, form)
+    def __init__(self, source_data):
+        
+        # Call superclass constructor.
+        super().__init__(source_data)
         
         # Set name of the instrument as "NonPitched".
         self.name = 'NonPitched'
@@ -21,8 +23,8 @@ class NonPitched(Texture):
         # Create a part for the instrument in the musical texture.
         self.set_notes_data()
         
-        unique_midi_values = self.notes_data['Note'].unique()
-        unique_midi_values_sorted = pandas.Series(unique_midi_values).sort_values().to_list()
-        # What if there are more than 127 unique midi values?
-        int_dict = {val: i for i, val in enumerate(unique_midi_values_sorted)}
-        self.notes_data['Note'] = self.notes_data['Note'].map(int_dict)
+        # unique_midi_values = self.notes_data['Note'].unique()
+        # unique_midi_values_sorted = pandas.Series(unique_midi_values).sort_values().to_list()
+        # # What if there are more than 127 unique midi values?
+        # int_dict = {val: i for i, val in enumerate(unique_midi_values_sorted)}
+        # self.notes_data['Note'] = self.notes_data['Note'].map(int_dict)
