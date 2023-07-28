@@ -1,7 +1,9 @@
+import fractions
 import utility
 import music21
 import decimal
-import fractions
+import pandas
+import math
 
 from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
 
@@ -36,7 +38,9 @@ class Composition:
         self.repeats = self.set_repeats()
 
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
-        self.textures = self.set_textures()
+        self.texture_objects = self.set_texture_objects()
+
+        self.normalized_parts_data = self.normalize_parts_data()
 
 
     def set_binary(self, sieves):
@@ -214,7 +218,7 @@ class Composition:
         return repeats
     
 
-    def set_textures(self):
+    def set_texture_objects(self):
 
         textures = {
             'heterophonic': heterophonic.Heterophonic,
@@ -257,41 +261,44 @@ class Composition:
             
     #     return track_list
     
-    # def normalize_periodicity(self):
+    def set_normalized_parts_data(self):
     
-    #     normalized_parts_data = []
-        
-    #     for arg, multiplier in zip(self.kwargs.values(), self.multipliers):
-    #         # Create a list to store the original notes_data and the copies that will be normalized.
-    #         duplicates = [arg.notes_data.copy()]
-            
-    #         # Calculate the length of one repetition.
-    #         length_of_one_rep = decimal.Decimal(math.pow(arg.period, 2))
+        normalized_parts_data = []
 
-    #         # Iterate over the range of multipliers to create copies of notes_data.
-    #         for i in range(multiplier):
-    #             # Create a copy of notes_data.
-    #             dataframe_copy = arg.notes_data.copy()
-    #             grid = decimal.Decimal(arg.grid.numerator) / decimal.Decimal(arg.grid.denominator)
-                
-    #             # Adjust the Start column of the copy based on the length of one repitition and grid value.
-    #             dataframe_copy['Start'] = dataframe_copy['Start'] + round((length_of_one_rep * grid) * i, 6)
+        for texture_type in self.texture_objects.values():
 
+            for texture_object in texture_type.values():
+
+                # Create a list to store the original notes_data and the copies that will be normalized.
+                duplicates = [texture_object.notes_data.copy()]
                 
-    #             # Append the copy to the duplicates list.
-    #             duplicates.append(dataframe_copy)
+                # Calculate the length of one repetition.
+                length_of_one_rep = decimal.Decimal(math.pow(texture_object.period, 2))
+
+                # Iterate over the range of multipliers to create copies of notes_data.
+                for i in range(texture_object.repeat):
+
+                    # Create a copy of notes_data.
+                    dataframe_copy = texture_object.notes_data.copy()
+                    grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
+                    
+                    # Adjust the Start column of the copy based on the length of one repitition and grid value.
+                    dataframe_copy['Start'] = dataframe_copy['Start'] + round((length_of_one_rep * grid) * i, 6)
+
+                    # Append the copy to the duplicates list.
+                    duplicates.append(dataframe_copy)
+                
+                # Concatenate the duplicates list into a single dataframe.
+                result = pandas.concat(duplicates)
+                
+                # Remove duplicate rows from the concatenated dataframe.
+                result = result.drop_duplicates()
+                
+                # Append the normalized dataframe to the normalized_parts_data list.
+                normalized_parts_data.append(result)
             
-    #         # Concatenate the duplicates list into a single dataframe.
-    #         result = pandas.concat(duplicates)
-            
-    #         # Remove duplicate rows from the concatenated dataframe.
-    #         result = result.drop_duplicates()
-            
-    #         # Append the normalized dataframe to the normalized_parts_data list.
-    #         normalized_parts_data.append(result)
-            
-    #     # Store the normalized_parts_data in self.normalized_parts_data.
-    #     return normalized_parts_data
+        # Store the normalized_parts_data in self.normalized_parts_data.
+        return normalized_parts_data
     
     
     # def set_midi_messages(self):
@@ -548,8 +555,8 @@ if __name__ == '__main__':
     
     ]
     
-    # sieves = ['|'.join(sieves)]
+    sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
 
-    print(comp.textures)
+    print(comp.normalized_parts_data)

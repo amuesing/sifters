@@ -13,7 +13,7 @@ class Texture:
         self.binary = source_data[0]
         self.period = len(self.binary)
         self.grid = source_data[1]
-        self.repeats = source_data[2]
+        self.repeat = source_data[2]
 
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
