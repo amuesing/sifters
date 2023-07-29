@@ -3,6 +3,7 @@ import utility
 import music21
 import decimal
 import pandas
+import numpy
 import math
 
 from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
@@ -40,9 +41,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        self.midi_messages = self.set_midi_messages()
-
-        # self.normalized_parts_data = self.set_normalized_parts_data()
+        self.normalized_parts_data = self.set_normalized_parts_data()
 
 
     def set_binary(self, sieves):
@@ -252,9 +251,8 @@ class Composition:
     
 
     def set_midi_messages(self):
-        
+
         ticks_per_beat = 480
-        midi_messages = {}
 
         def parse_pitch_data(dataframe):
             
@@ -277,95 +275,118 @@ class Composition:
             return dataframe
         
 
-        for texture_name, texture_type in self.texture_objects.items():
-            midi_messages[texture_name] = {}
+        for texture_type in self.texture_objects.values():
 
-            for object_name, texture_object in texture_type.items():
+            for texture_object in texture_type.values():
 
                 new_rows = []
                 part = parse_pitch_data(texture_object.notes_data)
 
-            for _, row in part.iterrows():
-                part['Message'] = 'note_on'
-                part['Time'] = 0
-                
-            for _, row in part.iterrows():
-                new_rows.append(row)
-                if row['Message'] == 'note_on':
-                    if row['Pitch'] != 0.0:
-                        pitchwheel_row = row.copy()
-                        pitchwheel_row['Message'] = 'pitchwheel'
-                        # Why us this creating a float and not an integer
-                        # pitchwheel_row['Pitch'] = pitchwheel_row['Pitch'] * 4095
-                        new_rows.append(pitchwheel_row)
-                    note_off_row = row.copy()
-                    note_off_row['Message'] = 'note_off'
-                    note_off_row['Time'] = round(note_off_row['Duration'] * ticks_per_beat)
-                    new_rows.append(note_off_row)
-            
-            ### THERE IS AN EASIER WAY TO DO THIS BY SIMPLY ASSIGNING THE STARTS OFFSET TO THE TIME OF THE FIRST NOTE_ON MESSAGE    
-            # Check if the DataFrame begins with a note or a rest.
-            # If the compostion begins with a rest, create a 'note_off' message that is equal to the duration of the rest.
-            if part.iloc[0]['Start'] != 0.0:
-                note_off_row = part.iloc[0].copy()
-                note_off_row['Velocity'] = 0
-                note_off_row['Note'] = 0
-                note_off_row['Message'] = 'note_off'
-                note_off_row['Duration'] = part.iloc[0]['Start']
-                note_off_row['Time'] = round(note_off_row['Duration'] * ticks_per_beat)
-                note_off_row['Start'] = 0.0
-                new_rows.insert(0, note_off_row)
-                
-            messages_dataframe = pandas.DataFrame(new_rows)
-            column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
-            messages_dataframe = messages_dataframe.reindex(columns=column_order)
-            messages_dataframe.reset_index(drop=True, inplace=True)
-
-            midi_messages[f'{texture_name}'][f'{object_name}'] = messages_dataframe
-
-
+                for _, row in part.iterrows():
+                    part['Message'] = 'note_on'
+                    part['Time'] = 0
                     
-        return midi_messages
-
-    
-    # def set_normalized_parts_data(self):
-    
-    #     normalized_parts_data = []
-
-    #     for texture_type in self.texture_objects.values():
-
-    #         for texture_object in texture_type.values():
-
-    #             # Create a list to store the original notes_data and the copies that will be normalized.
-    #             duplicates = [texture_object.notes_data.copy()]
+                for _, row in part.iterrows():
+                    new_rows.append(row)
+                    if row['Message'] == 'note_on':
+                        if row['Pitch'] != 0.0:
+                            pitchwheel_row = row.copy()
+                            pitchwheel_row['Message'] = 'pitchwheel'
+                            new_rows.append(pitchwheel_row)
+                        note_off_row = row.copy()
+                        note_off_row['Message'] = 'note_off'
+                        note_off_row['Time'] = round(note_off_row['Duration'] * ticks_per_beat)
+                        new_rows.append(note_off_row)
                 
-    #             # Calculate the length of one repetition.
-    #             length_of_one_rep = decimal.Decimal(math.pow(texture_object.period, 2))
-
-    #             # Iterate over the range of multipliers to create copies of notes_data.
-    #             for i in range(texture_object.repeat):
-
-    #                 # Create a copy of notes_data.
-    #                 dataframe_copy = texture_object.notes_data.copy()
-    #                 grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
+                    if part.iloc[0]['Start'] != 0.0:
+                        note_off_row = part.iloc[0].copy()
+                        note_off_row['Velocity'] = 0
+                        note_off_row['Note'] = 0
+                        note_off_row['Message'] = 'note_off'
+                        note_off_row['Duration'] = part.iloc[0]['Start']
+                        note_off_row['Time'] = round(note_off_row['Duration'] * ticks_per_beat)
+                        note_off_row['Start'] = 0.0
+                        new_rows.insert(0, note_off_row)
                     
-    #                 # Adjust the Start column of the copy based on the length of one repitition and grid value.
-    #                 dataframe_copy['Start'] = dataframe_copy['Start'] + round((length_of_one_rep * grid) * i, 6)
+                messages_dataframe = pandas.DataFrame(new_rows)
+                column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
+                messages_dataframe = messages_dataframe.reindex(columns=column_order)
+                messages_dataframe.reset_index(drop=True, inplace=True)
 
-    #                 # Append the copy to the duplicates list.
-    #                 duplicates.append(dataframe_copy)
+                # Instead of adding to midi_messages, update texture_object directly
+                texture_object.notes_data = messages_dataframe
+    
+
+    def set_normalized_parts_data(self):
+
+        self.set_midi_messages()
+    
+        normalized_parts_data = []
+
+        for texture_type in self.texture_objects.values():
+
+            for texture_object in texture_type.values():
+
+                # Create a list to store the original notes_data and the copies that will be normalized.
+                duplicates = [texture_object.notes_data.copy()]
                 
-    #             # Concatenate the duplicates list into a single dataframe.
-    #             result = pandas.concat(duplicates)
+                # Calculate the length of one repetition.
+                length_of_one_rep = decimal.Decimal(math.pow(texture_object.period, 2))
+
+                # Iterate over the range of multipliers to create copies of notes_data.
+                for i in range(texture_object.repeat):
+
+                    # Create a copy of notes_data.
+                    dataframe_copy = texture_object.notes_data.copy()
+                    grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
+                    
+                    # Adjust the Start column of the copy based on the length of one repitition and grid value.
+                    dataframe_copy['Start'] = dataframe_copy['Start'] + round((length_of_one_rep * grid) * i, 6)
+
+                    # Append the copy to the duplicates list.
+                    duplicates.append(dataframe_copy)
                 
-    #             # Remove duplicate rows from the concatenated dataframe.
-    #             result = result.drop_duplicates()
+                # Concatenate the duplicates list into a single dataframe.
+                result = pandas.concat(duplicates)
                 
-    #             # Append the normalized dataframe to the normalized_parts_data list.
-    #             normalized_parts_data.append(result)
+                # Remove duplicate rows from the concatenated dataframe.
+                result = result.drop_duplicates()
+                
+                # Append the normalized dataframe to the normalized_parts_data list.
+                normalized_parts_data.append(result)
             
-    #     # Store the normalized_parts_data in self.normalized_parts_data.
-    #     return normalized_parts_data
+        # Store the normalized_parts_data in self.normalized_parts_data.
+        return normalized_parts_data
+    
+    def combine_parts(self, *args):
+        
+        @staticmethod
+        def get_max_duration(dataframe):
+
+            # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
+            dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
+
+            return dataframe
+        
+        
+        @staticmethod
+        def update_duration_value(dataframe):
+            
+            current_end = dataframe['Start'] + dataframe['Duration']
+            next_start = dataframe['Start'].shift(-1)
+
+            # Replace None values with appropriate values for comparison
+            next_start = next_start.fillna(float('inf'))
+            end = numpy.minimum(next_start, current_end)
+            end = end.apply(lambda x: decimal.Decimal(str(x)))
+
+            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
+
+            dataframe['Duration'] = end - dataframe['Start']
+
+            dataframe = dataframe.iloc[:-1]
+            
+            return dataframe
         
     
     # def set_track_list(self):
@@ -422,37 +443,6 @@ class Composition:
 
     #     # Write the MIDI file
     #     score.save('data/mid/score.mid')
-
-    
-    # def combine_parts(self, *args):
-        
-    #     @staticmethod
-    #     def get_max_duration(dataframe):
-
-    #         # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
-    #         dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
-
-    #         return dataframe
-        
-        
-    #     @staticmethod
-    #     def update_duration_value(dataframe):
-            
-    #         current_end = dataframe['Start'] + dataframe['Duration']
-    #         next_start = dataframe['Start'].shift(-1)
-
-    #         # Replace None values with appropriate values for comparison
-    #         next_start = next_start.fillna(float('inf'))
-    #         end = numpy.minimum(next_start, current_end)
-    #         end = end.apply(lambda x: decimal.Decimal(str(x)))
-
-    #         dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
-
-    #         dataframe['Duration'] = end - dataframe['Start']
-
-    #         dataframe = dataframe.iloc[:-1]
-            
-    #         return dataframe
 
 
     #     @staticmethod
@@ -563,7 +553,7 @@ if __name__ == '__main__':
     
     ]
     
-    # sieves = ['|'.join(sieves)]
+    sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
 
@@ -572,6 +562,8 @@ if __name__ == '__main__':
     # for texture_type in comp.texture_objects.values():
     #     print(texture_type)
 
-    for texture_type in comp.midi_messages.values():
-        for texture_obj in texture_type.values():
-            print(texture_obj)
+    # for texture_type in comp.midi_messages.values():
+    #     for texture_obj in texture_type.values():
+    #         print(texture_obj)
+
+    print(comp.normalized_parts_data)
