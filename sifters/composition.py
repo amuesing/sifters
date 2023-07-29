@@ -1,16 +1,18 @@
-import fractions
-import utility
-import music21
+import collections
 import decimal
-import pandas
-import numpy
+import fractions
+import itertools
 import math
+
+import music21
+import numpy
+import pandas
+
+import utility
 
 from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
 
-
 class Composition:
-    
     
     def __init__(self, sieves):
 
@@ -23,6 +25,8 @@ class Composition:
         # Initialize a period variable which will be assigned to an integer within the set_binary method.
         self.period = None
 
+        self.ticks_per_beat = 480
+
         # Derive normalized binary list(s) from the given sieve(s).
         self.binary = self.set_binary(sieves)
 
@@ -30,7 +34,7 @@ class Composition:
         self.changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
 
         # Derive self-similar lists of integers based on the self.changes attribute.
-        self.form = self.distribute_changes(self.changes)
+        self.form = [[[num]*len(lst) for num in lst] for lst in self.changes]
 
         # Derive a list of metric grids based on the percent of change that each integer with self.changes represents.
         self.grids_set = self.set_grids()
@@ -41,352 +45,266 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        self.normalized_parts_data = self.set_normalized_parts_data()
 
-
+    # This function translates a list of sieves (intervals) into binary format. 
     def set_binary(self, sieves):
-
+        # Inner function that takes in sieves and converts them to binary representation.
         def get_binary(sieves):
-             
-            binary = []
-            periods = []
-            objects = []
-            
-            for siev in sieves:
-                obj = music21.sieve.Sieve(siev)
-                objects.append(obj)
-                periods.append(obj.period())
-                
-            # Compute the least common multiple of the periods of the input sieves.
-            self.period = self.utility.get_least_common_multiple(periods)
-            
-            # Set the Z range of each Sieve object and append its binary representation to the list.
-            for obj in objects:
-                obj.setZRange(0, self.period - 1)
-                binary.append(obj.segment(segmentFormat='binary'))
+            binary = []  # Holds the binary representation of each sieve.
+            periods = []  # Accumulates the periods of each sieve.
+            objects = []  # Stores the Sieve objects generated from each sieve.
 
+            # Loop over the sieves, convert each to a Sieve object, and store object and its period.
+            for siev in sieves:
+                obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
+                objects.append(obj)  # Add Sieve object to the objects list.
+                periods.append(obj.period())  # Store the period of the Sieve object.
+
+            # Calculate the least common multiple (LCM) of all periods. 
+            # This LCM will be used as the shared period for all sieves in binary form.
+            self.period = self.utility.get_least_common_multiple(periods)
+
+            # Loop over the Sieve objects, adjust each object's Z range based on the LCM, 
+            # and then convert each to its binary representation.
+            for obj in objects:
+                obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
+                binary.append(obj.segment(segmentFormat='binary'))  # Convert to binary and store.
+
+            # Return the binary representation of all sieves.
             return binary
-        
-        # Convert the list of sets of intervals to their binary forms
+
+        # Convert the input sieves to binary and store the result.
         binary = get_binary(sieves)
 
+        # Return the binary representation of all input sieves.
         return binary
     
 
+    # This function computes the count of consecutive occurrences of the same element 
+    # for each list in the attribute self.binary.
     def get_consecutive_count(self):
-        
-        lst = self.binary
-        result = []  # List to store the consecutive counts for each original list.
 
-        for sieve in lst:
-            consecutive_counts = []  # List to store the consecutive counts for the current original list.
-            consecutive_count = 1  # Initialize the count with 1 since the first element is always consecutive.
-            current_num = sieve[0]  # Initialize the current number with the first element.
+        result = []  # A placeholder to store consecutive counts for each binary list.
 
-            # Iterate over the elements starting from the second one.
-            for num in sieve[1:]:
-                if num == current_num:  # If the current number is the same as the previous one.
-                    consecutive_count += 1
-                else:  # If the current number is different than the previous one.
-                    consecutive_counts.append((current_num, consecutive_count))  # Store the number and its consecutive count.
-                    consecutive_count = 1  # Reset the count for the new number.
-                    current_num = num  # Update the current number.
+        # Iterate over each binary list stored in self.binary.
+        for sieve in self.binary:
+            # Using itertools.groupby, we group same, consecutive elements in the list.
+            # From each group, we capture the element (key) and the length of the group
+            # (indicating the count of consecutive occurrences of the element).
+            # Each element and its consecutive count are stored as a tuple.
+            consecutive_counts = [(key, len(list(group))) for key, group in itertools.groupby(sieve)]
 
-            # Add the count for the last number.
-            consecutive_counts.append((current_num, consecutive_count))
-
-            # Add the consecutive counts for the current original list to the result.
+            # We then add the tuples of element and consecutive count from the current list 
+            # to the overall result list.
             result.append(consecutive_counts)
 
+        # The function returns the result, which is a list of lists. Each sublist 
+        # contains tuples, where each tuple represents an element and its consecutive count.
         return result
-    
-    
-    def distribute_changes(self, changes):
-        
-        structured_lists = []
-        
-        for lst in changes:
-            
-            sieve_layer = []
-            
-            for num in lst:
-                sublist = lst.copy() # Create a copy of the original list
-                
-                repeated_list = []
-                
-                for _ in range(num):
-                    repeated_list.append(sublist) # Append the elements of sublist to repeated_list
-                    
-                sieve_layer.append(repeated_list)
-                
-            structured_lists.append(sieve_layer)
-        
-        return structured_lists
-    
 
+
+    # This function generates grids that illustrate the fractions of the period for each change in the self.changes list.
     def set_grids(self):
-
-
+        # Inner function to compute the proportion of the period that each number in the list represents.
         def get_percent_of_period(lst):
+            return [
+                # Each number is converted to a decimal and divided by the period to compute the proportion.
+                [
+                    (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
+                    for num in sub_lst
+                ] 
+                for sub_lst in lst
+            ]
 
-            percent_of_period = [[(decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) for num in l] for l in lst]
-
-            return percent_of_period
-
-
+        # Inner function to transform a list of decimal numbers into fractions.
         def convert_decimal_to_fraction(decimal_list):
-            
-            fraction_list = []
+            return [
+                # Each decimal number in the sublist is converted to a fraction.
+                [fractions.Fraction(decimal_num) for decimal_num in sub_list]
+                for sub_list in decimal_list
+            ]
 
-            for sublist in decimal_list:
-                fraction_sublist = []
-                
-                for decimal in sublist:
-                    fraction = fractions.Fraction(decimal)
-                    fraction_sublist.append(fraction)
-                    
-                fraction_list.append(fraction_sublist)
-
-            return fraction_list
-        
-        
+        # Inner function to eliminate duplicate fractions in each sublist while maintaining the original order.
         def get_unique_fractions(input_list):
-            
-            unique_fractions = []
-            
-            for sublist in input_list:
-                
-                unique_sublist = []
-                unique_set = set()
-                
-                for fraction in sublist:
-                    fraction_str = str(fraction)
-                    
-                    if fraction_str not in unique_set:
-                        unique_set.add(fraction_str)
-                        unique_sublist.append(fraction)
-                
-                unique_fractions.append(unique_sublist)
-            
-            return unique_fractions
-            
+            return [
+                # Utilize OrderedDict to preserve order while removing duplicates.
+                list(collections.OrderedDict.fromkeys(sub_list)) 
+                for sub_list in input_list
+            ]
 
+        # Calculate the proportion of the period represented by each change.
         percent = get_percent_of_period(self.changes)
-        
+
+        # Convert the calculated proportions to fractions.
         grids = convert_decimal_to_fraction(percent)
-        
+
+        # Remove duplicates from each grid while keeping the original order.
         grids = get_unique_fractions(grids)
         
+        # Return the grids containing unique fractions representing the proportion of period.
         return grids
-    
 
+
+    # This function computes the repetitions required for each fraction in the grids_set to equalize them.
     def set_repeats(self):
-
+        # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
         def set_normalized_numerators(grids):
+            normalized_numerators = []  # A list to store the numerators adjusted to the common denominator.
+
+            # Iterate over each sublist in the grids.
+            for sublist in grids:
+                # Compute the least common multiple (LCM) of all denominators in the sublist.
+                lcm = self.utility.get_least_common_multiple([fraction.denominator for fraction in sublist])
+                
+                # Normalize each fraction in the sublist by adjusting the numerator to the LCM, resulting in fractions with a common denominator.
+                normalized_sublist = [(lcm // fraction.denominator) * fraction.numerator for fraction in sublist]
+                
+                # Add the normalized sublist to the list of standardized numerators.
+                normalized_numerators.append(normalized_sublist)
             
-            # Extract the numerators from each list of Fraction objects.
-            numerators = [[fraction.numerator for fraction in sublist] for sublist in grids]
-
-            # Extract the denominators from each list of Fraction objects.
-            denominators = [[fraction.denominator for fraction in sublist] for sublist in grids]
-            
-            # Find the least common multiple among denominators.
-            least_common_denominator = self.utility.get_least_common_multiple(denominators)
-
-            # Calculate the multiplier for each numerator based on the Least Common Denominator.
-            multipliers = [[least_common_denominator // fraction.denominator for fraction in sublist] for sublist in grids]
-
-            # Calculate the numerator of each fraction by multiplying each numerator by it's corresponding multiplier.
-            normalized_numerators = [[num * mult for num, mult in zip(num_list, mult_list)] for num_list, mult_list in zip(numerators, multipliers)]
-
+            # Return the numerators normalized to the common denominator.
             return normalized_numerators
 
-        # Normalize numerators across Fraction objects which comprise the Composition's grid_set attribute. 
+        # Standardize the numerators in the grids_set.
         normalized_numerators = set_normalized_numerators(self.grids_set)
 
+        # Flatten the list of normalized numerators.
         flattened_list = self.utility.flatten_list(normalized_numerators)
-
+        
+        # Determine the least common multiple of all the normalized numerators.
         least_common_multiple = self.utility.get_least_common_multiple(flattened_list)
 
-        # Initialize a list to contain integers which represent the number of repeats needed for normalization within a list.
+        # Prepare a list to store the required number of repetitions for each fraction.
         repeats = []
+        
+        # For each sublist in the normalized numerators,
+        for sublist in normalized_numerators:
+            # calculate the repetition for each fraction in the sublist by dividing the LCM by the normalized numerator.
+            # The result indicates the number of repetitions needed to equalize the fractions.
+            repeats_sublist = [least_common_multiple // num for num in sublist]
+            
+            # Add the repetition counts for the sublist to the main repeats list.
+            repeats.append(repeats_sublist)
 
-        # Calculate Least Common Multiple among normalized_numerators and calculate the multiplier needed for normalization.
-        for lst in normalized_numerators:
-
-            repeats.append([least_common_multiple // num for num in lst])
-
+        # Return the list containing repetition counts for each fraction.
         return repeats
-    
 
+
+    # This function generates and manages texture objects based on various texture types.
     def set_texture_objects(self):
-
+        # Establish a dictionary mapping texture types to their associated classes.
         textures = {
             'heterophonic': heterophonic.Heterophonic,
             'homophonic': homophonic.Homophonic,
             'monophonic': monophonic.Monophonic,
             'nonpitched': nonpitched.NonPitched,
             'polyphonic': polyphonic.Polyphonic,
-            }
-        
-        source_data = []
-
-        for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats):
-            for data in zip(grids, repeats):
-                source_data.append([bin_lst, *data])
-
-        texture_objects = {
-            'heterophonic': {},
-            'homophonic': {},
-            'monophonic': {},
-            'nonpitched': {},
-            'polyphonic': {},
         }
-
-        for texture_name, texture_instance in textures.items():
-            for i, data in enumerate(source_data):
-                texture_objects[f'{texture_name}'][f'{texture_name}_{i}'] = texture_instance(data)
-
-        return texture_objects
-    
-
-    def set_midi_messages(self):
-
-        ticks_per_beat = 480
-
-        def parse_pitch_data(dataframe):
-            
-            # Compute 'Pitch' and 'Note' columns for each row
-            for index, row in dataframe.iterrows():
-                pitch = round(row['Note'] - math.floor(row['Note']), 4)
-                note = math.floor(row['Note'])
-                dataframe.at[index, 'Note'] = note
-                
-                # Calculate Pitch value by multiplying the float by 4095.
-                # 4095 equates to the number of bits in a semitone 'pitchwheel' message
-                # There are 4096 total bits, and the Mido library numbers them 0-4095.
-                dataframe.at[index, 'Pitch'] = pitch * 4095
-            
-            # Convert 'Note' column to integer data type
-            dataframe['Note'] = dataframe['Note'].astype(int)
-            dataframe['Pitch'] = dataframe['Pitch'].astype(int)
-            
-            # Return the updated dataframe
-            return dataframe
         
+        # Organize source data for textures using binary representation, grids_set, and repeat values.
+        source_data = [[bin_lst, *data] for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats) for data in zip(grids, repeats)]
+            
+        # Generate instances of each texture type using the source data, and store them in a dictionary.
+        texture_objects = {name: {f'{name}_{i}': instance(data) for i, data in enumerate(source_data)} for name, instance in textures.items()}
 
-        for texture_type in self.texture_objects.values():
+        # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
+        def parse_pitch_data(dataframe):
+            dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
+            dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
+            dataframe['Note'] = dataframe['Note'].astype(int)
+            return dataframe
 
+        # Iterate through each texture object to prepare MIDI data in a DataFrame format.
+        for texture_type in texture_objects.values():
             for texture_object in texture_type.values():
-
-                new_rows = []
                 part = parse_pitch_data(texture_object.notes_data)
 
-                for _, row in part.iterrows():
-                    part['Message'] = 'note_on'
-                    part['Time'] = 0
-                    
-                for _, row in part.iterrows():
-                    new_rows.append(row)
-                    if row['Message'] == 'note_on':
-                        if row['Pitch'] != 0.0:
-                            pitchwheel_row = row.copy()
-                            pitchwheel_row['Message'] = 'pitchwheel'
-                            new_rows.append(pitchwheel_row)
-                        note_off_row = row.copy()
-                        note_off_row['Message'] = 'note_off'
-                        note_off_row['Time'] = round(note_off_row['Duration'] * ticks_per_beat)
-                        new_rows.append(note_off_row)
-                
-                    if part.iloc[0]['Start'] != 0.0:
-                        note_off_row = part.iloc[0].copy()
-                        note_off_row['Velocity'] = 0
-                        note_off_row['Note'] = 0
-                        note_off_row['Message'] = 'note_off'
-                        note_off_row['Duration'] = part.iloc[0]['Start']
-                        note_off_row['Time'] = round(note_off_row['Duration'] * ticks_per_beat)
-                        note_off_row['Start'] = 0.0
-                        new_rows.insert(0, note_off_row)
-                    
+                part['Message'] = 'note_on'
+                part['Time'] = 0
+
+                new_rows = [row for _, row in part.iterrows()]
+                pitchwheel_rows = [row.copy() for _, row in part.iterrows() if row['Pitch'] != 0.0]
+                note_off_rows = [row.copy() for _, row in part.iterrows()]
+
+                # Include 'pitchwheel' MIDI message rows to new_rows list.
+                for pitchwheel_row in pitchwheel_rows:
+                    pitchwheel_row['Message'] = 'pitchwheel'
+                    new_rows.append(pitchwheel_row)
+
+                # Include 'note_off' MIDI message rows to new_rows list.
+                for note_off_row in note_off_rows:
+                    note_off_row['Message'] = 'note_off'
+                    note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+                    new_rows.append(note_off_row)
+
+                # Account for non-zero start time of first note by adding a 'note_off' row at the beginning.
+                if part.iloc[0]['Start'] != 0.0:
+                    note_off_row = part.iloc[0].copy()
+                    note_off_row['Velocity'] = 0
+                    note_off_row['Note'] = 0
+                    note_off_row['Message'] = 'note_off'
+                    note_off_row['Duration'] = part.iloc[0]['Start']
+                    note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+                    note_off_row['Start'] = 0.0
+                    new_rows.insert(0, note_off_row)
+
+                # Convert new_rows list to a DataFrame and set the preferred column order.
                 messages_dataframe = pandas.DataFrame(new_rows)
                 column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
                 messages_dataframe = messages_dataframe.reindex(columns=column_order)
                 messages_dataframe.reset_index(drop=True, inplace=True)
 
-                # Instead of adding to midi_messages, update texture_object directly
+                # Update the MIDI data in the current texture_object.
                 texture_object.notes_data = messages_dataframe
-    
 
-    def set_normalized_parts_data(self):
-
-        self.set_midi_messages()
-    
-        normalized_parts_data = []
-
-        for texture_type in self.texture_objects.values():
-
+        # Normalize the note data in each texture object.
+        for texture_type in texture_objects.values():
             for texture_object in texture_type.values():
 
-                # Create a list to store the original notes_data and the copies that will be normalized.
-                duplicates = [texture_object.notes_data.copy()]
-                
-                # Calculate the length of one repetition.
+                # Calculate the length of a single repetition and the size of the grid.
                 length_of_one_rep = decimal.Decimal(math.pow(texture_object.period, 2))
+                grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
 
-                # Iterate over the range of multipliers to create copies of notes_data.
-                for i in range(texture_object.repeat):
+                # Generate repeated sequences by duplicating the notes_data DataFrame.
+                duplicates = [texture_object.notes_data] + [texture_object.notes_data.copy().assign(Start=lambda df: df.Start + round((length_of_one_rep * grid) * i, 6)) for i in range(texture_object.repeat)]
 
-                    # Create a copy of notes_data.
-                    dataframe_copy = texture_object.notes_data.copy()
-                    grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
-                    
-                    # Adjust the Start column of the copy based on the length of one repitition and grid value.
-                    dataframe_copy['Start'] = dataframe_copy['Start'] + round((length_of_one_rep * grid) * i, 6)
+                # Merge all duplicates and eliminate duplicate rows.
+                result = pandas.concat(duplicates).drop_duplicates()
+                texture_object.notes_data = result
 
-                    # Append the copy to the duplicates list.
-                    duplicates.append(dataframe_copy)
-                
-                # Concatenate the duplicates list into a single dataframe.
-                result = pandas.concat(duplicates)
-                
-                # Remove duplicate rows from the concatenated dataframe.
-                result = result.drop_duplicates()
-                
-                # Append the normalized dataframe to the normalized_parts_data list.
-                normalized_parts_data.append(result)
-            
-        # Store the normalized_parts_data in self.normalized_parts_data.
-        return normalized_parts_data
+        # Return the constructed dictionary of texture objects.
+        return texture_objects
     
-    def combine_parts(self, *args):
-        
-        @staticmethod
-        def get_max_duration(dataframe):
 
-            # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
-            dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
+    # def combine_parts(self, *args):
+        
+    #     @staticmethod
+    #     def get_max_duration(dataframe):
 
-            return dataframe
+    #         # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
+    #         dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
+
+    #         return dataframe
         
         
-        @staticmethod
-        def update_duration_value(dataframe):
+    #     @staticmethod
+    #     def update_duration_value(dataframe):
             
-            current_end = dataframe['Start'] + dataframe['Duration']
-            next_start = dataframe['Start'].shift(-1)
+    #         current_end = dataframe['Start'] + dataframe['Duration']
+    #         next_start = dataframe['Start'].shift(-1)
 
-            # Replace None values with appropriate values for comparison
-            next_start = next_start.fillna(float('inf'))
-            end = numpy.minimum(next_start, current_end)
-            end = end.apply(lambda x: decimal.Decimal(str(x)))
+    #         # Replace None values with appropriate values for comparison
+    #         next_start = next_start.fillna(float('inf'))
+    #         end = numpy.minimum(next_start, current_end)
+    #         end = end.apply(lambda x: decimal.Decimal(str(x)))
 
-            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
+    #         dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
 
-            dataframe['Duration'] = end - dataframe['Start']
+    #         dataframe['Duration'] = end - dataframe['Start']
 
-            dataframe = dataframe.iloc[:-1]
+    #         dataframe = dataframe.iloc[:-1]
             
-            return dataframe
+    #         return dataframe
         
     
     # def set_track_list(self):
@@ -557,13 +475,6 @@ if __name__ == '__main__':
         
     comp = Composition(sieves)
 
-    ### IT MIGHT RUN FASTER IF I CALCULATE MIDI MESSAGES BEFORE NORMALIZING PARTS DATA!
-
-    # for texture_type in comp.texture_objects.values():
-    #     print(texture_type)
-
-    # for texture_type in comp.midi_messages.values():
-    #     for texture_obj in texture_type.values():
-    #         print(texture_obj)
-
-    print(comp.normalized_parts_data)
+    for i in comp.texture_objects.values():
+        for j in i.values():
+            print(j.notes_data)
