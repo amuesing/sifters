@@ -208,80 +208,12 @@ class Composition:
         source_data = [[bin_lst, *data] for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats) for data in zip(grids, repeats)]
             
         # Generate instances of each texture type using the source data, and store them in a dictionary.
-        texture_objects = {name: {f'{name}_{i}': instance(data) for i, data in enumerate(source_data)} for name, instance in textures.items()}
+        return {name: {f'{name}_{i}': instance(data) for i, data in enumerate(source_data)} for name, instance in textures.items()}
 
-        # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
-        def parse_pitch_data(dataframe):
-            dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
-            dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
-            dataframe['Note'] = dataframe['Note'].astype(int)
-            return dataframe
-
-        # Iterate through each texture object to prepare MIDI data in a DataFrame format.
-        for texture_type in texture_objects.values():
-            for texture_object in texture_type.values():
-                part = parse_pitch_data(texture_object.notes_data)
-
-                part['Message'] = 'note_on'
-                part['Time'] = 0
-
-                new_rows = [row for _, row in part.iterrows()]
-                pitchwheel_rows = [row.copy() for _, row in part.iterrows() if row['Pitch'] != 0.0]
-                note_off_rows = [row.copy() for _, row in part.iterrows()]
-
-                # Include 'pitchwheel' MIDI message rows to new_rows list.
-                for pitchwheel_row in pitchwheel_rows:
-                    pitchwheel_row['Message'] = 'pitchwheel'
-                    new_rows.append(pitchwheel_row)
-
-                # Include 'note_off' MIDI message rows to new_rows list.
-                for note_off_row in note_off_rows:
-                    note_off_row['Message'] = 'note_off'
-                    note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-                    new_rows.append(note_off_row)
-
-                # Account for non-zero start time of first note by adding a 'note_off' row at the beginning.
-                if part.iloc[0]['Start'] != 0.0:
-                    note_off_row = part.iloc[0].copy()
-                    note_off_row['Velocity'] = 0
-                    note_off_row['Note'] = 0
-                    note_off_row['Message'] = 'note_off'
-                    note_off_row['Duration'] = part.iloc[0]['Start']
-                    note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-                    note_off_row['Start'] = 0.0
-                    new_rows.insert(0, note_off_row)
-
-                # Convert new_rows list to a DataFrame and set the preferred column order.
-                messages_dataframe = pandas.DataFrame(new_rows)
-                column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
-                messages_dataframe = messages_dataframe.reindex(columns=column_order)
-                messages_dataframe.reset_index(drop=True, inplace=True)
-
-                # Update the MIDI data in the current texture_object.
-                texture_object.notes_data = messages_dataframe
-
-        # Normalize the note data in each texture object.
-        for texture_type in texture_objects.values():
-            for texture_object in texture_type.values():
-
-                # Calculate the length of a single repetition and the size of the grid.
-                length_of_one_rep = decimal.Decimal(math.pow(texture_object.period, 2))
-                grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
-
-                # Generate repeated sequences by duplicating the notes_data DataFrame.
-                duplicates = [texture_object.notes_data] + [texture_object.notes_data.copy().assign(Start=lambda df: df.Start + round((length_of_one_rep * grid) * i, 6)) for i in range(texture_object.repeat)]
-
-                # Merge all duplicates and eliminate duplicate rows.
-                result = pandas.concat(duplicates).drop_duplicates()
-                texture_object.notes_data = result
-
-        # Return the constructed dictionary of texture objects.
-        return texture_objects
-    
-
+### IMPLEMENT SQLITE3 IN ORDER TO ALLOW FOR EASIER USE OF LARGE DATA SETS
     def set_combined_texture_dataframes(self):
 
-        @staticmethod
+
         def get_max_duration(dataframe):
 
             # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
@@ -290,7 +222,6 @@ class Composition:
             return dataframe
         
 
-        @staticmethod
         def update_duration_value(dataframe):
             
             current_end = dataframe['Start'] + dataframe['Duration']
@@ -310,7 +241,6 @@ class Composition:
             return dataframe
         
 
-        @staticmethod
         def expand_note_lists(dataframe):
             
             # Convert list values in Velocity column to single values.
@@ -330,6 +260,14 @@ class Composition:
             result.reset_index(drop=True, inplace=True)
             
             return result.drop_duplicates()
+        
+
+        # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
+        def parse_pitch_data(dataframe):
+            dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
+            dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
+            dataframe['Note'] = dataframe['Note'].astype(int)
+            return dataframe
 
 
         def combine_dataframes(dataframes_list):
@@ -365,7 +303,21 @@ class Composition:
             #     combined_notes_data = self.adjust_note_range(combined_notes_data)
             
             return combined_notes_data
+        
+        for texture_name, texture_type in self.texture_objects.items():
+            # Normalize the note data in each texture object.
+            for object_name, texture_object in texture_type.items():
 
+                # Calculate the length of a single repetition and the size of the grid.
+                length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
+                grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
+
+                # Generate repeated sequences by duplicating the notes_data DataFrame.
+                duplicates = [texture_object.notes_data] + [texture_object.notes_data.copy().assign(Start=lambda df: df.Start + round((length_of_one_rep * grid) * i, 6)) for i in range(texture_object.repeat)]
+
+                # Merge all duplicates and eliminate duplicate rows.
+                result = pandas.concat(duplicates).drop_duplicates()
+                self.texture_objects[f'{texture_name}'][f'{object_name}'].notes_data = result
 
         combined_dataframes = {}
 
@@ -377,10 +329,53 @@ class Composition:
                 dataframes_list.append(texture_object.notes_data)
 
             combined_dataframes[f'{texture_name}'] = combine_dataframes(dataframes_list)
-        
-        return combine_dataframes
+
+        # Iterate through each texture object to prepare MIDI data in a DataFrame format.
+        for object_name, texture_dataframe in combined_dataframes.items():
+            part = parse_pitch_data(texture_dataframe)
+
+            part['Message'] = 'note_on'
+            part['Time'] = 0
+
+            new_rows = [row for _, row in part.iterrows()]
+            pitchwheel_rows = [row.copy() for _, row in part.iterrows() if row['Pitch'] != 0.0]
+            note_off_rows = [row.copy() for _, row in part.iterrows()]
+
+            # Include 'pitchwheel' MIDI message rows to new_rows list.
+            for pitchwheel_row in pitchwheel_rows:
+                pitchwheel_row['Message'] = 'pitchwheel'
+                new_rows.append(pitchwheel_row)
+
+            # Include 'note_off' MIDI message rows to new_rows list.
+            for note_off_row in note_off_rows:
+                note_off_row['Message'] = 'note_off'
+                note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+                new_rows.append(note_off_row)
+
+            # Account for non-zero start time of first note by adding a 'note_off' row at the beginning.
+            if part.iloc[0]['Start'] != 0.0:
+                note_off_row = part.iloc[0].copy()
+                note_off_row['Velocity'] = 0
+                note_off_row['Note'] = 0
+                note_off_row['Message'] = 'note_off'
+                note_off_row['Duration'] = part.iloc[0]['Start']
+                note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+                note_off_row['Start'] = 0.0
+                new_rows.insert(0, note_off_row)
+
+            # Convert new_rows list to a DataFrame and set the preferred column order.
+            messages_dataframe = pandas.DataFrame(new_rows)
+            column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
+            messages_dataframe = messages_dataframe.reindex(columns=column_order)
+            messages_dataframe.reset_index(drop=True, inplace=True)
+
+            combined_dataframes[f'{object_name}'] = messages_dataframe
+
+        return combined_dataframes
+
+    # Return the constructed dictionary of texture objects.
     
-    
+
         # def set_track_list(self):
         #     track_list = []
             
