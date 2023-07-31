@@ -19,7 +19,7 @@ class Monophonic(Texture):
         Monophonic.part_id += 1
         
         # Group notes with the same start time into a single row.
-        self.notes_data = self.group_by_start(self.notes_data)
+        self.notes_data = self.utility.group_by_start(self.notes_data)
         
         # Get the lowest MIDI note for each start time.
         self.notes_data = self.get_closest_note(self.notes_data)

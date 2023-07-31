@@ -3,12 +3,17 @@ import decimal
 import pandas
 import numpy
 
+import utility
+
 class Texture:
     
     grid_history = []
     texture_id = 1
         
     def __init__(self, source_data):
+
+        # Initialize an instance of the Utility class to call helper methods from.
+        self.utility = utility.Utility()
         
         self.binary = source_data[0]
         self.period = len(self.binary)
@@ -170,23 +175,6 @@ class Texture:
         notes_data = [[data[0], data[1], data[2], data[3]] for data in notes_data]
         
         return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
-    
-
-    @staticmethod
-    def group_by_start(dataframe):
-        # Get all column names in the DataFrame
-        columns = dataframe.columns
-
-        # Check if 'Start' is one of the column names
-        if 'Start' in columns:
-            # Sort the DataFrame based on the 'Start' column
-            dataframe = dataframe.sort_values('Start')
-            
-            # Group the sorted DataFrame by the 'Start' column and create a new DataFrame with lists of values
-            agg_dict = {col: list for col in columns if col != 'Start'}  # Exclude 'Start' column from aggregation
-            dataframe = dataframe.groupby('Start').agg(agg_dict).reset_index()
-
-        return dataframe
 
 
     @staticmethod

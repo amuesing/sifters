@@ -4,6 +4,7 @@ import fractions
 import itertools
 import math
 
+import mido
 import music21
 import numpy
 import pandas
@@ -16,11 +17,11 @@ class Composition:
     
     def __init__(self, sieves):
 
-        # Assign sieves argument to self.
-        self.sieves = sieves
-
         # Initialize an instance of the Utility class to call helper methods from.
         self.utility = utility.Utility()
+
+        # Assign sieves argument to self.
+        self.sieves = sieves
 
         # Initialize a period variable which will be assigned to an integer within the set_binary method.
         self.period = None
@@ -44,6 +45,8 @@ class Composition:
 
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
+
+        self.combined_texture_dataframes = self.set_combined_texture_dataframes()
 
 
     # This function translates a list of sieves (intervals) into binary format. 
@@ -276,185 +279,153 @@ class Composition:
         return texture_objects
     
 
-    # def combine_parts(self, *args):
-        
-    #     @staticmethod
-    #     def get_max_duration(dataframe):
+    def set_combined_texture_dataframes(self):
 
-    #         # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
-    #         dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
+        @staticmethod
+        def get_max_duration(dataframe):
 
-    #         return dataframe
+            # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
+            dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
+
+            return dataframe
         
-        
-    #     @staticmethod
-    #     def update_duration_value(dataframe):
+
+        @staticmethod
+        def update_duration_value(dataframe):
             
-    #         current_end = dataframe['Start'] + dataframe['Duration']
-    #         next_start = dataframe['Start'].shift(-1)
+            current_end = dataframe['Start'] + dataframe['Duration']
+            next_start = dataframe['Start'].shift(-1)
 
-    #         # Replace None values with appropriate values for comparison
-    #         next_start = next_start.fillna(float('inf'))
-    #         end = numpy.minimum(next_start, current_end)
-    #         end = end.apply(lambda x: decimal.Decimal(str(x)))
+            # Replace None values with appropriate values for comparison
+            next_start = next_start.fillna(float('inf'))
+            end = numpy.minimum(next_start, current_end)
+            end = end.apply(lambda x: decimal.Decimal(str(x)))
 
-    #         dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
+            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
 
-    #         dataframe['Duration'] = end - dataframe['Start']
+            dataframe['Duration'] = end - dataframe['Start']
 
-    #         dataframe = dataframe.iloc[:-1]
+            dataframe = dataframe.iloc[:-1]
             
-    #         return dataframe
+            return dataframe
         
-    
-    # def set_track_list(self):
-    #     track_list = []
-        
-    #     for kwarg in self.kwargs.values():
-    #         midi_track = mido.MidiTrack()
-    #         # midi_track.append(mido.Message('program_change', program=0))
-    #         midi_track.name = f'{kwarg.name}'
-    #         track_list.append(midi_track)
+
+        @staticmethod
+        def expand_note_lists(dataframe):
             
-    #     return track_list
-    
-             
-    # def write_midi(self):
-        
-    #     messages_data = self.set_midi_messages()
-        
-    #     def csv_to_midi_messages(dataframe):
-
-    #         messages = []
-    #         for _, row in dataframe.iterrows():
-    #             if row['Message'] == 'note_on':
-    #                 messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
-    #             elif row['Message'] == 'pitchwheel':
-    #                 messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
-    #             elif row['Message'] == 'note_off':
-    #                 messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
-
-    #         return messages
-        
-    #     # Create a new MIDI file object
-    #     score = mido.MidiFile()
-
-    #     # Set the ticks per beat resolution
-    #     score.ticks_per_beat = self.ticks_per_beat
-
-    #     # # Write method to determine TimeSignature
-    #     time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
-    #     self.track_list[0].append(time_signature)
-
-    #     # Convert the CSV data to Note messages and PitchBend messages
-    #     midi_messages = [csv_to_midi_messages(part) for part in messages_data]
-        
-    #     # Add the Tracks to the MIDI File
-    #     for track in self.track_list:
-    #         score.tracks.append(track)
-
-    #     # Add the Note messages and PitchBend messages to the MIDI file
-    #     for i, _ in enumerate(self.track_list):
-    #         for message in midi_messages:
-    #             for msg in message:
-    #                 self.track_list[i].append(msg)
-
-    #     # Write the MIDI file
-    #     score.save('data/mid/score.mid')
-
-
-    #     @staticmethod
-    #     def expand_note_lists(dataframe):
-            
-    #         # Convert list values in Velocity column to single values.
-    #         dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
+            # Convert list values in Velocity column to single values.
+            dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
                 
-    #         # Separate rows with list values in MIDI column from rows without.
-    #         start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
-    #         start_lists = dataframe[dataframe['Note'].apply(lambda x: isinstance(x, list))]
+            # Separate rows with list values in MIDI column from rows without.
+            start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
+            start_lists = dataframe[dataframe['Note'].apply(lambda x: isinstance(x, list))]
             
-    #         # Expand rows with list values in MIDI column so that each row has only one value.
-    #         start_lists = start_lists.explode('Note')
-    #         start_lists = start_lists.reset_index(drop=True)
+            # Expand rows with list values in MIDI column so that each row has only one value.
+            start_lists = start_lists.explode('Note')
+            start_lists = start_lists.reset_index(drop=True)
             
-    #         # Concatenate rows back together and sort by start time.
-    #         result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
-    #         result.sort_values('Start', inplace=True)
-    #         result.reset_index(drop=True, inplace=True)
+            # Concatenate rows back together and sort by start time.
+            result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
+            result.sort_values('Start', inplace=True)
+            result.reset_index(drop=True, inplace=True)
             
-    #         return result.drop_duplicates()
-        
-        
-    #     @staticmethod
-    #     def filter_first_match(objects, indices):
-            
-    #         updated_objects = []
-    #         first_match_found = False
-            
-    #         # Loop over all objects in the list.
-    #         for i, obj in enumerate(objects):
+            return result.drop_duplicates()
+
+
+        def combine_dataframes(dataframes_list):
+
+            # Combine the notes data from the selected parts.
+            combined_notes_data = pandas.concat(dataframes_list)
+
+            # Group notes by their start times.
+            combined_notes_data = self.utility.group_by_start(combined_notes_data)
+
+            # Get the maximum end value for notes that overlap in time.
+            combined_notes_data = get_max_duration(combined_notes_data)
+
+            # Update end values for notes that overlap in time.
+            combined_notes_data = update_duration_value(combined_notes_data)
+
+            # Expand lists of MIDI values into individual rows.
+            combined_notes_data = expand_note_lists(combined_notes_data)
+
+            # # If all parts are Monophonic, further process the combined notes to match Monophonic texture.
+            # if all(isinstance(obj, monophonic.Monophonic) for obj in objects):
+
+            #     combined_notes_data = self.group_by_start(combined_notes_data)
                 
-    #             # Check if the current index is in the indices list.
-    #             if i in indices and not first_match_found:
+            #     combined_notes_data = self.get_closest_note(combined_notes_data)
+                
+            #     combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
+                
+            #     combined_notes_data = self.close_intervals(combined_notes_data)
+                
+            #     combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
+                
+            #     combined_notes_data = self.adjust_note_range(combined_notes_data)
+            
+            return combined_notes_data
+
+
+        combined_dataframes = {}
+
+        for texture_name, texture_type in self.texture_objects.items():
+
+            dataframes_list = []
+
+            for texture_object in texture_type.values():
+                dataframes_list.append(texture_object.notes_data)
+
+            combined_dataframes[f'{texture_name}'] = combine_dataframes(dataframes_list)
+        
+        return combine_dataframes
+    
+    
+        # def set_track_list(self):
+        #     track_list = []
+            
+        #     for kwarg in self.kwargs.values():
+        #         midi_track = mido.MidiTrack()
+        #         # midi_track.append(mido.Message('program_change', program=0))
+        #         midi_track.name = f'{kwarg.name}'
+        #         track_list.append(midi_track)
+                
+        #     return track_list
+        
+        # @staticmethod
+        # def filter_first_match(objects, indices):
+            
+        #     updated_objects = []
+        #     first_match_found = False
+            
+        #     # Loop over all objects in the list.
+        #     for i, obj in enumerate(objects):
+                
+        #         # Check if the current index is in the indices list.
+        #         if i in indices and not first_match_found:
                     
-    #                 # If the current index is in the indices list and a match hasn't been found yet, add the object to the updated list.
-    #                 updated_objects.append(obj)
-    #                 first_match_found = True
+        #             # If the current index is in the indices list and a match hasn't been found yet, add the object to the updated list.
+        #             updated_objects.append(obj)
+        #             first_match_found = True
                     
-    #             # If the current index is not in the indices list, add the object to the updated list.
-    #             elif i not in indices:
-    #                 updated_objects.append(obj)
-            
-    #         # Return the updated list.
-    #         return updated_objects
+        #         # If the current index is not in the indices list, add the object to the updated list.
+        #         elif i not in indices:
+        #             updated_objects.append(obj)
 
-    #     # Get objects and indices for the parts to combine.
-    #     objects = [self.kwargs[key] for key in args if key in self.kwargs]
-
-    #     # objects = [self.kwargs.get(args[i]) for i, _ in enumerate(self.kwargs)]
-    #     indices = [i for i, kwarg in enumerate(self.kwargs.keys()) if kwarg in args]
-        
-    #     # Combine the notes data from the selected parts.
-    #     combined_notes_data = pandas.concat([self.normalized_parts_data[i] for i in indices])
-
-    #     # Group notes by their start times.
-    #     combined_notes_data = self.group_by_start(combined_notes_data)
-        
-    #     # Get the maximum end value for notes that overlap in time.
-    #     combined_notes_data = get_max_duration(combined_notes_data)
-
-    #     # Update end values for notes that overlap in time.
-    #     combined_notes_data = update_duration_value(combined_notes_data)
-        
-    #     # Expand lists of MIDI values into individual rows.
-    #     combined_notes_data = expand_note_lists(combined_notes_data)
-        
-    #     # If all parts are Monophonic, further process the combined notes to match Monophonic texture.
-    #     if all(isinstance(obj, Monophonic) for obj in objects):
-
-    #         combined_notes_data = self.group_by_start(combined_notes_data)
+        #     # Return the updated list.
+        #     return updated_objects
             
-    #         combined_notes_data = self.get_closest_note(combined_notes_data)
-            
-    #         combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
-            
-    #         combined_notes_data = self.close_intervals(combined_notes_data)
-            
-    #         combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
-            
-    #         combined_notes_data = self.adjust_note_range(combined_notes_data)
-            
-    #     # Update track list to match the combined parts.
-    #     self.track_list = filter_first_match(self.track_list, indices)
+        # # # Update track list to match the combined parts.
+        # # self.track_list = filter_first_match(self.track_list, indices)
         
-    #     # Filter notes data to match the combined parts and update it with the combined notes.
-    #     filtered_notes_data = filter_first_match(self.normalized_parts_data, indices)
-    #     filtered_notes_data[indices[0]] = combined_notes_data
-    #     self.normalized_parts_data = filtered_notes_data
+        # # Filter notes data to match the combined parts and update it with the combined notes.
+        # filtered_notes_data = filter_first_match(self.normalized_parts_data, indices)
+        # filtered_notes_data[indices[0]] = combined_notes_data
+        # self.normalized_parts_data = filtered_notes_data
         
-    #     # Remove the arguments for the combined parts from self.kwargs.
-    #     for arg in args[1:]:
-    #         del self.kwargs[arg]
+        # # Remove the arguments for the combined parts from self.kwargs.
+        # for arg in args[1:]:
+        #     del self.kwargs[arg]
         
         
 if __name__ == '__main__':
@@ -475,6 +446,8 @@ if __name__ == '__main__':
         
     comp = Composition(sieves)
 
-    for i in comp.texture_objects.values():
-        for j in i.values():
-            print(j.notes_data)
+    # for i in comp.texture_objects.values():
+    #     for j in i.values():
+    #         print(j.notes_data)
+
+    print(comp.combined_texture_dataframes)
