@@ -1,13 +1,17 @@
 import collections
+import datetime
 import decimal
 import fractions
 import itertools
 import math
+import sqlite3
 
 import mido
 import music21
 import numpy
 import pandas
+import tqdm
+import uuid
 
 import utility
 
@@ -210,8 +214,50 @@ class Composition:
         # Generate instances of each texture type using the source data, and store them in a dictionary.
         return {name: {f'{name}_{i}': instance(data) for i, data in enumerate(source_data)} for name, instance in textures.items()}
 
-### IMPLEMENT SQLITE3 IN ORDER TO ALLOW FOR EASIER USE OF LARGE DATA SETS
+
     def set_combined_texture_dataframes(self):
+
+        def initialize_database(database_connection):
+
+            for texture_type_name, texture_type in self.texture_objects.items():
+                combined_dataframe = pandas.DataFrame()  # Start with an empty DataFrame
+
+                for object_name, texture_object in texture_type.items():
+                    dataframe = texture_object.notes_data
+
+                    # Convert all possible numeric columns
+                    for column in dataframe.columns:
+                        if dataframe[column].dtype == 'object':
+                            try:
+                                dataframe[column] = pandas.to_numeric(dataframe[column])
+                            except ValueError:
+                                pass
+
+                    # Append this dataframe to the combined dataframe
+                    combined_dataframe = pandas.concat([combined_dataframe, dataframe])
+
+                # Write the combined dataframe to a SQL table
+                table_name = f"{texture_type_name}"
+                combined_dataframe.to_sql(table_name, database_connection, if_exists='replace', index=False)
+
+
+            # for texture_type in self.texture_objects.values():
+            #     for object_name, texture_object in texture_type.items():
+            #         dataframe = texture_object.notes_data
+            #         # Convert all possible numeric columns
+            #         for column in dataframe.columns:
+            #             if dataframe[column].dtype == 'object':
+            #                 try:
+            #                     dataframe[column] = pandas.to_numeric(dataframe[column])
+            #                 except ValueError:
+            #                     pass
+
+            #         # Create a unique table name for each texture_type and texture_object
+            #         table_name = f"{object_name}"
+            #         dataframe.to_sql(table_name, database_connection, if_exists='replace', index=False)
+
+            # Close the connection
+            # database_connection.close()
 
 
         def get_max_duration(dataframe):
@@ -303,75 +349,118 @@ class Composition:
             #     combined_notes_data = self.adjust_note_range(combined_notes_data)
             
             return combined_notes_data
+
+        database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}.db')
+
+        # Assuming initialize_database is a function you've defined earlier
+        initialize_database(database_connection)
+
+        cursor = database_connection.cursor()
+
+        # Retrieve the list of all tables in the database
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+
+        # Column on which to perform the operation
+        group_by_column = 'Start'
+        aggregate_columns = ['Velocity', 'Note', 'Duration']
+
+        for table in tables:
+            table_name = table[0]
+            
+            try:
+                for aggregate_column in aggregate_columns:
+                    # Construct the new table name
+                    new_table_name = f"{table_name}_{aggregate_column}_grouped"
+
+                    # Construct the query to create a new table based on the aggregated data
+                    query = f"""
+                    CREATE TABLE {new_table_name} AS
+                    SELECT {group_by_column}, GROUP_CONCAT({aggregate_column}) as {aggregate_column}_values
+                    FROM {table_name}
+                    GROUP BY {group_by_column}
+                    """
+
+                    # Execute the query
+                    cursor.execute(query)
+
+            except sqlite3.Error as e:
+                print(f"An error occurred with table {table_name}: {e}")
+
+        # Commit the changes
+        database_connection.commit()
+
+        # Close the connection
+        database_connection.close()
         
-        for texture_name, texture_type in self.texture_objects.items():
-            # Normalize the note data in each texture object.
-            for object_name, texture_object in texture_type.items():
+        # for texture_name, texture_type in tqdm.tqdm(self.texture_objects.items(), desc='Normalizing notes dataframes'):
+        #     # Normalize the note data in each texture object.
+        #     for object_name, texture_object in texture_type.items():
 
-                # Calculate the length of a single repetition and the size of the grid.
-                length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
-                grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
+        #         # Calculate the length of a single repetition and the size of the grid.
+        #         length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
+        #         grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
 
-                # Generate repeated sequences by duplicating the notes_data DataFrame.
-                duplicates = [texture_object.notes_data] + [texture_object.notes_data.copy().assign(Start=lambda df: df.Start + round((length_of_one_rep * grid) * i, 6)) for i in range(texture_object.repeat)]
+        #         # Generate repeated sequences by duplicating the notes_data DataFrame.
+        #         duplicates = [texture_object.notes_data] + [texture_object.notes_data.copy().assign(Start=lambda dataframe: dataframe.Start + round((length_of_one_rep * grid) * i, 6)) for i in range(texture_object.repeat)]
 
-                # Merge all duplicates and eliminate duplicate rows.
-                result = pandas.concat(duplicates).drop_duplicates()
-                self.texture_objects[f'{texture_name}'][f'{object_name}'].notes_data = result
+        #         # Merge all duplicates and eliminate duplicate rows.
+        #         result = pandas.concat(duplicates).drop_duplicates()
+        #         self.texture_objects[f'{texture_name}'][f'{object_name}'].notes_data = result
 
-        combined_dataframes = {}
+        # combined_dataframes = {}
 
-        for texture_name, texture_type in self.texture_objects.items():
+        # for texture_name, texture_type in tqdm.tqdm(self.texture_objects.items(), desc='Combining notes dataframes'):
 
-            dataframes_list = []
+        #     dataframes_list = []
 
-            for texture_object in texture_type.values():
-                dataframes_list.append(texture_object.notes_data)
+        #     for texture_object in texture_type.values():
+        #         dataframes_list.append(texture_object.notes_data)
 
-            combined_dataframes[f'{texture_name}'] = combine_dataframes(dataframes_list)
+        #     combined_dataframes[f'{texture_name}'] = combine_dataframes(dataframes_list)
 
-        # Iterate through each texture object to prepare MIDI data in a DataFrame format.
-        for object_name, texture_dataframe in combined_dataframes.items():
-            part = parse_pitch_data(texture_dataframe)
+        # # Iterate through each texture object to prepare MIDI data in a DataFrame format.
+        # for object_name, texture_dataframe in tqdm.tqdm(combined_dataframes.items(), desc='Interpolating MIDI messages'):
+        #     part = parse_pitch_data(texture_dataframe)
 
-            part['Message'] = 'note_on'
-            part['Time'] = 0
+        #     part['Message'] = 'note_on'
+        #     part['Time'] = 0
 
-            new_rows = [row for _, row in part.iterrows()]
-            pitchwheel_rows = [row.copy() for _, row in part.iterrows() if row['Pitch'] != 0.0]
-            note_off_rows = [row.copy() for _, row in part.iterrows()]
+        #     new_rows = [row for _, row in part.iterrows()]
+        #     pitchwheel_rows = [row.copy() for _, row in part.iterrows() if row['Pitch'] != 0.0]
+        #     note_off_rows = [row.copy() for _, row in part.iterrows()]
 
-            # Include 'pitchwheel' MIDI message rows to new_rows list.
-            for pitchwheel_row in pitchwheel_rows:
-                pitchwheel_row['Message'] = 'pitchwheel'
-                new_rows.append(pitchwheel_row)
+        #     # Include 'pitchwheel' MIDI message rows to new_rows list.
+        #     for pitchwheel_row in pitchwheel_rows:
+        #         pitchwheel_row['Message'] = 'pitchwheel'
+        #         new_rows.append(pitchwheel_row)
 
-            # Include 'note_off' MIDI message rows to new_rows list.
-            for note_off_row in note_off_rows:
-                note_off_row['Message'] = 'note_off'
-                note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-                new_rows.append(note_off_row)
+        #     # Include 'note_off' MIDI message rows to new_rows list.
+        #     for note_off_row in note_off_rows:
+        #         note_off_row['Message'] = 'note_off'
+        #         note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+        #         new_rows.append(note_off_row)
 
-            # Account for non-zero start time of first note by adding a 'note_off' row at the beginning.
-            if part.iloc[0]['Start'] != 0.0:
-                note_off_row = part.iloc[0].copy()
-                note_off_row['Velocity'] = 0
-                note_off_row['Note'] = 0
-                note_off_row['Message'] = 'note_off'
-                note_off_row['Duration'] = part.iloc[0]['Start']
-                note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-                note_off_row['Start'] = 0.0
-                new_rows.insert(0, note_off_row)
+        #     # Account for non-zero start time of first note by adding a 'note_off' row at the beginning.
+        #     if part.iloc[0]['Start'] != 0.0:
+        #         note_off_row = part.iloc[0].copy()
+        #         note_off_row['Velocity'] = 0
+        #         note_off_row['Note'] = 0
+        #         note_off_row['Message'] = 'note_off'
+        #         note_off_row['Duration'] = part.iloc[0]['Start']
+        #         note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+        #         note_off_row['Start'] = 0.0
+        #         new_rows.insert(0, note_off_row)
 
-            # Convert new_rows list to a DataFrame and set the preferred column order.
-            messages_dataframe = pandas.DataFrame(new_rows)
-            column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
-            messages_dataframe = messages_dataframe.reindex(columns=column_order)
-            messages_dataframe.reset_index(drop=True, inplace=True)
+        #     # Convert new_rows list to a DataFrame and set the preferred column order.
+        #     messages_dataframe = pandas.DataFrame(new_rows)
+        #     column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
+        #     messages_dataframe = messages_dataframe.reindex(columns=column_order)
+        #     messages_dataframe.reset_index(drop=True, inplace=True)
 
-            combined_dataframes[f'{object_name}'] = messages_dataframe
+        #     combined_dataframes[f'{object_name}'] = messages_dataframe
 
-        return combined_dataframes
+        # return combined_dataframes
 
     # Return the constructed dictionary of texture objects.
     
@@ -444,5 +533,3 @@ if __name__ == '__main__':
     # for i in comp.texture_objects.values():
     #     for j in i.values():
     #         print(j.notes_data)
-
-    print(comp.combined_texture_dataframes)
