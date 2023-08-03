@@ -1,5 +1,4 @@
 import collections
-import datetime
 import decimal
 import fractions
 import itertools
@@ -11,7 +10,7 @@ import music21
 import numpy
 import pandas
 import tqdm
-import uuid
+
 
 import utility
 
@@ -217,49 +216,6 @@ class Composition:
 
     def set_combined_texture_dataframes(self):
 
-        def initialize_database(database_connection):
-
-            for texture_type_name, texture_type in self.texture_objects.items():
-                combined_dataframe = pandas.DataFrame()  # Start with an empty DataFrame
-
-                for object_name, texture_object in texture_type.items():
-                    dataframe = texture_object.notes_data
-
-                    # Convert all possible numeric columns
-                    for column in dataframe.columns:
-                        if dataframe[column].dtype == 'object':
-                            try:
-                                dataframe[column] = pandas.to_numeric(dataframe[column])
-                            except ValueError:
-                                pass
-
-                    # Append this dataframe to the combined dataframe
-                    combined_dataframe = pandas.concat([combined_dataframe, dataframe])
-
-                # Write the combined dataframe to a SQL table
-                table_name = f"{texture_type_name}"
-                combined_dataframe.to_sql(table_name, database_connection, if_exists='replace', index=False)
-
-
-            # for texture_type in self.texture_objects.values():
-            #     for object_name, texture_object in texture_type.items():
-            #         dataframe = texture_object.notes_data
-            #         # Convert all possible numeric columns
-            #         for column in dataframe.columns:
-            #             if dataframe[column].dtype == 'object':
-            #                 try:
-            #                     dataframe[column] = pandas.to_numeric(dataframe[column])
-            #                 except ValueError:
-            #                     pass
-
-            #         # Create a unique table name for each texture_type and texture_object
-            #         table_name = f"{object_name}"
-            #         dataframe.to_sql(table_name, database_connection, if_exists='replace', index=False)
-
-            # Close the connection
-            # database_connection.close()
-
-
         def get_max_duration(dataframe):
 
             # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
@@ -350,49 +306,65 @@ class Composition:
             
             return combined_notes_data
 
+        # Connect to SQLite database
         database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}.db')
-
-        # Assuming initialize_database is a function you've defined earlier
-        initialize_database(database_connection)
-
         cursor = database_connection.cursor()
 
-        # Retrieve the list of all tables in the database
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
+        # Keep track of unique texture names
+        unique_texture_names = set()
 
-        # Column on which to perform the operation
-        group_by_column = 'Start'
-        aggregate_columns = ['Velocity', 'Note', 'Duration']
+        # Loop through all texture objects, converting columns to numeric where possible and storing in SQLite
+        for texture_object_dict in self.texture_objects.values():
+            for texture_object in texture_object_dict.values():
+                dataframe = texture_object.notes_data
 
-        for table in tables:
-            table_name = table[0]
-            
-            try:
-                for aggregate_column in aggregate_columns:
-                    # Construct the new table name
-                    new_table_name = f"{table_name}_{aggregate_column}_grouped"
+                # Convert all possible numeric columns
+                for column in dataframe.columns:
+                    if dataframe[column].dtype == 'object':
+                        try:
+                            dataframe[column] = pandas.to_numeric(dataframe[column])
+                        except ValueError:
+                            pass
 
-                    # Construct the query to create a new table based on the aggregated data
-                    query = f"""
-                    CREATE TABLE {new_table_name} AS
-                    SELECT {group_by_column}, GROUP_CONCAT({aggregate_column}) as {aggregate_column}_values
-                    FROM {table_name}
-                    GROUP BY {group_by_column}
-                    """
+                # Add the texture name to the set of unique texture names
+                unique_texture_names.add(texture_object.name)
 
-                    # Execute the query
-                    cursor.execute(query)
+                # Store this DataFrame as a table in SQLite, the table name incorporates the object name for identification later
+                dataframe.to_sql(name=f"{texture_object.name}_{texture_object.part_id}", con=database_connection, if_exists='replace')
 
-            except sqlite3.Error as e:
-                print(f"An error occurred with table {table_name}: {e}")
+        # Now for each unique texture name, combine the tables
+        for texture_name in unique_texture_names:
 
-        # Commit the changes
+            # Retrieve the list of all tables with this texture_name
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%';")
+            tables = cursor.fetchall()
+
+            # Build the query to union all tables
+            query = " UNION ALL ".join(f"SELECT * FROM {table[0]}" for table in tables)
+
+            # Create the combined table for this texture_name
+            cursor.execute(f"CREATE TABLE {texture_name}_combined AS {query};")
+
+            # Get column names from one of the texture object dataframes (assuming all have same structure)
+            texture_object = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
+            first_texture_object = next(iter(texture_object.values()))  # Get first texture_object
+            column_names = first_texture_object.notes_data.columns.tolist()
+            column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
+
+            # Group rows in the combined table by 'Start' value
+            group_query = f"""
+            CREATE TABLE {texture_name}_grouped AS
+            SELECT Start, 
+            {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
+            FROM {texture_name}_combined
+            GROUP BY Start;
+            """
+            cursor.execute(group_query)
+
+        # Commit changes and close connection
         database_connection.commit()
-
-        # Close the connection
         database_connection.close()
-        
+
         # for texture_name, texture_type in tqdm.tqdm(self.texture_objects.items(), desc='Normalizing notes dataframes'):
         #     # Normalize the note data in each texture object.
         #     for object_name, texture_object in texture_type.items():

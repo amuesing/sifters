@@ -37,6 +37,8 @@ class Texture:
         
         # Increment the texture ID for the next Texture object
         Texture.texture_id += 1
+
+        self.notes_data.to_csv(f'data/csv/.{self.__class__.__name__}_{self.part_id}.csv')
     
     
     def set_notes_data(self):

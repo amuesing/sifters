@@ -35,4 +35,4 @@ class Monophonic(Texture):
         
         self.notes_data = self.adjust_note_range(self.notes_data)
         
-        self.notes_data.to_csv(f'data/csv/.monophonic{self.part_id}.csv')
+        # self.notes_data.to_csv(f'data/csv/.{self.__class__.__name__}_{self.part_id}.csv')
