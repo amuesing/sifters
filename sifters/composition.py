@@ -5,6 +5,7 @@ import itertools
 import math
 import sqlite3
 
+import datetime
 import mido
 import music21
 import numpy
@@ -216,98 +217,101 @@ class Composition:
 
     def set_combined_texture_dataframes(self):
 
-        def get_max_duration(dataframe):
+        # def get_max_duration(dataframe):
 
-            # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
-            dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
+        #     # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
+        #     dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
 
-            return dataframe
+        #     return dataframe
         
 
-        def update_duration_value(dataframe):
+        # def update_duration_value(dataframe):
             
-            current_end = dataframe['Start'] + dataframe['Duration']
-            next_start = dataframe['Start'].shift(-1)
+        #     current_end = dataframe['Start'] + dataframe['Duration']
+        #     next_start = dataframe['Start'].shift(-1)
 
-            # Replace None values with appropriate values for comparison
-            next_start = next_start.fillna(float('inf'))
-            end = numpy.minimum(next_start, current_end)
-            end = end.apply(lambda x: decimal.Decimal(str(x)))
+        #     # Replace None values with appropriate values for comparison
+        #     next_start = next_start.fillna(float('inf'))
+        #     end = numpy.minimum(next_start, current_end)
+        #     end = end.apply(lambda x: decimal.Decimal(str(x)))
 
-            dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
+        #     dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
 
-            dataframe['Duration'] = end - dataframe['Start']
+        #     dataframe['Duration'] = end - dataframe['Start']
 
-            dataframe = dataframe.iloc[:-1]
+        #     dataframe = dataframe.iloc[:-1]
             
-            return dataframe
+        #     return dataframe
         
 
-        def expand_note_lists(dataframe):
+        # def expand_note_lists(dataframe):
             
-            # Convert list values in Velocity column to single values.
-            dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
+        #     # Convert list values in Velocity column to single values.
+        #     dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
                 
-            # Separate rows with list values in MIDI column from rows without.
-            start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
-            start_lists = dataframe[dataframe['Note'].apply(lambda x: isinstance(x, list))]
+        #     # Separate rows with list values in MIDI column from rows without.
+        #     start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
+        #     start_lists = dataframe[dataframe['Note'].apply(lambda x: isinstance(x, list))]
             
-            # Expand rows with list values in MIDI column so that each row has only one value.
-            start_lists = start_lists.explode('Note')
-            start_lists = start_lists.reset_index(drop=True)
+        #     # Expand rows with list values in MIDI column so that each row has only one value.
+        #     start_lists = start_lists.explode('Note')
+        #     start_lists = start_lists.reset_index(drop=True)
             
-            # Concatenate rows back together and sort by start time.
-            result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
-            result.sort_values('Start', inplace=True)
-            result.reset_index(drop=True, inplace=True)
+        #     # Concatenate rows back together and sort by start time.
+        #     result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
+        #     result.sort_values('Start', inplace=True)
+        #     result.reset_index(drop=True, inplace=True)
             
-            return result.drop_duplicates()
+        #     return result.drop_duplicates()
         
 
-        # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
-        def parse_pitch_data(dataframe):
-            dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
-            dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
-            dataframe['Note'] = dataframe['Note'].astype(int)
-            return dataframe
+        # # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
+        # def parse_pitch_data(dataframe):
+        #     dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
+        #     dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
+        #     dataframe['Note'] = dataframe['Note'].astype(int)
+        #     return dataframe
 
 
-        def combine_dataframes(dataframes_list):
+        # def combine_dataframes(dataframes_list):
 
-            # Combine the notes data from the selected parts.
-            combined_notes_data = pandas.concat(dataframes_list)
+        #     # Combine the notes data from the selected parts.
+        #     combined_notes_data = pandas.concat(dataframes_list)
 
-            # Group notes by their start times.
-            combined_notes_data = self.utility.group_by_start(combined_notes_data)
+        #     # Group notes by their start times.
+        #     combined_notes_data = self.utility.group_by_start(combined_notes_data)
 
-            # Get the maximum end value for notes that overlap in time.
-            combined_notes_data = get_max_duration(combined_notes_data)
+        #     # Get the maximum end value for notes that overlap in time.
+        #     combined_notes_data = get_max_duration(combined_notes_data)
 
-            # Update end values for notes that overlap in time.
-            combined_notes_data = update_duration_value(combined_notes_data)
+        #     # Update end values for notes that overlap in time.
+        #     combined_notes_data = update_duration_value(combined_notes_data)
 
-            # Expand lists of MIDI values into individual rows.
-            combined_notes_data = expand_note_lists(combined_notes_data)
+        #     # Expand lists of MIDI values into individual rows.
+        #     combined_notes_data = expand_note_lists(combined_notes_data)
 
-            # # If all parts are Monophonic, further process the combined notes to match Monophonic texture.
-            # if all(isinstance(obj, monophonic.Monophonic) for obj in objects):
+        #     # # If all parts are Monophonic, further process the combined notes to match Monophonic texture.
+        #     # if all(isinstance(obj, monophonic.Monophonic) for obj in objects):
 
-            #     combined_notes_data = self.group_by_start(combined_notes_data)
+        #     #     combined_notes_data = self.group_by_start(combined_notes_data)
                 
-            #     combined_notes_data = self.get_closest_note(combined_notes_data)
+        #     #     combined_notes_data = self.get_closest_note(combined_notes_data)
                 
-            #     combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
+        #     #     combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
                 
-            #     combined_notes_data = self.close_intervals(combined_notes_data)
+        #     #     combined_notes_data = self.close_intervals(combined_notes_data)
                 
-            #     combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
+        #     #     combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
                 
-            #     combined_notes_data = self.adjust_note_range(combined_notes_data)
+        #     #     combined_notes_data = self.adjust_note_range(combined_notes_data)
             
-            return combined_notes_data
+        #     return combined_notes_data
 
+        # Get the current timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        
         # Connect to SQLite database
-        database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}.db')
+        database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
         cursor = database_connection.cursor()
 
         # Keep track of unique texture names
@@ -361,9 +365,28 @@ class Composition:
             """
             cursor.execute(group_query)
 
+            max_duration_query = f"""
+            CREATE TABLE {texture_name}_max_duration AS
+            WITH max_durations AS (
+                SELECT Start, MAX(Duration) as MaxDuration
+                FROM {texture_name}_combined
+                GROUP BY Start
+            ),
+            ranked_rows AS (
+                SELECT *, ROW_NUMBER() OVER(PARTITION BY Start ORDER BY Duration DESC, rowid DESC) as rank
+                FROM {texture_name}_combined
+            )
+            SELECT Start, Velocity, Note, Duration
+            FROM ranked_rows
+            WHERE rank = 1;
+            """
+            cursor.execute(max_duration_query)
+            
         # Commit changes and close connection
         database_connection.commit()
         database_connection.close()
+
+        #####
 
         # for texture_name, texture_type in tqdm.tqdm(self.texture_objects.items(), desc='Normalizing notes dataframes'):
         #     # Normalize the note data in each texture object.
