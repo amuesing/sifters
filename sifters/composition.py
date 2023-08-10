@@ -356,16 +356,16 @@ class Composition:
             column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
 
             # Group rows in the combined table by 'Start' value
-            group_query = f"""
+            group_query = f'''
             CREATE TABLE {texture_name}_grouped AS
             SELECT Start, 
             {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
             FROM {texture_name}_combined
             GROUP BY Start;
-            """
+            '''
             cursor.execute(group_query)
 
-            max_duration_query = f"""
+            max_duration_query = f'''
             CREATE TABLE {texture_name}_max_duration AS
             WITH max_durations AS (
                 SELECT Start, MAX(Duration) as MaxDuration
@@ -379,8 +379,12 @@ class Composition:
             SELECT Start, Velocity, Note, Duration
             FROM ranked_rows
             WHERE rank = 1;
-            """
+            '''
             cursor.execute(max_duration_query)
+
+            next_start_query = f'''
+            CREATE TABLE {texture_name}_next_start AS
+            '''
             
         # Commit changes and close connection
         database_connection.commit()

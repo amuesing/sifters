@@ -14,7 +14,7 @@ class Homophonic(Texture):
         
         # Set ID value.
         self.part_id = Homophonic.part_id
-        
+              
         # Increment ID value.
         Homophonic.part_id += 1
         
