@@ -172,7 +172,7 @@ class Texture:
             for k in indices:
                 velocity = 64
                 offset = decimal.Decimal(int(k)) * duration
-                notes_data.append([round(offset, 6), velocity, next(note_pool), round(grid, 6)])
+                notes_data.append([round(offset, 3), velocity, next(note_pool), round(grid, 3)])
 
         notes_data = [[data[0], data[1], data[2], data[3]] for data in notes_data]
         

@@ -382,10 +382,23 @@ class Composition:
             '''
             cursor.execute(max_duration_query)
 
+            scaling_factor = 1000
+
             next_start_query = f'''
-            CREATE TABLE {texture_name}_next_start AS
+            CREATE TABLE {texture_name}_end_column AS
+            SELECT 
+                *,
+                CASE 
+                    WHEN LEAD(Start * {scaling_factor}, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start * {scaling_factor} + Duration * {scaling_factor})
+                    WHEN (Start * {scaling_factor} + Duration * {scaling_factor}) < LEAD(Start * {scaling_factor}, 1, NULL) OVER(ORDER BY Start) THEN (Start * {scaling_factor} + Duration * {scaling_factor})
+                    ELSE LEAD(Start * {scaling_factor}, 1, NULL) OVER(ORDER BY Start)
+                END as End
+            FROM {texture_name}_max_duration;
             '''
-            
+
+            cursor.execute(next_start_query)
+
+
         # Commit changes and close connection
         database_connection.commit()
         database_connection.close()
