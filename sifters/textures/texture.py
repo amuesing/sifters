@@ -20,6 +20,9 @@ class Texture:
         self.grid = source_data[1]
         self.repeat = source_data[2]
 
+        
+        self.scaling_factor = 1000
+
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
         
@@ -62,13 +65,13 @@ class Texture:
                 row = [decimal.Decimal('0.0')] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
 
                 # Normalize the tone row so that it starts with 0 and has no negative values.
-                row = [n % 12 for n in row]
+                row = [note % 12 for note in row]
 
                 # Generate the rows of the pitch class matrix.
                 matrix = [[(abs(note - 12) % 12)] for note in row]
 
                 # Generate the columns of the pitch class matrix.
-                matrix = [r * len(intervals) for r in matrix]
+                matrix = [row * len(intervals) for row in matrix]
 
                 # Update the matrix with the correct pitch class values.
                 matrix = [[(matrix[i][j] + row[j]) % 12
@@ -169,12 +172,14 @@ class Texture:
             duration = grid * duration_multiplier
 
             # For each non-zero indice append notes_data list with corresponding note information.
-            for k in indices:
+            for index in indices:
                 velocity = 64
-                offset = decimal.Decimal(int(k)) * duration
-                notes_data.append([round(offset, 3), velocity, next(note_pool), round(grid, 3)])
+                # offset = decimal.Decimal(int(index)) * duration
+                offset = index * duration
 
-        notes_data = [[data[0], data[1], data[2], data[3]] for data in notes_data]
+                notes_data.append([offset, velocity, next(note_pool), grid])
+
+        notes_data = [[int(data[0] * self.scaling_factor), data[1], data[2], int(data[3] * self.scaling_factor)] for data in notes_data]
         
         return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
 

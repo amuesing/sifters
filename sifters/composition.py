@@ -21,6 +21,12 @@ class Composition:
     
     def __init__(self, sieves):
 
+        # Get the current timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        
+        # Connect to SQLite database
+        self.database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
+
         # Initialize an instance of the Utility class to call helper methods from.
         self.utility = utility.Utility()
 
@@ -307,12 +313,11 @@ class Composition:
             
         #     return combined_notes_data
 
-        # Get the current timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        
-        # Connect to SQLite database
-        database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
-        cursor = database_connection.cursor()
+        ### UPDATE QUERIES SO THAT TABLES THAT ARE NOT BEING USED ARE DELETED.
+        ### CALCULATE RELEVANT INFORMATION (LIKE END VALUE) AND SAVE TO TABLE.
+        ### ONCE TABLE IS DONE BEING USED, DELETE IT
+
+        cursor = self.database_connection.cursor()
 
         # Keep track of unique texture names
         unique_texture_names = set()
@@ -334,7 +339,7 @@ class Composition:
                 unique_texture_names.add(texture_object.name)
 
                 # Store this DataFrame as a table in SQLite, the table name incorporates the object name for identification later
-                dataframe.to_sql(name=f"{texture_object.name}_{texture_object.part_id}", con=database_connection, if_exists='replace')
+                dataframe.to_sql(name=f"{texture_object.name}_{texture_object.part_id}", con=self.database_connection, if_exists='replace')
 
         # Now for each unique texture name, combine the tables
         for texture_name in unique_texture_names:
@@ -350,7 +355,7 @@ class Composition:
             cursor.execute(f"CREATE TABLE {texture_name}_combined AS {query};")
 
             # Get column names from one of the texture object dataframes (assuming all have same structure)
-            texture_object = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
+            4 = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
             first_texture_object = next(iter(texture_object.values()))  # Get first texture_object
             column_names = first_texture_object.notes_data.columns.tolist()
             column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
@@ -371,37 +376,60 @@ class Composition:
                 SELECT Start, MAX(Duration) as MaxDuration
                 FROM {texture_name}_combined
                 GROUP BY Start
-            ),
-            ranked_rows AS (
-                SELECT *, ROW_NUMBER() OVER(PARTITION BY Start ORDER BY Duration DESC, rowid DESC) as rank
-                FROM {texture_name}_combined
             )
-            SELECT Start, Velocity, Note, Duration
-            FROM ranked_rows
-            WHERE rank = 1;
+            SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
+            FROM {texture_name}_grouped g
+            JOIN max_durations m ON g.Start = m.Start;
             '''
+
             cursor.execute(max_duration_query)
 
-            scaling_factor = 1000
-
-            next_start_query = f'''
-            CREATE TABLE {texture_name}_end_column AS
-            SELECT 
-                *,
-                CASE 
-                    WHEN LEAD(Start * {scaling_factor}, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start * {scaling_factor} + Duration * {scaling_factor})
-                    WHEN (Start * {scaling_factor} + Duration * {scaling_factor}) < LEAD(Start * {scaling_factor}, 1, NULL) OVER(ORDER BY Start) THEN (Start * {scaling_factor} + Duration * {scaling_factor})
-                    ELSE LEAD(Start * {scaling_factor}, 1, NULL) OVER(ORDER BY Start)
-                END as End
-            FROM {texture_name}_max_duration;
+            create_table_query = f'''
+            CREATE TABLE {texture_name}_end_column (
+                Start INTEGER, 
+                End INTEGER, 
+                Duration INTEGER,
+                Velocity INTEGER, 
+                Note TEXT
+            );
             '''
 
-            cursor.execute(next_start_query)
+            cursor.execute(create_table_query)
 
+            insert_data_query = f'''
+            WITH ModifiedDurations AS (
+                SELECT 
+                    Start,
+                    Velocity,
+                    Note,
+                    CASE 
+                        WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
+                            LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
+                        ELSE
+                            Duration
+                    END as ModifiedDuration
+                FROM {texture_name}_max_duration
+            )
+
+            INSERT INTO {texture_name}_end_column
+            SELECT 
+                Start,
+                CASE 
+                    WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
+                    WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
+                    ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
+                END as End,
+                ModifiedDuration,
+                Velocity,
+                Note
+            FROM ModifiedDurations;
+            '''
+
+            cursor.execute(insert_data_query)
 
         # Commit changes and close connection
-        database_connection.commit()
-        database_connection.close()
+        self.database_connection.commit()
+        self.database_connection.close()
 
         #####
 
@@ -538,7 +566,7 @@ if __name__ == '__main__':
     
     ]
     
-    sieves = ['|'.join(sieves)]
+    # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
 
