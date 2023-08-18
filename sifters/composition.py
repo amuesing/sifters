@@ -354,8 +354,12 @@ class Composition:
             # Create the combined table for this texture_name
             cursor.execute(f"CREATE TABLE {texture_name}_combined AS {query};")
 
+            # Delete the individual tables that were combined
+            for table in tables:
+                cursor.execute(f"DROP TABLE {table[0]};")
+
             # Get column names from one of the texture object dataframes (assuming all have same structure)
-            4 = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
+            texture_object = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
             first_texture_object = next(iter(texture_object.values()))  # Get first texture_object
             column_names = first_texture_object.notes_data.columns.tolist()
             column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
