@@ -223,54 +223,6 @@ class Composition:
 
     def set_combined_texture_dataframes(self):
 
-        # def get_max_duration(dataframe):
-
-        #     # Update the 'End' column using a lambda function to set it to the maximum value if it's a list
-        #     dataframe['Duration'] = dataframe['Duration'].apply(lambda x: max(x) if isinstance(x, list) else x)
-
-        #     return dataframe
-        
-
-        # def update_duration_value(dataframe):
-            
-        #     current_end = dataframe['Start'] + dataframe['Duration']
-        #     next_start = dataframe['Start'].shift(-1)
-
-        #     # Replace None values with appropriate values for comparison
-        #     next_start = next_start.fillna(float('inf'))
-        #     end = numpy.minimum(next_start, current_end)
-        #     end = end.apply(lambda x: decimal.Decimal(str(x)))
-
-        #     dataframe['Start'] = dataframe['Start'].apply(lambda x: decimal.Decimal(str(x)))
-
-        #     dataframe['Duration'] = end - dataframe['Start']
-
-        #     dataframe = dataframe.iloc[:-1]
-            
-        #     return dataframe
-        
-
-        # def expand_note_lists(dataframe):
-            
-        #     # Convert list values in Velocity column to single values.
-        #     dataframe['Velocity'] = dataframe['Velocity'].apply(lambda x: x[0] if isinstance(x, list) else x)
-                
-        #     # Separate rows with list values in MIDI column from rows without.
-        #     start_not_lists = dataframe[~dataframe['Note'].apply(lambda x: isinstance(x, list))]
-        #     start_lists = dataframe[dataframe['Note'].apply(lambda x: isinstance(x, list))]
-            
-        #     # Expand rows with list values in MIDI column so that each row has only one value.
-        #     start_lists = start_lists.explode('Note')
-        #     start_lists = start_lists.reset_index(drop=True)
-            
-        #     # Concatenate rows back together and sort by start time.
-        #     result = pandas.concat([start_not_lists, start_lists], axis=0, ignore_index=True)
-        #     result.sort_values('Start', inplace=True)
-        #     result.reset_index(drop=True, inplace=True)
-            
-        #     return result.drop_duplicates()
-        
-
         # # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
         # def parse_pitch_data(dataframe):
         #     dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
@@ -313,35 +265,27 @@ class Composition:
             
         #     return combined_notes_data
 
-        ### UPDATE QUERIES SO THAT TABLES THAT ARE NOT BEING USED ARE DELETED.
-        ### CALCULATE RELEVANT INFORMATION (LIKE END VALUE) AND SAVE TO TABLE.
-        ### ONCE TABLE IS DONE BEING USED, DELETE IT
-
         cursor = self.database_connection.cursor()
 
-        # Keep track of unique texture names
         unique_texture_names = set()
 
-        # Loop through all texture objects, converting columns to numeric where possible and storing in SQLite
+        # Convert DataFrame columns upfront and store them
         for texture_object_dict in self.texture_objects.values():
             for texture_object in texture_object_dict.values():
+                print(texture_object.repeat)
                 dataframe = texture_object.notes_data
-
-                # Convert all possible numeric columns
-                for column in dataframe.columns:
-                    if dataframe[column].dtype == 'object':
-                        try:
-                            dataframe[column] = pandas.to_numeric(dataframe[column])
-                        except ValueError:
-                            pass
-
-                # Add the texture name to the set of unique texture names
+                dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
                 unique_texture_names.add(texture_object.name)
-
-                # Store this DataFrame as a table in SQLite, the table name incorporates the object name for identification later
                 dataframe.to_sql(name=f"{texture_object.name}_{texture_object.part_id}", con=self.database_connection, if_exists='replace')
 
-        # Now for each unique texture name, combine the tables
+        sql_commands = []
+
+        # Get column names from one of the texture object dataframes (assuming all have the same structure)
+        texture_object_sample = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
+        first_texture_object_sample = next(iter(texture_object_sample.values()))  # Get first texture_object
+        column_names = first_texture_object_sample.notes_data.columns.tolist()
+        column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
+
         for texture_name in unique_texture_names:
 
             # Retrieve the list of all tables with this texture_name
@@ -349,36 +293,23 @@ class Composition:
             tables = cursor.fetchall()
 
             # Build the query to union all tables
-            query = " UNION ALL ".join(f"SELECT * FROM {table[0]}" for table in tables)
+            sql_commands.append(f"CREATE TABLE {texture_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
 
-            # Create the combined table for this texture_name
-            cursor.execute(f"CREATE TABLE {texture_name}_combined AS {query};")
-
-            # Delete the individual tables that were combined
-            for table in tables:
-                cursor.execute(f"DROP TABLE {table[0]};")
-
-            # Get column names from one of the texture object dataframes (assuming all have same structure)
-            texture_object = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
-            first_texture_object = next(iter(texture_object.values()))  # Get first texture_object
-            column_names = first_texture_object.notes_data.columns.tolist()
-            column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
-
-            # Group rows in the combined table by 'Start' value
+            # Continue appending other SQL commands
             group_query = f'''
             CREATE TABLE {texture_name}_grouped AS
             SELECT Start, 
             {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
-            FROM {texture_name}_combined
+            FROM {texture_name}
             GROUP BY Start;
             '''
-            cursor.execute(group_query)
+            sql_commands.append(group_query)
 
             max_duration_query = f'''
             CREATE TABLE {texture_name}_max_duration AS
             WITH max_durations AS (
                 SELECT Start, MAX(Duration) as MaxDuration
-                FROM {texture_name}_combined
+                FROM {texture_name}
                 GROUP BY Start
             )
             SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
@@ -386,7 +317,7 @@ class Composition:
             JOIN max_durations m ON g.Start = m.Start;
             '''
 
-            cursor.execute(max_duration_query)
+            sql_commands.append(max_duration_query)
 
             create_table_query = f'''
             CREATE TABLE {texture_name}_end_column (
@@ -398,7 +329,7 @@ class Composition:
             );
             '''
 
-            cursor.execute(create_table_query)
+            sql_commands.append(create_table_query)
 
             insert_data_query = f'''
             WITH ModifiedDurations AS (
@@ -429,7 +360,56 @@ class Composition:
             FROM ModifiedDurations;
             '''
 
-            cursor.execute(insert_data_query)
+            sql_commands.append(insert_data_query)
+
+            # Add the "End" column and update its values
+            add_end_column_query = f"ALTER TABLE {texture_name} ADD COLUMN End INTEGER;"
+            sql_commands.append(add_end_column_query)
+
+            update_end_column_query = f'''
+            UPDATE {texture_name}
+            SET End = (
+                SELECT End 
+                FROM {texture_name}_end_column
+                WHERE {texture_name}.Start = {texture_name}_end_column.Start
+            );
+            '''
+            sql_commands.append(update_end_column_query)
+
+            # Remove rows with duplicate "Start" and "Note" values
+            delete_duplicates_query = f'''
+            DELETE FROM {texture_name} 
+            WHERE rowid NOT IN (
+                SELECT MIN(rowid) 
+                FROM {texture_name} 
+                GROUP BY Start, Note
+            );
+            '''
+            sql_commands.append(delete_duplicates_query)
+
+            # Delete the "Duration" column by recreating the table without it
+            recreate_without_duration_query = f'''
+            CREATE TABLE {texture_name}_temp AS 
+            SELECT Start, End, Note, Velocity 
+            FROM {texture_name};
+
+            DROP TABLE {texture_name};
+
+            ALTER TABLE {texture_name}_temp RENAME TO {texture_name};
+            '''
+            sql_commands.append(recreate_without_duration_query)
+
+        # After accumulating all SQL commands, execute them
+        cursor.executescript("\n".join(sql_commands))
+
+        for texture_name in unique_texture_names:
+            # Collecting names of tables to be deleted
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%' AND name != '{texture_name}';")
+            tables_to_delete = cursor.fetchall()
+            
+            # Appending DROP TABLE commands for each table to the list
+            for table in tables_to_delete:
+                cursor.execute(f"DROP TABLE {table[0]};")
 
         # Commit changes and close connection
         self.database_connection.commit()
@@ -506,6 +486,7 @@ class Composition:
 
         # return combined_dataframes
 
+
     # Return the constructed dictionary of texture objects.
     
 
@@ -570,7 +551,7 @@ if __name__ == '__main__':
     
     ]
     
-    # sieves = ['|'.join(sieves)]
+    sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
 
