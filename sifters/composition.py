@@ -27,6 +27,8 @@ class Composition:
         # Connect to SQLite database
         self.database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
 
+        self.cursor = self.database_connection.cursor()
+
         # Initialize an instance of the Utility class to call helper methods from.
         self.utility = utility.Utility()
 
@@ -56,42 +58,34 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        self.combined_texture_dataframes = self.set_combined_texture_dataframes()
+        self.process_texture_data()
 
 
     # This function translates a list of sieves (intervals) into binary format. 
     def set_binary(self, sieves):
-        # Inner function that takes in sieves and converts them to binary representation.
-        def get_binary(sieves):
-            binary = []  # Holds the binary representation of each sieve.
-            periods = []  # Accumulates the periods of each sieve.
-            objects = []  # Stores the Sieve objects generated from each sieve.
+        binary = []  # Holds the binary representation of each sieve.
+        periods = []  # Accumulates the periods of each sieve.
+        objects = []  # Stores the Sieve objects generated from each sieve.
 
-            # Loop over the sieves, convert each to a Sieve object, and store object and its period.
-            for siev in sieves:
-                obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
-                objects.append(obj)  # Add Sieve object to the objects list.
-                periods.append(obj.period())  # Store the period of the Sieve object.
+        # Loop over the sieves, convert each to a Sieve object, and store object and its period.
+        for siev in sieves:
+            obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
+            objects.append(obj)  # Add Sieve object to the objects list.
+            periods.append(obj.period())  # Store the period of the Sieve object.
 
-            # Calculate the least common multiple (LCM) of all periods. 
-            # This LCM will be used as the shared period for all sieves in binary form.
-            self.period = self.utility.get_least_common_multiple(periods)
+        # Calculate the least common multiple (LCM) of all periods. 
+        # This LCM will be used as the shared period for all sieves in binary form.
+        self.period = self.utility.get_least_common_multiple(periods)
 
-            # Loop over the Sieve objects, adjust each object's Z range based on the LCM, 
-            # and then convert each to its binary representation.
-            for obj in objects:
-                obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
-                binary.append(obj.segment(segmentFormat='binary'))  # Convert to binary and store.
+        # Loop over the Sieve objects, adjust each object's Z range based on the LCM, 
+        # and then convert each to its binary representation.
+        for obj in objects:
+            obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
+            binary.append(obj.segment(segmentFormat='binary'))  # Convert to binary and store.
 
-            # Return the binary representation of all sieves.
-            return binary
-
-        # Convert the input sieves to binary and store the result.
-        binary = get_binary(sieves)
-
-        # Return the binary representation of all input sieves.
+        # Return the binary representation of all sieves.
         return binary
-    
+
 
     # This function computes the count of consecutive occurrences of the same element 
     # for each list in the attribute self.binary.
@@ -114,72 +108,77 @@ class Composition:
         # The function returns the result, which is a list of lists. Each sublist 
         # contains tuples, where each tuple represents an element and its consecutive count.
         return result
+    
+    # Inner function to compute the proportion of the period that each number in the list represents.
+    def _get_percent_of_period(self, lst):
+        return [
+            # Each number is converted to a decimal and divided by the period to compute the proportion.
+            [
+                (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
+                for num in sub_lst
+            ] 
+            for sub_lst in lst
+        ]
+    
+
+    # Inner function to transform a list of decimal numbers into fractions.
+    def _convert_decimal_to_fraction(self, decimal_list):
+        return [
+            # Each decimal number in the sublist is converted to a fraction.
+            [fractions.Fraction(decimal_num) for decimal_num in sub_list]
+            for sub_list in decimal_list
+        ]
+    
+
+    # Inner function to eliminate duplicate fractions in each sublist while maintaining the original order.
+    def _get_unique_fractions(self, input_list):
+        return [
+            # Utilize OrderedDict to preserve order while removing duplicates.
+            list(collections.OrderedDict.fromkeys(sub_list)) 
+            for sub_list in input_list
+        ]
 
 
     # This function generates grids that illustrate the fractions of the period for each change in the self.changes list.
     def set_grids(self):
-        # Inner function to compute the proportion of the period that each number in the list represents.
-        def get_percent_of_period(lst):
-            return [
-                # Each number is converted to a decimal and divided by the period to compute the proportion.
-                [
-                    (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
-                    for num in sub_lst
-                ] 
-                for sub_lst in lst
-            ]
-
-        # Inner function to transform a list of decimal numbers into fractions.
-        def convert_decimal_to_fraction(decimal_list):
-            return [
-                # Each decimal number in the sublist is converted to a fraction.
-                [fractions.Fraction(decimal_num) for decimal_num in sub_list]
-                for sub_list in decimal_list
-            ]
-
-        # Inner function to eliminate duplicate fractions in each sublist while maintaining the original order.
-        def get_unique_fractions(input_list):
-            return [
-                # Utilize OrderedDict to preserve order while removing duplicates.
-                list(collections.OrderedDict.fromkeys(sub_list)) 
-                for sub_list in input_list
-            ]
 
         # Calculate the proportion of the period represented by each change.
-        percent = get_percent_of_period(self.changes)
+        percent = self._get_percent_of_period(self.changes)
 
         # Convert the calculated proportions to fractions.
-        grids = convert_decimal_to_fraction(percent)
+        grids = self._convert_decimal_to_fraction(percent)
 
         # Remove duplicates from each grid while keeping the original order.
-        grids = get_unique_fractions(grids)
+        grids = self._get_unique_fractions(grids)
         
         # Return the grids containing unique fractions representing the proportion of period.
         return grids
+    
+    
+    # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
+    def _set_normalized_numerators(self, grids):
+        normalized_numerators = []  # A list to store the numerators adjusted to the common denominator.
+
+        # Iterate over each sublist in the grids.
+        for sublist in grids:
+            # Compute the least common multiple (LCM) of all denominators in the sublist.
+            lcm = self.utility.get_least_common_multiple([fraction.denominator for fraction in sublist])
+            
+            # Normalize each fraction in the sublist by adjusting the numerator to the LCM, resulting in fractions with a common denominator.
+            normalized_sublist = [(lcm // fraction.denominator) * fraction.numerator for fraction in sublist]
+            
+            # Add the normalized sublist to the list of standardized numerators.
+            normalized_numerators.append(normalized_sublist)
+        
+        # Return the numerators normalized to the common denominator.
+        return normalized_numerators
 
 
     # This function computes the repetitions required for each fraction in the grids_set to equalize them.
     def set_repeats(self):
-        # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
-        def set_normalized_numerators(grids):
-            normalized_numerators = []  # A list to store the numerators adjusted to the common denominator.
-
-            # Iterate over each sublist in the grids.
-            for sublist in grids:
-                # Compute the least common multiple (LCM) of all denominators in the sublist.
-                lcm = self.utility.get_least_common_multiple([fraction.denominator for fraction in sublist])
-                
-                # Normalize each fraction in the sublist by adjusting the numerator to the LCM, resulting in fractions with a common denominator.
-                normalized_sublist = [(lcm // fraction.denominator) * fraction.numerator for fraction in sublist]
-                
-                # Add the normalized sublist to the list of standardized numerators.
-                normalized_numerators.append(normalized_sublist)
-            
-            # Return the numerators normalized to the common denominator.
-            return normalized_numerators
 
         # Standardize the numerators in the grids_set.
-        normalized_numerators = set_normalized_numerators(self.grids_set)
+        normalized_numerators = self._set_normalized_numerators(self.grids_set)
 
         # Flatten the list of normalized numerators.
         flattened_list = self.utility.flatten_list(normalized_numerators)
@@ -221,7 +220,7 @@ class Composition:
         return {name: {f'{name}_{i}': instance(data) for i, data in enumerate(source_data)} for name, instance in textures.items()}
 
 
-    def set_combined_texture_dataframes(self):
+    # def set_combined_texture_dataframes(self):
 
         # # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
         # def parse_pitch_data(dataframe):
@@ -265,18 +264,19 @@ class Composition:
             
         #     return combined_notes_data
 
-        cursor = self.database_connection.cursor()
+    def _convert_and_store_dataframes(self):
 
         unique_texture_names = set()
-
-        # Convert DataFrame columns upfront and store them
         for texture_object_dict in self.texture_objects.values():
             for texture_object in texture_object_dict.values():
-                print(texture_object.repeat)
                 dataframe = texture_object.notes_data
                 dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
                 unique_texture_names.add(texture_object.name)
                 dataframe.to_sql(name=f"{texture_object.name}_{texture_object.part_id}", con=self.database_connection, if_exists='replace')
+        return unique_texture_names
+    
+    
+    def _generate_sql_commands(self, unique_texture_names):
 
         sql_commands = []
 
@@ -289,8 +289,10 @@ class Composition:
         for texture_name in unique_texture_names:
 
             # Retrieve the list of all tables with this texture_name
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%';")
-            tables = cursor.fetchall()
+            self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%';")
+            tables = self.cursor.fetchall()
+
+            ### BEFORE UNION OF ALL TABLES YOU MUST NORMALIZE EACH TABLE
 
             # Build the query to union all tables
             sql_commands.append(f"CREATE TABLE {texture_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
@@ -399,21 +401,25 @@ class Composition:
             '''
             sql_commands.append(recreate_without_duration_query)
 
-        # After accumulating all SQL commands, execute them
-        cursor.executescript("\n".join(sql_commands))
+        return sql_commands
+    
+    def _execute_sql_commands(self, sql_commands):
+        self.cursor.executescript("\n".join(sql_commands))
 
+    def _cleanup_tables(self, unique_texture_names):
         for texture_name in unique_texture_names:
-            # Collecting names of tables to be deleted
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%' AND name != '{texture_name}';")
-            tables_to_delete = cursor.fetchall()
-            
-            # Appending DROP TABLE commands for each table to the list
+            self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%' AND name != '{texture_name}';")
+            tables_to_delete = self.cursor.fetchall()
             for table in tables_to_delete:
-                cursor.execute(f"DROP TABLE {table[0]};")
-
-        # Commit changes and close connection
+                self.cursor.execute(f"DROP TABLE {table[0]};")
         self.database_connection.commit()
         self.database_connection.close()
+
+    def process_texture_data(self):
+        unique_texture_names = self._convert_and_store_dataframes()
+        sql_commands = self._generate_sql_commands(unique_texture_names)
+        self._execute_sql_commands(sql_commands)
+        self._cleanup_tables(unique_texture_names)
 
         #####
 
