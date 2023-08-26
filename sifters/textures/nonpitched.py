@@ -5,14 +5,15 @@ import pandas
 class NonPitched(Texture):
     # Initialize ID for the first instance of NonPitched object.
     part_id = 1
+
+    name = 'np'
     
     def __init__(self, source_data):
         
         # Call superclass constructor.
         super().__init__(source_data)
         
-        # Set name of the instrument as "NonPitched".
-        self.name = 'NonPitched'
+        self.name = NonPitched.name
         
         # Set unique ID value for the instrument.
         self.part_id = NonPitched.part_id

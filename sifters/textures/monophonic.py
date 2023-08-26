@@ -3,14 +3,15 @@ from textures.texture import Texture
 class Monophonic(Texture):
     # Initialize ID value for first instance of Monophonic object.
     part_id = 1
+
+    name = 'mono'
     
     def __init__(self, source_data):
         
         # Call superclass constructor.
         super().__init__(source_data)
         
-        # Set name of instrument.
-        self.name = 'Monophonic'
+        self.name = Monophonic.name
         
         # Set ID value.
         self.part_id = Monophonic.part_id

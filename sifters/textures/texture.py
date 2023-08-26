@@ -6,21 +6,16 @@ import numpy
 import utility
 
 class Texture:
-    
-    grid_history = []
-    texture_id = 1
         
     def __init__(self, source_data):
 
         # Initialize an instance of the Utility class to call helper methods from.
         self.utility = utility.Utility()
         
-        self.binary = source_data[0]
-        self.period = len(self.binary)
-        self.grid = source_data[1]
-        self.repeat = source_data[2]
+        self.binary = source_data
 
-        
+        self.period = len(self.binary)
+
         self.scaling_factor = 1000
 
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
@@ -33,15 +28,9 @@ class Texture:
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
-        # Set the texture ID attribute of the Texture object
-        self.texture_id = Texture.texture_id
-        
         self.notes_data = self.set_notes_data()
-        
-        # Increment the texture ID for the next Texture object
-        Texture.texture_id += 1
 
-        self.notes_data.to_csv(f'data/csv/.{self.__class__.__name__}_{self.part_id}.csv')
+        self.notes_data.to_csv(f'data/csv/.{self.name}_{self.part_id}.csv')
     
     
     def set_notes_data(self):
@@ -163,13 +152,7 @@ class Texture:
             indices = numpy.nonzero(pattern)[0]
             
             # Find the multiplier for self.grid to normalize duration length against number of repetitions of sieve in pattern.
-            duration_multiplier = self.period // self.factors[factor_index]
-            
-            # Convert the grid Fraction object into a Decimal object.
-            grid = decimal.Decimal(self.grid.numerator) / decimal.Decimal(self.grid.denominator)
-            
-            # Find the duration of each note represented as a decimal.
-            duration = grid * duration_multiplier
+            duration = self.period // self.factors[factor_index]
 
             # For each non-zero indice append notes_data list with corresponding note information.
             for index in indices:
@@ -177,9 +160,9 @@ class Texture:
                 # offset = decimal.Decimal(int(index)) * duration
                 offset = index * duration
 
-                notes_data.append([offset, velocity, next(note_pool), grid])
+                notes_data.append([offset, velocity, next(note_pool)])
 
-        notes_data = [[int(data[0] * self.scaling_factor), data[1], data[2], int(data[3] * self.scaling_factor)] for data in notes_data]
+        notes_data = [[data[0], data[1], data[2], duration] for data in notes_data]
         
         return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
 

@@ -214,197 +214,169 @@ class Composition:
         }
         
         # Organize source data for textures using binary representation, grids_set, and repeat values.
-        source_data = [[bin_lst, *data] for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats) for data in zip(grids, repeats)]
+        # source_data = [[bin_lst, *data] for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats) for data in zip(grids, repeats)]
             
         # Generate instances of each texture type using the source data, and store them in a dictionary.
-        return {name: {f'{name}_{i}': instance(data) for i, data in enumerate(source_data)} for name, instance in textures.items()}
 
+        objects_dict = {}
 
-    # def set_combined_texture_dataframes(self):
+        for name, instance in textures.items():
+            for bin_lst in self.binary:
+                objects_dict[name] = instance(bin_lst)
 
-        # # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
-        # def parse_pitch_data(dataframe):
-        #     dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
-        #     dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
-        #     dataframe['Note'] = dataframe['Note'].astype(int)
-        #     return dataframe
-
-
-        # def combine_dataframes(dataframes_list):
-
-        #     # Combine the notes data from the selected parts.
-        #     combined_notes_data = pandas.concat(dataframes_list)
-
-        #     # Group notes by their start times.
-        #     combined_notes_data = self.utility.group_by_start(combined_notes_data)
-
-        #     # Get the maximum end value for notes that overlap in time.
-        #     combined_notes_data = get_max_duration(combined_notes_data)
-
-        #     # Update end values for notes that overlap in time.
-        #     combined_notes_data = update_duration_value(combined_notes_data)
-
-        #     # Expand lists of MIDI values into individual rows.
-        #     combined_notes_data = expand_note_lists(combined_notes_data)
-
-        #     # # If all parts are Monophonic, further process the combined notes to match Monophonic texture.
-        #     # if all(isinstance(obj, monophonic.Monophonic) for obj in objects):
-
-        #     #     combined_notes_data = self.group_by_start(combined_notes_data)
-                
-        #     #     combined_notes_data = self.get_closest_note(combined_notes_data)
-                
-        #     #     combined_notes_data = self.convert_lists_to_scalars(combined_notes_data)
-                
-        #     #     combined_notes_data = self.close_intervals(combined_notes_data)
-                
-        #     #     combined_notes_data = self.combine_consecutive_note_values(combined_notes_data)
-                
-        #     #     combined_notes_data = self.adjust_note_range(combined_notes_data)
-            
-        #     return combined_notes_data
+        return objects_dict
+    
 
     def _convert_and_store_dataframes(self):
-
         unique_texture_names = set()
-        for texture_object_dict in self.texture_objects.values():
-            for texture_object in texture_object_dict.values():
-                dataframe = texture_object.notes_data
-                dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-                unique_texture_names.add(texture_object.name)
-                dataframe.to_sql(name=f"{texture_object.name}_{texture_object.part_id}", con=self.database_connection, if_exists='replace')
+
+        for texture_object in self.texture_objects.values():
+            dataframe = texture_object.notes_data
+            dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+            unique_texture_names.add(texture_object.name)
+
+            dataframe.to_sql(name=f'{texture_object.name}', con=self.database_connection, if_exists='replace')
+
         return unique_texture_names
-    
+
     
     def _generate_sql_commands(self, unique_texture_names):
 
         sql_commands = []
 
         # Get column names from one of the texture object dataframes (assuming all have the same structure)
-        texture_object_sample = next(iter(self.texture_objects.values()))  # Get first texture_object_dict
-        first_texture_object_sample = next(iter(texture_object_sample.values()))  # Get first texture_object
+        first_texture_object_sample = next(iter(self.texture_objects.values()))  # Get first texture_object
         column_names = first_texture_object_sample.notes_data.columns.tolist()
         column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
+        length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
 
         for texture_name in unique_texture_names:
 
-            # Retrieve the list of all tables with this texture_name
-            self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%';")
-            tables = self.cursor.fetchall()
+            print(texture_name)
+            print(self.grids_set)
+            print(self.repeats)
 
-            ### BEFORE UNION OF ALL TABLES YOU MUST NORMALIZE EACH TABLE
+            # # Retrieve the list of all tables with this texture_name
+            # self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name = {texture_name};")
+            # tables = self.cursor.fetchall()
 
             # Build the query to union all tables
-            sql_commands.append(f"CREATE TABLE {texture_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
+            # sql_commands.append(f"CREATE TABLE {texture_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
 
-            # Continue appending other SQL commands
-            group_query = f'''
-            CREATE TABLE {texture_name}_grouped AS
-            SELECT Start, 
-            {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
-            FROM {texture_name}
-            GROUP BY Start;
-            '''
-            sql_commands.append(group_query)
+            # # Continue appending other SQL commands
+            # group_query = f'''
+            # CREATE TABLE {texture_name}_grouped AS
+            # SELECT Start, 
+            # {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
+            # FROM {texture_name}
+            # GROUP BY Start;
+            # '''
+            # sql_commands.append(group_query)
 
-            max_duration_query = f'''
-            CREATE TABLE {texture_name}_max_duration AS
-            WITH max_durations AS (
-                SELECT Start, MAX(Duration) as MaxDuration
-                FROM {texture_name}
-                GROUP BY Start
-            )
-            SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
-            FROM {texture_name}_grouped g
-            JOIN max_durations m ON g.Start = m.Start;
-            '''
+            # max_duration_query = f'''
+            # CREATE TABLE {texture_name}_max_duration AS
+            # WITH max_durations AS (
+            #     SELECT Start, MAX(Duration) as MaxDuration
+            #     FROM {texture_name}
+            #     GROUP BY Start
+            # )
+            # SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
+            # FROM {texture_name}_grouped g
+            # JOIN max_durations m ON g.Start = m.Start;
+            # '''
+            # sql_commands.append(max_duration_query)
 
-            sql_commands.append(max_duration_query)
+            # create_table_query = f'''
+            # CREATE TABLE {texture_name}_end_column (
+            #     Start INTEGER, 
+            #     End INTEGER, 
+            #     Duration INTEGER,
+            #     Velocity INTEGER, 
+            #     Note TEXT
+            # );
+            # '''
+            # sql_commands.append(create_table_query)
 
-            create_table_query = f'''
-            CREATE TABLE {texture_name}_end_column (
-                Start INTEGER, 
-                End INTEGER, 
-                Duration INTEGER,
-                Velocity INTEGER, 
-                Note TEXT
-            );
-            '''
+            # insert_data_query = f'''
+            # WITH ModifiedDurations AS (
+            #     SELECT 
+            #         Start,
+            #         Velocity,
+            #         Note,
+            #         CASE 
+            #             WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
+            #                 LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
+            #             ELSE
+            #                 Duration
+            #         END as ModifiedDuration
+            #     FROM {texture_name}_max_duration
+            # )
 
-            sql_commands.append(create_table_query)
+            # INSERT INTO {texture_name}_end_column
+            # SELECT 
+            #     Start,
+            #     CASE 
+            #         WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
+            #         WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
+            #         ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
+            #     END as End,
+            #     ModifiedDuration,
+            #     Velocity,
+            #     Note
+            # FROM ModifiedDurations;
+            # '''
+            # sql_commands.append(insert_data_query)
 
-            insert_data_query = f'''
-            WITH ModifiedDurations AS (
-                SELECT 
-                    Start,
-                    Velocity,
-                    Note,
-                    CASE 
-                        WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
-                            LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
-                        ELSE
-                            Duration
-                    END as ModifiedDuration
-                FROM {texture_name}_max_duration
-            )
+            # # Add the "End" column and update its values
+            # add_end_column_query = f"ALTER TABLE {texture_name} ADD COLUMN End INTEGER;"
+            # sql_commands.append(add_end_column_query)
 
-            INSERT INTO {texture_name}_end_column
-            SELECT 
-                Start,
-                CASE 
-                    WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
-                    WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
-                    ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
-                END as End,
-                ModifiedDuration,
-                Velocity,
-                Note
-            FROM ModifiedDurations;
-            '''
+            # update_end_column_query = f'''
+            # UPDATE {texture_name}
+            # SET End = (
+            #     SELECT End 
+            #     FROM {texture_name}_end_column
+            #     WHERE {texture_name}.Start = {texture_name}_end_column.Start
+            # );
+            # '''
+            # sql_commands.append(update_end_column_query)
 
-            sql_commands.append(insert_data_query)
+            # # Remove rows with duplicate "Start" and "Note" values
+            # delete_duplicates_query = f'''
+            # DELETE FROM {texture_name} 
+            # WHERE rowid NOT IN (
+            #     SELECT MIN(rowid) 
+            #     FROM {texture_name} 
+            #     GROUP BY Start, Note
+            # );
+            # '''
+            # sql_commands.append(delete_duplicates_query)
 
-            # Add the "End" column and update its values
-            add_end_column_query = f"ALTER TABLE {texture_name} ADD COLUMN End INTEGER;"
-            sql_commands.append(add_end_column_query)
+            # # Delete the "Duration" column by recreating the table without it
+            # recreate_without_duration_query = f'''
+            # CREATE TABLE {texture_name}_temp AS 
+            # SELECT Start, End, Note, Velocity 
+            # FROM {texture_name};
 
-            update_end_column_query = f'''
-            UPDATE {texture_name}
-            SET End = (
-                SELECT End 
-                FROM {texture_name}_end_column
-                WHERE {texture_name}.Start = {texture_name}_end_column.Start
-            );
-            '''
-            sql_commands.append(update_end_column_query)
+            # DROP TABLE {texture_name};
 
-            # Remove rows with duplicate "Start" and "Note" values
-            delete_duplicates_query = f'''
-            DELETE FROM {texture_name} 
-            WHERE rowid NOT IN (
-                SELECT MIN(rowid) 
-                FROM {texture_name} 
-                GROUP BY Start, Note
-            );
-            '''
-            sql_commands.append(delete_duplicates_query)
+            # ALTER TABLE {texture_name}_temp RENAME TO {texture_name};
+            # '''
+            # sql_commands.append(recreate_without_duration_query)
 
-            # Delete the "Duration" column by recreating the table without it
-            recreate_without_duration_query = f'''
-            CREATE TABLE {texture_name}_temp AS 
-            SELECT Start, End, Note, Velocity 
-            FROM {texture_name};
-
-            DROP TABLE {texture_name};
-
-            ALTER TABLE {texture_name}_temp RENAME TO {texture_name};
-            '''
-            sql_commands.append(recreate_without_duration_query)
+            # # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
+            # def parse_pitch_data(dataframe):
+            #     dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
+            #     dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
+            #     dataframe['Note'] = dataframe['Note'].astype(int)
+            #     return dataframe
 
         return sql_commands
     
+    
     def _execute_sql_commands(self, sql_commands):
         self.cursor.executescript("\n".join(sql_commands))
+
 
     def _cleanup_tables(self, unique_texture_names):
         for texture_name in unique_texture_names:
@@ -415,83 +387,13 @@ class Composition:
         self.database_connection.commit()
         self.database_connection.close()
 
+
     def process_texture_data(self):
         unique_texture_names = self._convert_and_store_dataframes()
         sql_commands = self._generate_sql_commands(unique_texture_names)
         self._execute_sql_commands(sql_commands)
-        self._cleanup_tables(unique_texture_names)
-
-        #####
-
-        # for texture_name, texture_type in tqdm.tqdm(self.texture_objects.items(), desc='Normalizing notes dataframes'):
-        #     # Normalize the note data in each texture object.
-        #     for object_name, texture_object in texture_type.items():
-
-        #         # Calculate the length of a single repetition and the size of the grid.
-        #         length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
-        #         grid = decimal.Decimal(texture_object.grid.numerator) / decimal.Decimal(texture_object.grid.denominator)
-
-        #         # Generate repeated sequences by duplicating the notes_data DataFrame.
-        #         duplicates = [texture_object.notes_data] + [texture_object.notes_data.copy().assign(Start=lambda dataframe: dataframe.Start + round((length_of_one_rep * grid) * i, 6)) for i in range(texture_object.repeat)]
-
-        #         # Merge all duplicates and eliminate duplicate rows.
-        #         result = pandas.concat(duplicates).drop_duplicates()
-        #         self.texture_objects[f'{texture_name}'][f'{object_name}'].notes_data = result
-
-        # combined_dataframes = {}
-
-        # for texture_name, texture_type in tqdm.tqdm(self.texture_objects.items(), desc='Combining notes dataframes'):
-
-        #     dataframes_list = []
-
-        #     for texture_object in texture_type.values():
-        #         dataframes_list.append(texture_object.notes_data)
-
-        #     combined_dataframes[f'{texture_name}'] = combine_dataframes(dataframes_list)
-
-        # # Iterate through each texture object to prepare MIDI data in a DataFrame format.
-        # for object_name, texture_dataframe in tqdm.tqdm(combined_dataframes.items(), desc='Interpolating MIDI messages'):
-        #     part = parse_pitch_data(texture_dataframe)
-
-        #     part['Message'] = 'note_on'
-        #     part['Time'] = 0
-
-        #     new_rows = [row for _, row in part.iterrows()]
-        #     pitchwheel_rows = [row.copy() for _, row in part.iterrows() if row['Pitch'] != 0.0]
-        #     note_off_rows = [row.copy() for _, row in part.iterrows()]
-
-        #     # Include 'pitchwheel' MIDI message rows to new_rows list.
-        #     for pitchwheel_row in pitchwheel_rows:
-        #         pitchwheel_row['Message'] = 'pitchwheel'
-        #         new_rows.append(pitchwheel_row)
-
-        #     # Include 'note_off' MIDI message rows to new_rows list.
-        #     for note_off_row in note_off_rows:
-        #         note_off_row['Message'] = 'note_off'
-        #         note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-        #         new_rows.append(note_off_row)
-
-        #     # Account for non-zero start time of first note by adding a 'note_off' row at the beginning.
-        #     if part.iloc[0]['Start'] != 0.0:
-        #         note_off_row = part.iloc[0].copy()
-        #         note_off_row['Velocity'] = 0
-        #         note_off_row['Note'] = 0
-        #         note_off_row['Message'] = 'note_off'
-        #         note_off_row['Duration'] = part.iloc[0]['Start']
-        #         note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-        #         note_off_row['Start'] = 0.0
-        #         new_rows.insert(0, note_off_row)
-
-        #     # Convert new_rows list to a DataFrame and set the preferred column order.
-        #     messages_dataframe = pandas.DataFrame(new_rows)
-        #     column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
-        #     messages_dataframe = messages_dataframe.reindex(columns=column_order)
-        #     messages_dataframe.reset_index(drop=True, inplace=True)
-
-        #     combined_dataframes[f'{object_name}'] = messages_dataframe
-
-        # return combined_dataframes
-
+        # self._cleanup_tables(unique_texture_names)
+        
 
     # Return the constructed dictionary of texture objects.
     
@@ -557,10 +459,6 @@ if __name__ == '__main__':
     
     ]
     
-    sieves = ['|'.join(sieves)]
+    # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
-
-    # for i in comp.texture_objects.values():
-    #     for j in i.values():
-    #         print(j.notes_data)

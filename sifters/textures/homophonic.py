@@ -3,6 +3,8 @@ from textures.texture import Texture
 class Homophonic(Texture):
     # Initialize ID value for first instance of Homophonic object.
     part_id = 1
+
+    name = f'homo'
     
     def __init__(self, source_data):
         
@@ -10,7 +12,7 @@ class Homophonic(Texture):
         super().__init__(source_data)
         
         # Set name of instrument.
-        self.name = 'Homophonic'
+        self.name = Homophonic.name
         
         # Set ID value.
         self.part_id = Homophonic.part_id
