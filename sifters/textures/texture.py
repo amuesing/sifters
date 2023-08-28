@@ -30,7 +30,7 @@ class Texture:
         
         self.notes_data = self.set_notes_data()
 
-        self.notes_data.to_csv(f'data/csv/.{self.name}_{self.part_id}.csv')
+        # self.notes_data.to_csv(f'data/csv/.{self.name}_{self.part_id}.csv')
     
     
     def set_notes_data(self):

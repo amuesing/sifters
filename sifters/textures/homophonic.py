@@ -1,24 +1,11 @@
 from textures.texture import Texture
 
 class Homophonic(Texture):
-    # Initialize ID value for first instance of Homophonic object.
-    part_id = 1
-
-    name = f'homo'
     
     def __init__(self, source_data):
         
         # Call superclass constructor.
         super().__init__(source_data)
-        
-        # Set name of instrument.
-        self.name = Homophonic.name
-        
-        # Set ID value.
-        self.part_id = Homophonic.part_id
-              
-        # Increment ID value.
-        Homophonic.part_id += 1
         
         # self.notes_data = self.group_by_start(self.notes_data)
         

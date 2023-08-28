@@ -1,23 +1,11 @@
 from textures.texture import Texture
 
 class Monophonic(Texture):
-    # Initialize ID value for first instance of Monophonic object.
-    part_id = 1
-
-    name = 'mono'
     
     def __init__(self, source_data):
         
         # Call superclass constructor.
         super().__init__(source_data)
-        
-        self.name = Monophonic.name
-        
-        # Set ID value.
-        self.part_id = Monophonic.part_id
-        
-        # Increment ID value.
-        Monophonic.part_id += 1
         
         # Group notes with the same start time into a single row.
         self.notes_data = self.utility.group_by_start(self.notes_data)

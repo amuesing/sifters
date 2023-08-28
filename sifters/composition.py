@@ -12,7 +12,6 @@ import numpy
 import pandas
 import tqdm
 
-
 import utility
 
 from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
@@ -58,7 +57,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        self.process_texture_data()
+        self.process_table_data()
 
 
     # This function translates a list of sieves (intervals) into binary format. 
@@ -228,19 +227,30 @@ class Composition:
     
 
     def _convert_and_store_dataframes(self):
-        unique_texture_names = set()
 
-        for texture_object in self.texture_objects.values():
+        table_data = []
+
+        for key, texture_object in self.texture_objects.items():
+
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-            unique_texture_names.add(texture_object.name)
 
-            dataframe.to_sql(name=f'{texture_object.name}', con=self.database_connection, if_exists='replace')
+            dataframe.to_sql(name=f'{key}', con=self.database_connection, if_exists='replace')
 
-        return unique_texture_names
+            for grids_list, repeats_list in zip(self.grids_set, self.repeats):
+
+                i = 1
+
+                for grid, repeat in zip(grids_list, repeats_list):
+
+                    table_data.append({f'{key}_{i}': {'grid': grid, 'repeat': repeat}})
+
+                    i += 1
+
+        return table_data
 
     
-    def _generate_sql_commands(self, unique_texture_names):
+    def _generate_sql_commands(self, table_data):
 
         sql_commands = []
 
@@ -250,44 +260,57 @@ class Composition:
         column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
         length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
 
-        for texture_name in unique_texture_names:
 
-            print(texture_name)
-            print(self.grids_set)
-            print(self.repeats)
+                    # SQL command to create a new table by copying and multiplying the Duration column by grid value
+                    # sql_command = f"""
+                    #     CREATE TABLE users (
+                    #         id INTEGER PRIMARY KEY,
+                    #         first_name TEXT NOT NULL,
+                    #         last_name TEXT NOT NULL,
+                    #         email TEXT UNIQUE NOT NULL
+                    #     );
+                    # """
 
-            # # Retrieve the list of all tables with this texture_name
-            # self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name = {texture_name};")
+                    # sql_commands.append(sql_command)
+                    # self.cursor.execute(f"""CREATE TABLE {new_table_name}""")
+                    # print(sql_command)
+
+            # print(table_name)
+            # print(self.grids_set)
+            # print(self.repeats)
+
+            # # Retrieve the list of all tables with this table_name
+            # self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name = {table_name};")
             # tables = self.cursor.fetchall()
 
             # Build the query to union all tables
-            # sql_commands.append(f"CREATE TABLE {texture_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
+            # sql_commands.append(f"CREATE TABLE {table_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
 
             # # Continue appending other SQL commands
             # group_query = f'''
-            # CREATE TABLE {texture_name}_grouped AS
+            # CREATE TABLE {table_name}_grouped AS
             # SELECT Start, 
             # {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
-            # FROM {texture_name}
+            # FROM {table_name}
             # GROUP BY Start;
             # '''
             # sql_commands.append(group_query)
 
             # max_duration_query = f'''
-            # CREATE TABLE {texture_name}_max_duration AS
+            # CREATE TABLE {table_name}_max_duration AS
             # WITH max_durations AS (
             #     SELECT Start, MAX(Duration) as MaxDuration
-            #     FROM {texture_name}
+            #     FROM {table_name}
             #     GROUP BY Start
             # )
             # SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
-            # FROM {texture_name}_grouped g
+            # FROM {table_name}_grouped g
             # JOIN max_durations m ON g.Start = m.Start;
             # '''
             # sql_commands.append(max_duration_query)
 
             # create_table_query = f'''
-            # CREATE TABLE {texture_name}_end_column (
+            # CREATE TABLE {table_name}_end_column (
             #     Start INTEGER, 
             #     End INTEGER, 
             #     Duration INTEGER,
@@ -309,10 +332,10 @@ class Composition:
             #             ELSE
             #                 Duration
             #         END as ModifiedDuration
-            #     FROM {texture_name}_max_duration
+            #     FROM {table_name}_max_duration
             # )
 
-            # INSERT INTO {texture_name}_end_column
+            # INSERT INTO {table_name}_end_column
             # SELECT 
             #     Start,
             #     CASE 
@@ -328,25 +351,25 @@ class Composition:
             # sql_commands.append(insert_data_query)
 
             # # Add the "End" column and update its values
-            # add_end_column_query = f"ALTER TABLE {texture_name} ADD COLUMN End INTEGER;"
+            # add_end_column_query = f"ALTER TABLE {table_name} ADD COLUMN End INTEGER;"
             # sql_commands.append(add_end_column_query)
 
             # update_end_column_query = f'''
-            # UPDATE {texture_name}
+            # UPDATE {table_name}
             # SET End = (
             #     SELECT End 
-            #     FROM {texture_name}_end_column
-            #     WHERE {texture_name}.Start = {texture_name}_end_column.Start
+            #     FROM {table_name}_end_column
+            #     WHERE {table_name}.Start = {table_name}_end_column.Start
             # );
             # '''
             # sql_commands.append(update_end_column_query)
 
             # # Remove rows with duplicate "Start" and "Note" values
             # delete_duplicates_query = f'''
-            # DELETE FROM {texture_name} 
+            # DELETE FROM {table_name} 
             # WHERE rowid NOT IN (
             #     SELECT MIN(rowid) 
-            #     FROM {texture_name} 
+            #     FROM {table_name} 
             #     GROUP BY Start, Note
             # );
             # '''
@@ -354,13 +377,13 @@ class Composition:
 
             # # Delete the "Duration" column by recreating the table without it
             # recreate_without_duration_query = f'''
-            # CREATE TABLE {texture_name}_temp AS 
+            # CREATE TABLE {table_name}_temp AS 
             # SELECT Start, End, Note, Velocity 
-            # FROM {texture_name};
+            # FROM {table_name};
 
-            # DROP TABLE {texture_name};
+            # DROP TABLE {table_name};
 
-            # ALTER TABLE {texture_name}_temp RENAME TO {texture_name};
+            # ALTER TABLE {table_name}_temp RENAME TO {table_name};
             # '''
             # sql_commands.append(recreate_without_duration_query)
 
@@ -378,9 +401,9 @@ class Composition:
         self.cursor.executescript("\n".join(sql_commands))
 
 
-    def _cleanup_tables(self, unique_texture_names):
-        for texture_name in unique_texture_names:
-            self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture_name}_%' AND name != '{texture_name}';")
+    def _cleanup_tables(self, table_names):
+        for table_name in table_names:
+            self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{table_name}_%' AND name != '{table_name}';")
             tables_to_delete = self.cursor.fetchall()
             for table in tables_to_delete:
                 self.cursor.execute(f"DROP TABLE {table[0]};")
@@ -388,11 +411,11 @@ class Composition:
         self.database_connection.close()
 
 
-    def process_texture_data(self):
-        unique_texture_names = self._convert_and_store_dataframes()
-        sql_commands = self._generate_sql_commands(unique_texture_names)
+    def process_table_data(self):
+        table_data = self._convert_and_store_dataframes()
+        sql_commands = self._generate_sql_commands(table_data)
         self._execute_sql_commands(sql_commands)
-        # self._cleanup_tables(unique_texture_names)
+        # self._cleanup_tables(table_names)
         
 
     # Return the constructed dictionary of texture objects.
@@ -462,3 +485,5 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
+
+    print(comp.texture_objects)

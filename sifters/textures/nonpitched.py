@@ -3,23 +3,11 @@ from textures.texture import Texture
 import pandas
 
 class NonPitched(Texture):
-    # Initialize ID for the first instance of NonPitched object.
-    part_id = 1
-
-    name = 'np'
     
     def __init__(self, source_data):
         
         # Call superclass constructor.
         super().__init__(source_data)
-        
-        self.name = NonPitched.name
-        
-        # Set unique ID value for the instrument.
-        self.part_id = NonPitched.part_id
-        
-        # Increment ID value for next instance.
-        NonPitched.part_id += 1
         
         # unique_midi_values = self.notes_data['Note'].unique()
         # unique_midi_values_sorted = pandas.Series(unique_midi_values).sort_values().to_list()
