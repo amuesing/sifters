@@ -211,54 +211,62 @@ class Composition:
             'nonpitched': nonpitched.NonPitched,
             'polyphonic': polyphonic.Polyphonic,
         }
-        
-        # Organize source data for textures using binary representation, grids_set, and repeat values.
-        # source_data = [[bin_lst, *data] for bin_lst, grids, repeats in zip(self.binary, self.grids_set, self.repeats) for data in zip(grids, repeats)]
             
         # Generate instances of each texture type using the source data, and store them in a dictionary.
-
         objects_dict = {}
+        id = 1
 
         for name, instance in textures.items():
             for bin_lst in self.binary:
-                objects_dict[name] = instance(bin_lst)
+                objects_dict[f'{name}_{id}'] = instance(bin_lst)
+
+                id += 1
+
+            id = 1
 
         return objects_dict
     
 
     def _convert_and_store_dataframes(self):
-
-        table_data = []
+        table_data = {}
 
         for key, texture_object in self.texture_objects.items():
-
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-
             dataframe.to_sql(name=f'{key}', con=self.database_connection, if_exists='replace')
 
+            table_data[key] = []
+
             for grids_list, repeats_list in zip(self.grids_set, self.repeats):
-
-                i = 1
-
                 for grid, repeat in zip(grids_list, repeats_list):
-
-                    table_data.append({f'{key}_{i}': {'grid': grid, 'repeat': repeat}})
-
-                    i += 1
+                    table_data[key].append((f'{key}', grid, repeat))
 
         return table_data
 
     
     def _generate_sql_commands(self, table_data):
-
         sql_commands = []
 
-        # Get column names from one of the texture object dataframes (assuming all have the same structure)
-        first_texture_object_sample = next(iter(self.texture_objects.values()))  # Get first texture_object
-        column_names = first_texture_object_sample.notes_data.columns.tolist()
-        column_names.remove('Start')  # We are grouping by 'Start', so we don't want to concatenate it
-        length_of_one_rep = decimal.Decimal(math.pow(self.period, 2))
+        for key, value_list in table_data.items():
+            for value in value_list:
+                name = value[0]
+                grid = value[1]
+                repeat = value[2]
+
+                copy_command = f'''
+                CREATE TABLE '{name}' AS SELECT * FROM '{key}';
+                '''
+                
+                # Populate the Numerator column based on the grid.numerator multiplied by Duration
+                update_command = f'''
+                UPDATE "{name}" SET Duration = Duration * {int(float(grid) * 1000)};
+                '''
+                ### HOW DO DURATION AND START COLUMNS RELATE TO THE SCALING FACTOR
+                sql_commands.append(copy_command)
+                # sql_commands.append(update_command)
+
+                # print(int(float(grid) * 1000))
+
 
 
                     # SQL command to create a new table by copying and multiplying the Duration column by grid value
@@ -414,7 +422,7 @@ class Composition:
     def process_table_data(self):
         table_data = self._convert_and_store_dataframes()
         sql_commands = self._generate_sql_commands(table_data)
-        self._execute_sql_commands(sql_commands)
+        # self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_names)
         
 
@@ -485,5 +493,3 @@ if __name__ == '__main__':
     # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
-
-    print(comp.texture_objects)
