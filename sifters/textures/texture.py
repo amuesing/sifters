@@ -16,8 +16,6 @@ class Texture:
 
         self.period = len(self.binary)
 
-        # self.scaling_factor = 1000
-
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
         
@@ -145,8 +143,6 @@ class Texture:
 
             note_pool = itertools.cycle(self._generate_note_pool(factor_index))
 
-            # print(self._generate_note_pool(factor_index))
-            
             # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
             pattern = numpy.tile(self.binary, self.factors[factor_index])
             

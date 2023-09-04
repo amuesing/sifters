@@ -39,6 +39,8 @@ class Composition:
 
         self.ticks_per_beat = 480
 
+        self.scaling_factor = 1000
+
         # Derive normalized binary list(s) from the given sieve(s).
         self.binary = self.set_binary(sieves)
 
@@ -57,7 +59,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        self.process_table_data()
+        # self.process_table_data()
 
 
     # This function translates a list of sieves (intervals) into binary format. 
@@ -214,16 +216,14 @@ class Composition:
             
         # Generate instances of each texture type using the source data, and store them in a dictionary.
         objects_dict = {}
-        id = 1
 
-        for name, instance in textures.items():
-            for bin_lst in self.binary:
-                objects_dict[f'{name}_{id}'] = instance(bin_lst)
+        for key, instance in textures.items():
+            type_objects = {}  # Inner dictionary for each texture type
+            for counter, bin_lst in enumerate(self.binary, start=1):
+                type_objects[f'{key}_{counter}'] = instance(bin_lst)
+            objects_dict[key] = type_objects  # Store the inner dictionary in the outer dictionary
 
-                id += 1
-
-            id = 1
-
+        print(objects_dict)
         return objects_dict
     
 
@@ -231,6 +231,7 @@ class Composition:
         table_data = {}
 
         for key, texture_object in self.texture_objects.items():
+
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
             dataframe.to_sql(name=f'{key}', con=self.database_connection, if_exists='replace')
@@ -248,21 +249,39 @@ class Composition:
         sql_commands = []
 
         for key, value_list in table_data.items():
+
+            # create_key_table_query = f"""CREATE TABLE {key} (
+            #                         id INTEGER PRIMARY KEY,
+            #                         name TEXT NOT NULL,
+            #                         age INTEGER,
+            #                         email TEXT
+            #                         )"""
+
+            # self.cursor.execute(create_key_table_query)
+
+
             for value in value_list:
                 name = value[0]
                 grid = value[1]
                 repeat = value[2]
 
-                copy_command = f'''
-                CREATE TABLE '{name}' AS SELECT * FROM '{key}';
-                '''
+                # # Get all the table names that follow your pattern
+                # self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'table_%';")
+                # table_names = [row[0] for row in self.cursor.fetchall()]
+
+                # query = f"CREATE TABLE {name} AS " + " UNION ALL ".join([f"SELECT * FROM {table}" for table in table_names])
+
+                # copy_command = f'''
+                # CREATE TABLE '{name}' AS SELECT * FROM '{key}';
+                # '''
                 
-                # Populate the Numerator column based on the grid.numerator multiplied by Duration
-                update_command = f'''
-                UPDATE "{name}" SET Duration = Duration * {int(float(grid) * 1000)};
-                '''
-                ### HOW DO DURATION AND START COLUMNS RELATE TO THE SCALING FACTOR
-                sql_commands.append(copy_command)
+                # # Populate the Numerator column based on the grid.numerator multiplied by Duration
+                # update_command = f'''
+                # UPDATE "{name}" SET Duration = Duration * {int(float(grid) * self.scaling_factor)};
+                # '''
+                # ### HOW DO DURATION AND START COLUMNS RELATE TO THE SCALING FACTOR
+                # sql_commands.append(query)
+                # sql_commands.append(copy_command)
                 # sql_commands.append(update_command)
 
                 # print(int(float(grid) * 1000))
@@ -422,7 +441,7 @@ class Composition:
     def process_table_data(self):
         table_data = self._convert_and_store_dataframes()
         sql_commands = self._generate_sql_commands(table_data)
-        # self._execute_sql_commands(sql_commands)
+        self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_names)
         
 
@@ -474,6 +493,121 @@ class Composition:
         # # Remove the arguments for the combined parts from self.kwargs.
         # for arg in args[1:]:
         #     del self.kwargs[arg]
+
+
+    # def set_midi_messages(self):
+        
+    #     messages_data = []
+
+    #     def parse_pitch_data(dataframe):
+            
+    #         # Compute 'Pitch' and 'Note' columns for each row
+    #         for index, row in dataframe.iterrows():
+    #             pitch = round(row['Note'] - math.floor(row['Note']), 4)
+    #             note = math.floor(row['Note'])
+    #             dataframe.at[index, 'Note'] = note
+                
+    #             # Calculate Pitch value by multiplying the float by 4095.
+    #             # 4095 equates to the number of bits in a semitone 'pitchwheel' message
+    #             # There are 4096 total bits, and the Mido library numbers them 0-4095.
+    #             dataframe.at[index, 'Pitch'] = pitch * 4095
+            
+    #         # Convert 'Note' column to integer data type
+    #         dataframe['Note'] = dataframe['Note'].astype(int)
+    #         dataframe['Pitch'] = dataframe['Pitch'].astype(int)
+            
+    #         # Return the updated dataframe
+    #         return dataframe
+        
+    
+    #     for part in self.normalized_parts_data:
+
+    #         new_rows = []
+    #         part = parse_pitch_data(part)
+
+    #         for _, row in part.iterrows():
+    #             part['Message'] = 'note_on'
+    #             part['Time'] = 0
+                
+    #         for _, row in part.iterrows():
+    #             new_rows.append(row)
+    #             if row['Message'] == 'note_on':
+    #                 if row['Pitch'] != 0.0:
+    #                     pitchwheel_row = row.copy()
+    #                     pitchwheel_row['Message'] = 'pitchwheel'
+    #                     # Why us this creating a float and not an integer
+    #                     # pitchwheel_row['Pitch'] = pitchwheel_row['Pitch'] * 4095
+    #                     new_rows.append(pitchwheel_row)
+    #                 note_off_row = row.copy()
+    #                 note_off_row['Message'] = 'note_off'
+    #                 note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+    #                 new_rows.append(note_off_row)
+            
+    #         ### THERE IS AN EASIER WAY TO DO THIS BY SIMPLY ASSIGNING THE STARTS OFFSET TO THE TIME OF THE FIRST NOTE_ON MESSAGE    
+    #         # Check if the DataFrame begins with a note or a rest.
+    #         # If the compostion begins with a rest, create a 'note_off' message that is equal to the duration of the rest.
+    #         if part.iloc[0]['Start'] != 0.0:
+    #             note_off_row = part.iloc[0].copy()
+    #             note_off_row['Velocity'] = 0
+    #             note_off_row['Note'] = 0
+    #             note_off_row['Message'] = 'note_off'
+    #             note_off_row['Duration'] = part.iloc[0]['Start']
+    #             note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
+    #             note_off_row['Start'] = 0.0
+    #             new_rows.insert(0, note_off_row)
+                
+    #         messages_dataframe = pandas.DataFrame(new_rows)
+    #         column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
+    #         messages_dataframe = messages_dataframe.reindex(columns=column_order)
+    #         messages_dataframe.reset_index(drop=True, inplace=True)
+            
+    #         messages_data.append(messages_dataframe)
+                        
+    #         return messages_data
+    
+             
+    # def write_midi(self):
+        
+    #     messages_data = self.set_midi_messages()
+        
+    #     def csv_to_midi_messages(dataframe):
+
+    #         messages = []
+    #         for _, row in dataframe.iterrows():
+    #             if row['Message'] == 'note_on':
+    #                 messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+    #             elif row['Message'] == 'pitchwheel':
+    #                 messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
+    #             elif row['Message'] == 'note_off':
+    #                 messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+
+    #         return messages
+        
+    #     # Create a new MIDI file object
+    #     score = mido.MidiFile()
+
+    #     # Set the ticks per beat resolution
+    #     score.ticks_per_beat = self.ticks_per_beat
+
+    #     # # Write method to determine TimeSignature
+    #     time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
+    #     self.track_list[0].append(time_signature)
+
+    #     # Convert the CSV data to Note messages and PitchBend messages
+    #     midi_messages = [csv_to_midi_messages(part) for part in messages_data]
+        
+    #     # Add the Tracks to the MIDI File
+    #     for track in self.track_list:
+    #         score.tracks.append(track)
+
+    #     # Add the Note messages and PitchBend messages to the MIDI file
+    #     for i, _ in enumerate(self.track_list):
+    #         for message in midi_messages:
+    #             for msg in message:
+    #                 self.track_list[i].append(msg)
+
+    #     # Write the MIDI file
+    #     score.save('data/mid/score.mid')
         
         
 if __name__ == '__main__':
