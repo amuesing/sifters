@@ -59,7 +59,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        # self.process_table_data()
+        self.process_table_data()
 
 
     # This function translates a list of sieves (intervals) into binary format. 
@@ -223,26 +223,58 @@ class Composition:
                 type_objects[f'{key}_{counter}'] = instance(bin_lst)
             objects_dict[key] = type_objects  # Store the inner dictionary in the outer dictionary
 
-        print(objects_dict)
+        # print(objects_dict)
+
         return objects_dict
     
 
     def _convert_and_store_dataframes(self):
         table_data = {}
 
-        for key, texture_object in self.texture_objects.items():
+        for outer_key, texture_type in self.texture_objects.items():
+            texture_data = {}
 
-            dataframe = texture_object.notes_data
-            dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-            dataframe.to_sql(name=f'{key}', con=self.database_connection, if_exists='replace')
+            for inner_key, texture_object in texture_type.items():
+                tuples_list = [
+                    (f'{inner_key}_{idx + 1}', grid, repeat)
+                    for (grids_list, repeats_list) in zip(self.grids_set, self.repeats)
+                    for idx, (grid, repeat) in enumerate(zip(grids_list, repeats_list))
+                ]
 
-            table_data[key] = []
+                texture_data[inner_key] = tuple(tuples_list)
 
-            for grids_list, repeats_list in zip(self.grids_set, self.repeats):
-                for grid, repeat in zip(grids_list, repeats_list):
-                    table_data[key].append((f'{key}', grid, repeat))
+                # Save the processed dataframe to a SQL database
+                dataframe = texture_object.notes_data
+                dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+                dataframe.to_sql(name=f'{inner_key}', con=self.database_connection, if_exists='replace')
 
+            table_data[outer_key] = (texture_data)
+
+        print(table_data)
         return table_data
+
+
+    # def _convert_and_store_dataframes(self):
+    #     table_data = {}
+
+    #     for outer_key, texture_type in self.texture_objects.items():
+    #         texture_data = {}
+    #         table_data[outer_key] = []
+    #         for inner_key, texture_object in texture_type.items():
+
+    #             dataframe = texture_object.notes_data
+    #             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+    #             dataframe.to_sql(name=f'{inner_key}', con=self.database_connection, if_exists='replace')
+
+    #             texture_data[inner_key] = []
+
+    #             for grids_list, repeats_list in zip(self.grids_set, self.repeats):
+    #                 for grid, repeat in zip(grids_list, repeats_list):
+    #                     texture_data[inner_key].append((f'{inner_key}', grid, repeat))
+
+    #         table_data[outer_key].append(texture_data)
+
+    #     return table_data
 
     
     def _generate_sql_commands(self, table_data):
@@ -440,8 +472,8 @@ class Composition:
 
     def process_table_data(self):
         table_data = self._convert_and_store_dataframes()
-        sql_commands = self._generate_sql_commands(table_data)
-        self._execute_sql_commands(sql_commands)
+        # sql_commands = self._generate_sql_commands(table_data)
+        # self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_names)
         
 
@@ -624,6 +656,6 @@ if __name__ == '__main__':
     
     ]
     
-    # sieves = ['|'.join(sieves)]
+    sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
