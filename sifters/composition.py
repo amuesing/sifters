@@ -224,63 +224,65 @@ class Composition:
             objects_dict[key] = type_objects  # Store the inner dictionary in the outer dictionary
 
         # print(objects_dict)
-
         return objects_dict
     
 
     def _convert_and_store_dataframes(self):
-        table_data = {}
+        # table_data = {}
 
-        for outer_key, texture_type in self.texture_objects.items():
-            texture_data = {}
-
+        for _, texture_type in self.texture_objects.items():
             for inner_key, texture_object in texture_type.items():
-                tuples_list = [
-                    (f'{inner_key}_{idx + 1}', grid, repeat)
-                    for (grids_list, repeats_list) in zip(self.grids_set, self.repeats)
-                    for idx, (grid, repeat) in enumerate(zip(grids_list, repeats_list))
-                ]
 
-                texture_data[inner_key] = tuple(tuples_list)
-
-                # Save the processed dataframe to a SQL database
                 dataframe = texture_object.notes_data
                 dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
                 dataframe.to_sql(name=f'{inner_key}', con=self.database_connection, if_exists='replace')
 
-            table_data[outer_key] = (texture_data)
+                # table_data[inner_key] = []
 
-        print(table_data)
-        return table_data
+                # for grids_list, repeats_list in zip(self.grids_set, self.repeats):
+                #     for grid, repeat in zip(grids_list, repeats_list):
+                #         table_data[inner_key].append((f'{inner_key}', grid, repeat))
 
+        # print(table_data)
 
-    # def _convert_and_store_dataframes(self):
-    #     table_data = {}
-
-    #     for outer_key, texture_type in self.texture_objects.items():
-    #         texture_data = {}
-    #         table_data[outer_key] = []
-    #         for inner_key, texture_object in texture_type.items():
-
-    #             dataframe = texture_object.notes_data
-    #             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-    #             dataframe.to_sql(name=f'{inner_key}', con=self.database_connection, if_exists='replace')
-
-    #             texture_data[inner_key] = []
-
-    #             for grids_list, repeats_list in zip(self.grids_set, self.repeats):
-    #                 for grid, repeat in zip(grids_list, repeats_list):
-    #                     texture_data[inner_key].append((f'{inner_key}', grid, repeat))
-
-    #         table_data[outer_key].append(texture_data)
-
-    #     return table_data
+        # return table_data
 
     
     def _generate_sql_commands(self, table_data):
         sql_commands = []
 
-        for key, value_list in table_data.items():
+        # Query all table names
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        table_names = [row[0] for row in self.cursor.fetchall()]
+        
+        # Process table names to group by prefix
+        grouped_tables = {}
+        for table_name in table_names:
+            prefix = table_name.split('_')[0]  # Extract prefix before underscore
+            if prefix not in grouped_tables:
+                grouped_tables[prefix] = []
+            grouped_tables[prefix].append(table_name)
+
+        # For each prefix, combine the tables and save to a new table
+        for prefix, tables in grouped_tables.items():
+            union_query = " UNION ALL ".join(f"SELECT * FROM {table}" for table in tables)
+            
+            # Drop the table with the same prefix name if it exists (for re-runs or updates)
+            drop_table_query = f"DROP TABLE IF EXISTS {prefix}"
+            self.cursor.execute(drop_table_query)
+            
+            # Save combined data into a new table named after the prefix
+            create_table_query = f"CREATE TABLE {prefix} AS {union_query}"
+            self.cursor.execute(create_table_query)
+            print(f"Combined data for tables with prefix '{prefix}' saved in new table named '{prefix}'.")
+
+        # Commit changes and close the connection
+        # conn.commit()
+        # conn.close()
+
+        # return grouped_tables
+
+        # for key, value_list in table_data.items():
 
             # create_key_table_query = f"""CREATE TABLE {key} (
             #                         id INTEGER PRIMARY KEY,
@@ -292,10 +294,10 @@ class Composition:
             # self.cursor.execute(create_key_table_query)
 
 
-            for value in value_list:
-                name = value[0]
-                grid = value[1]
-                repeat = value[2]
+            # for value in value_list:
+            #     name = value[0]
+            #     grid = value[1]
+            #     repeat = value[2]
 
                 # # Get all the table names that follow your pattern
                 # self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'table_%';")
@@ -472,7 +474,7 @@ class Composition:
 
     def process_table_data(self):
         table_data = self._convert_and_store_dataframes()
-        # sql_commands = self._generate_sql_commands(table_data)
+        sql_commands = self._generate_sql_commands(table_data)
         # self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_names)
         
@@ -656,6 +658,6 @@ if __name__ == '__main__':
     
     ]
     
-    sieves = ['|'.join(sieves)]
+    # sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
