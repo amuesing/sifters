@@ -248,13 +248,13 @@ class Composition:
         # return table_data
 
     
-    def _generate_sql_commands(self, table_data):
+    def _generate_sql_commands(self):
         sql_commands = []
 
         # Query all table names
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         table_names = [row[0] for row in self.cursor.fetchall()]
-        
+
         # Process table names to group by prefix
         grouped_tables = {}
         for table_name in table_names:
@@ -275,6 +275,20 @@ class Composition:
             create_table_query = f"CREATE TABLE {prefix} AS {union_query}"
             self.cursor.execute(create_table_query)
             print(f"Combined data for tables with prefix '{prefix}' saved in new table named '{prefix}'.")
+
+            # Delete individual tables after combining them
+            for table in tables:
+                drop_individual_table_query = f"DROP TABLE {table}"
+                self.cursor.execute(drop_individual_table_query)
+                print(f"Deleted individual table '{table}'.")
+
+            # YOU NEED TO SET THE GRID OF EACH TABLE WITH THE CORRESPONDING LIST OF GRID FRACTIONS IN SELF.GRID
+            # BEFORE YOU COMBINE THE TABLES INTO A SINGLE TABLE BASED ON PREFIX
+
+            for list in self.grids_set:
+                print(list)
+                for grid in list:
+                    print(grid)
 
         # Commit changes and close the connection
         # conn.commit()
@@ -473,10 +487,10 @@ class Composition:
 
 
     def process_table_data(self):
-        table_data = self._convert_and_store_dataframes()
-        sql_commands = self._generate_sql_commands(table_data)
+        self._convert_and_store_dataframes()
+        self._generate_sql_commands()
         # self._execute_sql_commands(sql_commands)
-        # self._cleanup_tables(table_names)
+        # self._cleanup_tables(table_data)
         
 
     # Return the constructed dictionary of texture objects.
