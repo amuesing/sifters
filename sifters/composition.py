@@ -228,7 +228,6 @@ class Composition:
     
 
     def _convert_and_store_dataframes(self):
-        # table_data = {}
 
         for _, texture_type in self.texture_objects.items():
             for inner_key, texture_object in texture_type.items():
@@ -236,16 +235,6 @@ class Composition:
                 dataframe = texture_object.notes_data
                 dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
                 dataframe.to_sql(name=f'{inner_key}', con=self.database_connection, if_exists='replace')
-
-                # table_data[inner_key] = []
-
-                # for grids_list, repeats_list in zip(self.grids_set, self.repeats):
-                #     for grid, repeat in zip(grids_list, repeats_list):
-                #         table_data[inner_key].append((f'{inner_key}', grid, repeat))
-
-        # print(table_data)
-
-        # return table_data
 
     
     def _generate_sql_commands(self):
@@ -263,32 +252,41 @@ class Composition:
                 grouped_tables[prefix] = []
             grouped_tables[prefix].append(table_name)
 
+        print(self.repeats)
+
         # For each prefix, combine the tables and save to a new table
         for prefix, tables in grouped_tables.items():
-            union_query = " UNION ALL ".join(f"SELECT * FROM {table}" for table in tables)
+            for table, grids, repeats in zip(tables, self.grids_set, self.repeats):
+                for grid, repeat in zip(grids, repeats):
+                    print(table, str(grid), repeat)
+
+                # for list in self.grids_set:
+                #     for grid in list:
+                #         print(table, grid)
+        #     union_query = " UNION ALL ".join(f"SELECT * FROM {table}" for table in tables)
             
-            # Drop the table with the same prefix name if it exists (for re-runs or updates)
-            drop_table_query = f"DROP TABLE IF EXISTS {prefix}"
-            self.cursor.execute(drop_table_query)
+        #     # Drop the table with the same prefix name if it exists (for re-runs or updates)
+        #     drop_table_query = f"DROP TABLE IF EXISTS {prefix}"
+        #     self.cursor.execute(drop_table_query)
             
-            # Save combined data into a new table named after the prefix
-            create_table_query = f"CREATE TABLE {prefix} AS {union_query}"
-            self.cursor.execute(create_table_query)
-            print(f"Combined data for tables with prefix '{prefix}' saved in new table named '{prefix}'.")
+        #     # Save combined data into a new table named after the prefix
+        #     create_table_query = f"CREATE TABLE {prefix} AS {union_query}"
+        #     self.cursor.execute(create_table_query)
+        #     print(f"Combined data for tables with prefix '{prefix}' saved in new table named '{prefix}'.")
 
-            # Delete individual tables after combining them
-            for table in tables:
-                drop_individual_table_query = f"DROP TABLE {table}"
-                self.cursor.execute(drop_individual_table_query)
-                print(f"Deleted individual table '{table}'.")
+        #     # Delete individual tables after combining them
+        #     for table in tables:
+        #         drop_individual_table_query = f"DROP TABLE {table}"
+        #         self.cursor.execute(drop_individual_table_query)
+        #         print(f"Deleted individual table '{table}'.")
 
-            # YOU NEED TO SET THE GRID OF EACH TABLE WITH THE CORRESPONDING LIST OF GRID FRACTIONS IN SELF.GRID
-            # BEFORE YOU COMBINE THE TABLES INTO A SINGLE TABLE BASED ON PREFIX
+        #     # YOU NEED TO SET THE GRID OF EACH TABLE WITH THE CORRESPONDING LIST OF GRID FRACTIONS IN SELF.GRID
+        #     # BEFORE YOU COMBINE THE TABLES INTO A SINGLE TABLE BASED ON PREFIX
 
-            for list in self.grids_set:
-                print(list)
-                for grid in list:
-                    print(grid)
+        #     for list in self.grids_set:
+        #         print(list)
+        #         for grid in list:
+        #             print(grid)
 
         # Commit changes and close the connection
         # conn.commit()
