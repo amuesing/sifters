@@ -39,7 +39,7 @@ class Composition:
 
         self.ticks_per_beat = 480
 
-        self.scaling_factor = 1000
+        self.scaling_factor = 100000
 
         # Derive normalized binary list(s) from the given sieve(s).
         self.binary = self.set_binary(sieves)
@@ -247,18 +247,49 @@ class Composition:
         # Process table names to group by prefix
         grouped_tables = {}
         for table_name in table_names:
-            prefix = table_name.split('_')[0]  # Extract prefix before underscore
+            parts = table_name.split('_')
+            prefix = parts[0] if len(parts) > 1 else table_name  # Handle tables without underscores.
+            
+            # Populate the grouped_tables
             if prefix not in grouped_tables:
                 grouped_tables[prefix] = []
             grouped_tables[prefix].append(table_name)
 
-        print(self.repeats)
-
-        # For each prefix, combine the tables and save to a new table
         for prefix, tables in grouped_tables.items():
-            for table, grids, repeats in zip(tables, self.grids_set, self.repeats):
+            for table, grids, repeats in zip(tables, self.grids_set, self.repeats): 
                 for grid, repeat in zip(grids, repeats):
-                    print(table, str(grid), repeat)
+
+                    length_of_one_rep = int(math.pow(self.period, 2) * (grid * self.scaling_factor))
+
+                    # Create the new table name
+                    new_table_name = f"{table}_{grid * self.scaling_factor}"
+
+                    accumulative_value = 0  # Initialize accumulative value
+
+                    ### NEED TO REPLACE START AND END COLUMNS
+
+                    select_statements = []
+                    for _ in range(repeat):
+                        select_statement = f"SELECT *, Start * {grid * self.scaling_factor} + {accumulative_value} AS Start, End * {grid * self.scaling_factor} + {accumulative_value} AS End FROM {table}"
+                        select_statements.append(select_statement)
+                        accumulative_value += length_of_one_rep  # Update the accumulative value
+
+                    # Combine the SELECT statements using UNION ALL
+                    union_all_statements = " UNION ALL ".join(select_statements)
+
+                    # Create the SQL command to create the new table
+                    create_command = f"""
+                    CREATE TABLE {new_table_name} AS 
+                    {union_all_statements};
+                    """
+
+                    sql_commands.append(create_command)
+
+                delete_command = f"DROP TABLE {table};"
+                sql_commands.append(delete_command)
+
+        return "\n".join(sql_commands)
+
 
                 # for list in self.grids_set:
                 #     for grid in list:
@@ -467,11 +498,11 @@ class Composition:
             #     dataframe['Note'] = dataframe['Note'].astype(int)
             #     return dataframe
 
-        return sql_commands
+        # return sql_commands
     
     
     def _execute_sql_commands(self, sql_commands):
-        self.cursor.executescript("\n".join(sql_commands))
+        self.cursor.executescript(sql_commands)
 
 
     def _cleanup_tables(self, table_names):
@@ -486,8 +517,8 @@ class Composition:
 
     def process_table_data(self):
         self._convert_and_store_dataframes()
-        self._generate_sql_commands()
-        # self._execute_sql_commands(sql_commands)
+        sql_commands = self._generate_sql_commands()
+        self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_data)
         
 
@@ -670,6 +701,6 @@ if __name__ == '__main__':
     
     ]
     
-    # sieves = ['|'.join(sieves)]
+    sieves = ['|'.join(sieves)]
         
     comp = Composition(sieves)
