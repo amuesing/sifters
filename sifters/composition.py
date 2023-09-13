@@ -267,10 +267,11 @@ class Composition:
                     accumulative_value = 0  # Initialize accumulative value
 
                     ### NEED TO REPLACE START AND END COLUMNS
+                    ### UPDATE SO THAT THE APPLICATION IS FOR JUST ONE SIEVE AT A TIME (TO REDUCE LOAD)
 
                     select_statements = []
                     for _ in range(repeat):
-                        select_statement = f"SELECT *, Start * {grid * self.scaling_factor} + {accumulative_value} AS Start, End * {grid * self.scaling_factor} + {accumulative_value} AS End FROM {table}"
+                        select_statement = f"SELECT *, Start * {grid * self.scaling_factor} + {accumulative_value} AS incremented_start, End * {grid * self.scaling_factor} + {accumulative_value} AS incremented_end FROM {table}"
                         select_statements.append(select_statement)
                         accumulative_value += length_of_one_rep  # Update the accumulative value
 
