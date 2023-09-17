@@ -18,7 +18,7 @@ from textures import heterophonic, homophonic, monophonic, nonpitched, polyphoni
 
 class Composition:
     
-    def __init__(self, sieves):
+    def __init__(self, sieve):
 
         # Get the current timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -32,7 +32,7 @@ class Composition:
         self.utility = utility.Utility()
 
         # Assign sieves argument to self.
-        self.sieves = sieves
+        self.sieve = sieve
 
         # Initialize a period variable which will be assigned to an integer within the set_binary method.
         self.period = None
@@ -41,14 +41,14 @@ class Composition:
 
         self.scaling_factor = 100000
 
-        # Derive normalized binary list(s) from the given sieve(s).
-        self.binary = self.set_binary(sieves)
+        # Derive normalized binary list(s) from the given sieve.
+        self.binary = self.set_binary(sieve)
 
         # Interpolate a dictionary which tracks the indicies of pattern changes within self.binary.
-        self.changes = [[tupl[1] for tupl in sublist] for sublist in self.get_consecutive_count()]
+        self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
 
         # Derive self-similar lists of integers based on the self.changes attribute.
-        self.form = [[[num]*len(lst) for num in lst] for lst in self.changes]
+        self.form = [[num]*len(self.changes) for num in self.changes]
 
         # Derive a list of metric grids based on the percent of change that each integer with self.changes represents.
         self.grids_set = self.set_grids()
@@ -62,82 +62,44 @@ class Composition:
         self.process_table_data()
 
 
-    # This function translates a list of sieves (intervals) into binary format. 
-    def set_binary(self, sieves):
-        binary = []  # Holds the binary representation of each sieve.
-        periods = []  # Accumulates the periods of each sieve.
-        objects = []  # Stores the Sieve objects generated from each sieve.
+    def set_binary(self, siev):
+        obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
+        self.period = obj.period()  # Store the period of the Sieve object.
+        obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
+        binary = obj.segment(segmentFormat='binary')  # Convert to binary and store.
 
-        # Loop over the sieves, convert each to a Sieve object, and store object and its period.
-        for siev in sieves:
-            obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
-            objects.append(obj)  # Add Sieve object to the objects list.
-            periods.append(obj.period())  # Store the period of the Sieve object.
-
-        # Calculate the least common multiple (LCM) of all periods. 
-        # This LCM will be used as the shared period for all sieves in binary form.
-        self.period = self.utility.get_least_common_multiple(periods)
-
-        # Loop over the Sieve objects, adjust each object's Z range based on the LCM, 
-        # and then convert each to its binary representation.
-        for obj in objects:
-            obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
-            binary.append(obj.segment(segmentFormat='binary'))  # Convert to binary and store.
-
-        # Return the binary representation of all sieves.
+        # Return the binary representation of sieve.
         return binary
 
 
-    # This function computes the count of consecutive occurrences of the same element 
-    # for each list in the attribute self.binary.
     def get_consecutive_count(self):
+        # Using itertools.groupby, we group same, consecutive elements in the list.
+        # From each group, we capture the element (key) and the length of the group
+        # (indicating the count of consecutive occurrences of the element).
+        consecutive_counts = [(key, len(list(group))) for key, group in itertools.groupby(self.binary)]
 
-        result = []  # A placeholder to store consecutive counts for each binary list.
+        # The function returns the result, which is a single list containing tuples.
+        # Each tuple represents an element and its consecutive count.
+        return consecutive_counts
 
-        # Iterate over each binary list stored in self.binary.
-        for sieve in self.binary:
-            # Using itertools.groupby, we group same, consecutive elements in the list.
-            # From each group, we capture the element (key) and the length of the group
-            # (indicating the count of consecutive occurrences of the element).
-            # Each element and its consecutive count are stored as a tuple.
-            consecutive_counts = [(key, len(list(group))) for key, group in itertools.groupby(sieve)]
-
-            # We then add the tuples of element and consecutive count from the current list 
-            # to the overall result list.
-            result.append(consecutive_counts)
-
-        # The function returns the result, which is a list of lists. Each sublist 
-        # contains tuples, where each tuple represents an element and its consecutive count.
-        return result
     
     # Inner function to compute the proportion of the period that each number in the list represents.
     def _get_percent_of_period(self, lst):
         return [
-            # Each number is converted to a decimal and divided by the period to compute the proportion.
-            [
-                (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
-                for num in sub_lst
-            ] 
-            for sub_lst in lst
+            (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
+            for num in lst
         ]
-    
+
 
     # Inner function to transform a list of decimal numbers into fractions.
     def _convert_decimal_to_fraction(self, decimal_list):
-        return [
-            # Each decimal number in the sublist is converted to a fraction.
-            [fractions.Fraction(decimal_num) for decimal_num in sub_list]
-            for sub_list in decimal_list
-        ]
-    
+        return [fractions.Fraction(decimal_num) for decimal_num in decimal_list]
+
 
     # Inner function to eliminate duplicate fractions in each sublist while maintaining the original order.
     def _get_unique_fractions(self, input_list):
-        return [
-            # Utilize OrderedDict to preserve order while removing duplicates.
-            list(collections.OrderedDict.fromkeys(sub_list)) 
-            for sub_list in input_list
-        ]
+        return list(collections.OrderedDict.fromkeys(input_list))
+
 
 
     # This function generates grids that illustrate the fractions of the period for each change in the self.changes list.
@@ -158,48 +120,28 @@ class Composition:
     
     # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
     def _set_normalized_numerators(self, grids):
-        normalized_numerators = []  # A list to store the numerators adjusted to the common denominator.
-
-        # Iterate over each sublist in the grids.
-        for sublist in grids:
-            # Compute the least common multiple (LCM) of all denominators in the sublist.
-            lcm = self.utility.get_least_common_multiple([fraction.denominator for fraction in sublist])
-            
-            # Normalize each fraction in the sublist by adjusting the numerator to the LCM, resulting in fractions with a common denominator.
-            normalized_sublist = [(lcm // fraction.denominator) * fraction.numerator for fraction in sublist]
-            
-            # Add the normalized sublist to the list of standardized numerators.
-            normalized_numerators.append(normalized_sublist)
+        # Compute the least common multiple (LCM) of all denominators in the list.
+        lcm = self.utility.get_least_common_multiple([fraction.denominator for fraction in grids])
         
-        # Return the numerators normalized to the common denominator.
+        # Normalize each fraction in the list by adjusting the numerator to the LCM.
+        normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids]
+        
+        # Return the normalized numerators.
         return normalized_numerators
 
 
     # This function computes the repetitions required for each fraction in the grids_set to equalize them.
     def set_repeats(self):
-
         # Standardize the numerators in the grids_set.
         normalized_numerators = self._set_normalized_numerators(self.grids_set)
-
-        # Flatten the list of normalized numerators.
-        flattened_list = self.utility.flatten_list(normalized_numerators)
         
-        # Determine the least common multiple of all the normalized numerators.
-        least_common_multiple = self.utility.get_least_common_multiple(flattened_list)
+        # Determine the least common multiple of the normalized numerators.
+        least_common_multiple = self.utility.get_least_common_multiple(normalized_numerators)
 
-        # Prepare a list to store the required number of repetitions for each fraction.
-        repeats = []
-        
-        # For each sublist in the normalized numerators,
-        for sublist in normalized_numerators:
-            # calculate the repetition for each fraction in the sublist by dividing the LCM by the normalized numerator.
-            # The result indicates the number of repetitions needed to equalize the fractions.
-            repeats_sublist = [least_common_multiple // num for num in sublist]
-            
-            # Add the repetition counts for the sublist to the main repeats list.
-            repeats.append(repeats_sublist)
+        # Calculate the repetition for each fraction by dividing the LCM by the normalized numerator.
+        repeats = [least_common_multiple // num for num in normalized_numerators]
 
-        # Return the list containing repetition counts for each fraction.
+        # Return the repetition counts for each fraction.
         return repeats
 
 
@@ -214,29 +156,22 @@ class Composition:
             'polyphonic': polyphonic.Polyphonic,
         }
             
-        # Generate instances of each texture type using the source data, and store them in a dictionary.
         objects_dict = {}
-
         for key, instance in textures.items():
-            type_objects = {}  # Inner dictionary for each texture type
-            for counter, bin_lst in enumerate(self.binary, start=1):
-                type_objects[f'{key}_{counter}'] = instance(bin_lst)
-            objects_dict[key] = type_objects  # Store the inner dictionary in the outer dictionary
-
-        # print(objects_dict)
+            objects_dict[key] = instance(self.binary)  # Directly pass the single binary list
+        print(objects_dict)
         return objects_dict
-    
 
+    
     def _convert_and_store_dataframes(self):
 
-        for _, texture_type in self.texture_objects.items():
-            for inner_key, texture_object in texture_type.items():
+        for texture_key, texture_object in self.texture_objects.items():
 
-                dataframe = texture_object.notes_data
-                dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-                dataframe.to_sql(name=f'{inner_key}', con=self.database_connection, if_exists='replace')
+            dataframe = texture_object.notes_data
+            dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+            dataframe.to_sql(name=f'{texture_key}', con=self.database_connection, if_exists='replace')
 
-    
+
     def _generate_sql_commands(self):
         sql_commands = []
 
@@ -244,50 +179,39 @@ class Composition:
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         table_names = [row[0] for row in self.cursor.fetchall()]
 
-        # Process table names to group by prefix
-        grouped_tables = {}
-        for table_name in table_names:
-            parts = table_name.split('_')
-            prefix = parts[0] if len(parts) > 1 else table_name  # Handle tables without underscores.
-            
-            # Populate the grouped_tables
-            if prefix not in grouped_tables:
-                grouped_tables[prefix] = []
-            grouped_tables[prefix].append(table_name)
+        # Since each table corresponds to a single texture type, we don't need to group them by prefix anymore.
 
-        for prefix, tables in grouped_tables.items():
-            for table, grids, repeats in zip(tables, self.grids_set, self.repeats): 
-                for grid, repeat in zip(grids, repeats):
+        for table in table_names:
+            for grid, repeat in zip(self.grids_set, self.repeats):
 
-                    length_of_one_rep = int(math.pow(self.period, 2) * (grid * self.scaling_factor))
+                length_of_one_rep = int(math.pow(self.period, 2) * (grid * self.scaling_factor))
 
-                    # Create the new table name
-                    new_table_name = f"{table}_{grid * self.scaling_factor}"
+                # Create the new table name using float(grid)
+                new_table_name = f"{table}_{grid * self.scaling_factor}"
 
-                    accumulative_value = 0  # Initialize accumulative value
+                accumulative_value = 0  # Initialize accumulative value
 
-                    ### NEED TO REPLACE START AND END COLUMNS
-                    ### UPDATE SO THAT THE APPLICATION IS FOR JUST ONE SIEVE AT A TIME (TO REDUCE LOAD)
+                select_statements = []
+                for _ in range(repeat):
+                    # Use float(grid) in the select statement
+                    select_statement = f"SELECT *, Start * {grid * self.scaling_factor} + {accumulative_value} AS incremented_start, End * {grid * self.scaling_factor} + {accumulative_value} AS incremented_end FROM {table}"
+                    select_statements.append(select_statement)
+                    accumulative_value += length_of_one_rep  # Update the accumulative value
 
-                    select_statements = []
-                    for _ in range(repeat):
-                        select_statement = f"SELECT *, Start * {grid * self.scaling_factor} + {accumulative_value} AS incremented_start, End * {grid * self.scaling_factor} + {accumulative_value} AS incremented_end FROM {table}"
-                        select_statements.append(select_statement)
-                        accumulative_value += length_of_one_rep  # Update the accumulative value
+                # Combine the SELECT statements using UNION ALL
+                union_all_statements = " UNION ALL ".join(select_statements)
 
-                    # Combine the SELECT statements using UNION ALL
-                    union_all_statements = " UNION ALL ".join(select_statements)
+                # Create the SQL command to create the new table
+                create_command = f"""
+                CREATE TABLE {new_table_name} AS 
+                {union_all_statements};
+                """
+                sql_commands.append(create_command)
 
-                    # Create the SQL command to create the new table
-                    create_command = f"""
-                    CREATE TABLE {new_table_name} AS 
-                    {union_all_statements};
-                    """
+            delete_command = f"DROP TABLE {table};"
+            sql_commands.append(delete_command)
 
-                    sql_commands.append(create_command)
-
-                delete_command = f"DROP TABLE {table};"
-                sql_commands.append(delete_command)
+        # print(sql_commands)
 
         return "\n".join(sql_commands)
 
@@ -689,19 +613,15 @@ class Composition:
         
         
 if __name__ == '__main__':
-    
-    sieves = [
-    
-    '((8@0|8@1|8@7)&(5@1|5@3))', 
-    '((8@0|8@1|8@2)&5@0)',
-    '((8@5|8@6)&(5@2|5@3|5@4))',
-    '(8@6&5@1)',
-    '(8@3)',
-    '(8@4)',
-    '(8@1&5@2)'
-    
-    ]
-    
-    sieves = ['|'.join(sieves)]
+
+    sieve = '''
+            ((8@0|8@1|8@7)&(5@1|5@3))|
+            ((8@0|8@1|8@2)&5@0)|
+            ((8@5|8@6)&(5@2|5@3|5@4))|
+            (8@6&5@1)|
+            (8@3)|
+            (8@4)|
+            (8@1&5@2)
+            '''
         
-    comp = Composition(sieves)
+    comp = Composition(sieve)
