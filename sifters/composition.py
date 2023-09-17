@@ -159,7 +159,7 @@ class Composition:
         objects_dict = {}
         for key, instance in textures.items():
             objects_dict[key] = instance(self.binary)  # Directly pass the single binary list
-        print(objects_dict)
+
         return objects_dict
 
     
@@ -169,7 +169,7 @@ class Composition:
 
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-            dataframe.to_sql(name=f'{texture_key}', con=self.database_connection, if_exists='replace')
+            dataframe.to_sql(name=f'{texture_key}', con=self.database_connection, if_exists='replace', index=False)
 
 
     def _generate_sql_commands(self):
@@ -177,48 +177,60 @@ class Composition:
 
         # Query all table names
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        table_names = [row[0] for row in self.cursor.fetchall()]
+        texture_names = [row[0] for row in self.cursor.fetchall()]
 
-        # Since each table corresponds to a single texture type, we don't need to group them by prefix anymore.
+        for texture in texture_names:
+            # Fetch column names from the current table
+            self.cursor.execute(f'PRAGMA table_info("{texture}")')
+            columns = [row[1] for row in self.cursor.fetchall()]
+            # Exclude 'Start' and 'End' from the list
+            columns = [col for col in columns if col not in ['Start', 'End']]
+            columns_string = ', '.join([f'"{col}"' for col in columns])
 
-        for table in table_names:
             for grid, repeat in zip(self.grids_set, self.repeats):
-
                 length_of_one_rep = int(math.pow(self.period, 2) * (grid * self.scaling_factor))
-
-                # Create the new table name using float(grid)
-                new_table_name = f"{table}_{grid * self.scaling_factor}"
-
-                accumulative_value = 0  # Initialize accumulative value
+                new_table_name = f'{texture}_{grid * self.scaling_factor}'
+                accumulative_value = 0
 
                 select_statements = []
                 for _ in range(repeat):
-                    # Use float(grid) in the select statement
-                    select_statement = f"SELECT *, Start * {grid * self.scaling_factor} + {accumulative_value} AS incremented_start, End * {grid * self.scaling_factor} + {accumulative_value} AS incremented_end FROM {table}"
+                    select_statement = f'''SELECT {columns_string}, 
+                    "Start" * {grid * self.scaling_factor} + {accumulative_value} AS "Start", 
+                    "End" * {grid * self.scaling_factor} + {accumulative_value} AS "End" FROM "{texture}"'''
                     select_statements.append(select_statement)
-                    accumulative_value += length_of_one_rep  # Update the accumulative value
+                    accumulative_value += length_of_one_rep
 
-                # Combine the SELECT statements using UNION ALL
                 union_all_statements = " UNION ALL ".join(select_statements)
-
-                # Create the SQL command to create the new table
-                create_command = f"""
-                CREATE TABLE {new_table_name} AS 
+                create_command = f'''
+                CREATE TABLE "{new_table_name}" AS 
                 {union_all_statements};
-                """
+                '''
                 sql_commands.append(create_command)
+            
+            # List of new tables to combine
+            new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in self.grids_set]
 
-            delete_command = f"DROP TABLE {table};"
-            sql_commands.append(delete_command)
+            # Collect all SELECT statements into a list
+            select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
 
-        # print(sql_commands)
+            # Join the SELECT statements using UNION ALL and create the combined table
+            combine_command = f'''CREATE TABLE "{texture}_temp" AS 
+                                {" UNION ALL ".join(select_statements)};'''
+            sql_commands.append(combine_command)
+
+            # Delete original table and rename the combined table to the original name
+            sql_commands.append(f'DROP TABLE "{texture}";')
+            sql_commands.append(f'ALTER TABLE "{texture}_temp" RENAME TO "{texture}";')
+
+            # Drop the new tables as they are no longer needed
+            for new_table in new_tables:
+                sql_commands.append(f'DROP TABLE "{new_table}";')
 
         return "\n".join(sql_commands)
 
+    
+# self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture}_%';")
 
-                # for list in self.grids_set:
-                #     for grid in list:
-                #         print(table, grid)
         #     union_query = " UNION ALL ".join(f"SELECT * FROM {table}" for table in tables)
             
         #     # Drop the table with the same prefix name if it exists (for re-runs or updates)
@@ -269,9 +281,9 @@ class Composition:
 
                 # # Get all the table names that follow your pattern
                 # self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'table_%';")
-                # table_names = [row[0] for row in self.cursor.fetchall()]
+                # texture_names = [row[0] for row in self.cursor.fetchall()]
 
-                # query = f"CREATE TABLE {name} AS " + " UNION ALL ".join([f"SELECT * FROM {table}" for table in table_names])
+                # query = f"CREATE TABLE {name} AS " + " UNION ALL ".join([f"SELECT * FROM {table}" for table in texture_names])
 
                 # copy_command = f'''
                 # CREATE TABLE '{name}' AS SELECT * FROM '{key}';
@@ -430,8 +442,8 @@ class Composition:
         self.cursor.executescript(sql_commands)
 
 
-    def _cleanup_tables(self, table_names):
-        for table_name in table_names:
+    def _cleanup_tables(self, texture_names):
+        for table_name in texture_names:
             self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{table_name}_%' AND name != '{table_name}';")
             tables_to_delete = self.cursor.fetchall()
             for table in tables_to_delete:
@@ -615,13 +627,13 @@ class Composition:
 if __name__ == '__main__':
 
     sieve = '''
-            ((8@0|8@1|8@7)&(5@1|5@3))|
+            (((8@0|8@1|8@7)&(5@1|5@3))|
             ((8@0|8@1|8@2)&5@0)|
             ((8@5|8@6)&(5@2|5@3|5@4))|
             (8@6&5@1)|
             (8@3)|
             (8@4)|
-            (8@1&5@2)
+            (8@1&5@2))
             '''
         
     comp = Composition(sieve)
