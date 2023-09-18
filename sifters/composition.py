@@ -215,7 +215,7 @@ class Composition:
 
             # Join the SELECT statements using UNION ALL and create the combined table
             combine_command = f'''CREATE TABLE "{texture}_temp" AS 
-                                {" UNION ALL ".join(select_statements)};'''
+                                {" UNION ".join(select_statements)};'''
             sql_commands.append(combine_command)
 
             # Delete original table and rename the combined table to the original name
@@ -226,214 +226,119 @@ class Composition:
             for new_table in new_tables:
                 sql_commands.append(f'DROP TABLE "{new_table}";')
 
+            # Continue appending other SQL commands
+            columns_with_end = columns + ["End"]
+            group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns_with_end]
+            group_query_body = ', '.join(group_query_parts)
+
+            group_query = f'''
+            CREATE TABLE "{texture}_grouped" AS
+            SELECT Start, {group_query_body}
+            FROM "{texture}"
+            GROUP BY Start;
+            '''
+            sql_commands.append(group_query)
+
         return "\n".join(sql_commands)
 
-    
-# self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '{texture}_%';")
 
-        #     union_query = " UNION ALL ".join(f"SELECT * FROM {table}" for table in tables)
-            
-        #     # Drop the table with the same prefix name if it exists (for re-runs or updates)
-        #     drop_table_query = f"DROP TABLE IF EXISTS {prefix}"
-        #     self.cursor.execute(drop_table_query)
-            
-        #     # Save combined data into a new table named after the prefix
-        #     create_table_query = f"CREATE TABLE {prefix} AS {union_query}"
-        #     self.cursor.execute(create_table_query)
-        #     print(f"Combined data for tables with prefix '{prefix}' saved in new table named '{prefix}'.")
+        #     max_duration_query = f'''
+        #     CREATE TABLE {table_name}_max_duration AS
+        #     WITH max_durations AS (
+        #         SELECT Start, MAX(Duration) as MaxDuration
+        #         FROM {table_name}
+        #         GROUP BY Start
+        #     )
+        #     SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
+        #     FROM {table_name}_grouped g
+        #     JOIN max_durations m ON g.Start = m.Start;
+        #     '''
+        #     sql_commands.append(max_duration_query)
 
-        #     # Delete individual tables after combining them
-        #     for table in tables:
-        #         drop_individual_table_query = f"DROP TABLE {table}"
-        #         self.cursor.execute(drop_individual_table_query)
-        #         print(f"Deleted individual table '{table}'.")
+        #     create_table_query = f'''
+        #     CREATE TABLE {table_name}_end_column (
+        #         Start INTEGER, 
+        #         End INTEGER, 
+        #         Duration INTEGER,
+        #         Velocity INTEGER, 
+        #         Note TEXT
+        #     );
+        #     '''
+        #     sql_commands.append(create_table_query)
 
-        #     # YOU NEED TO SET THE GRID OF EACH TABLE WITH THE CORRESPONDING LIST OF GRID FRACTIONS IN SELF.GRID
-        #     # BEFORE YOU COMBINE THE TABLES INTO A SINGLE TABLE BASED ON PREFIX
+        #     insert_data_query = f'''
+        #     WITH ModifiedDurations AS (
+        #         SELECT 
+        #             Start,
+        #             Velocity,
+        #             Note,
+        #             CASE 
+        #                 WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
+        #                     LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
+        #                 ELSE
+        #                     Duration
+        #             END as ModifiedDuration
+        #         FROM {table_name}_max_duration
+        #     )
 
-        #     for list in self.grids_set:
-        #         print(list)
-        #         for grid in list:
-        #             print(grid)
+        #     INSERT INTO {table_name}_end_column
+        #     SELECT 
+        #         Start,
+        #         CASE 
+        #             WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
+        #             WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
+        #             ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
+        #         END as End,
+        #         ModifiedDuration,
+        #         Velocity,
+        #         Note
+        #     FROM ModifiedDurations;
+        #     '''
+        #     sql_commands.append(insert_data_query)
 
-        # Commit changes and close the connection
-        # conn.commit()
-        # conn.close()
+        #     # Add the "End" column and update its values
+        #     add_end_column_query = f"ALTER TABLE {table_name} ADD COLUMN End INTEGER;"
+        #     sql_commands.append(add_end_column_query)
 
-        # return grouped_tables
+        #     update_end_column_query = f'''
+        #     UPDATE {table_name}
+        #     SET End = (
+        #         SELECT End 
+        #         FROM {table_name}_end_column
+        #         WHERE {table_name}.Start = {table_name}_end_column.Start
+        #     );
+        #     '''
+        #     sql_commands.append(update_end_column_query)
 
-        # for key, value_list in table_data.items():
+        #     # Remove rows with duplicate "Start" and "Note" values
+        #     delete_duplicates_query = f'''
+        #     DELETE FROM {table_name} 
+        #     WHERE rowid NOT IN (
+        #         SELECT MIN(rowid) 
+        #         FROM {table_name} 
+        #         GROUP BY Start, Note
+        #     );
+        #     '''
+        #     sql_commands.append(delete_duplicates_query)
 
-            # create_key_table_query = f"""CREATE TABLE {key} (
-            #                         id INTEGER PRIMARY KEY,
-            #                         name TEXT NOT NULL,
-            #                         age INTEGER,
-            #                         email TEXT
-            #                         )"""
+        #     # Delete the "Duration" column by recreating the table without it
+        #     recreate_without_duration_query = f'''
+        #     CREATE TABLE {table_name}_temp AS 
+        #     SELECT Start, End, Note, Velocity 
+        #     FROM {table_name};
 
-            # self.cursor.execute(create_key_table_query)
+        #     DROP TABLE {table_name};
 
+        #     ALTER TABLE {table_name}_temp RENAME TO {table_name};
+        #     '''
+        #     sql_commands.append(recreate_without_duration_query)
 
-            # for value in value_list:
-            #     name = value[0]
-            #     grid = value[1]
-            #     repeat = value[2]
-
-                # # Get all the table names that follow your pattern
-                # self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'table_%';")
-                # texture_names = [row[0] for row in self.cursor.fetchall()]
-
-                # query = f"CREATE TABLE {name} AS " + " UNION ALL ".join([f"SELECT * FROM {table}" for table in texture_names])
-
-                # copy_command = f'''
-                # CREATE TABLE '{name}' AS SELECT * FROM '{key}';
-                # '''
-                
-                # # Populate the Numerator column based on the grid.numerator multiplied by Duration
-                # update_command = f'''
-                # UPDATE "{name}" SET Duration = Duration * {int(float(grid) * self.scaling_factor)};
-                # '''
-                # ### HOW DO DURATION AND START COLUMNS RELATE TO THE SCALING FACTOR
-                # sql_commands.append(query)
-                # sql_commands.append(copy_command)
-                # sql_commands.append(update_command)
-
-                # print(int(float(grid) * 1000))
-
-
-
-                    # SQL command to create a new table by copying and multiplying the Duration column by grid value
-                    # sql_command = f"""
-                    #     CREATE TABLE users (
-                    #         id INTEGER PRIMARY KEY,
-                    #         first_name TEXT NOT NULL,
-                    #         last_name TEXT NOT NULL,
-                    #         email TEXT UNIQUE NOT NULL
-                    #     );
-                    # """
-
-                    # sql_commands.append(sql_command)
-                    # self.cursor.execute(f"""CREATE TABLE {new_table_name}""")
-                    # print(sql_command)
-
-            # print(table_name)
-            # print(self.grids_set)
-            # print(self.repeats)
-
-            # # Retrieve the list of all tables with this table_name
-            # self.cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name = {table_name};")
-            # tables = self.cursor.fetchall()
-
-            # Build the query to union all tables
-            # sql_commands.append(f"CREATE TABLE {table_name} AS {' UNION ALL '.join(f'SELECT * FROM {table[0]}' for table in tables)};")
-
-            # # Continue appending other SQL commands
-            # group_query = f'''
-            # CREATE TABLE {table_name}_grouped AS
-            # SELECT Start, 
-            # {', '.join(f"GROUP_CONCAT({column}) as {column}" for column in column_names)}
-            # FROM {table_name}
-            # GROUP BY Start;
-            # '''
-            # sql_commands.append(group_query)
-
-            # max_duration_query = f'''
-            # CREATE TABLE {table_name}_max_duration AS
-            # WITH max_durations AS (
-            #     SELECT Start, MAX(Duration) as MaxDuration
-            #     FROM {table_name}
-            #     GROUP BY Start
-            # )
-            # SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
-            # FROM {table_name}_grouped g
-            # JOIN max_durations m ON g.Start = m.Start;
-            # '''
-            # sql_commands.append(max_duration_query)
-
-            # create_table_query = f'''
-            # CREATE TABLE {table_name}_end_column (
-            #     Start INTEGER, 
-            #     End INTEGER, 
-            #     Duration INTEGER,
-            #     Velocity INTEGER, 
-            #     Note TEXT
-            # );
-            # '''
-            # sql_commands.append(create_table_query)
-
-            # insert_data_query = f'''
-            # WITH ModifiedDurations AS (
-            #     SELECT 
-            #         Start,
-            #         Velocity,
-            #         Note,
-            #         CASE 
-            #             WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
-            #                 LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
-            #             ELSE
-            #                 Duration
-            #         END as ModifiedDuration
-            #     FROM {table_name}_max_duration
-            # )
-
-            # INSERT INTO {table_name}_end_column
-            # SELECT 
-            #     Start,
-            #     CASE 
-            #         WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
-            #         WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
-            #         ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
-            #     END as End,
-            #     ModifiedDuration,
-            #     Velocity,
-            #     Note
-            # FROM ModifiedDurations;
-            # '''
-            # sql_commands.append(insert_data_query)
-
-            # # Add the "End" column and update its values
-            # add_end_column_query = f"ALTER TABLE {table_name} ADD COLUMN End INTEGER;"
-            # sql_commands.append(add_end_column_query)
-
-            # update_end_column_query = f'''
-            # UPDATE {table_name}
-            # SET End = (
-            #     SELECT End 
-            #     FROM {table_name}_end_column
-            #     WHERE {table_name}.Start = {table_name}_end_column.Start
-            # );
-            # '''
-            # sql_commands.append(update_end_column_query)
-
-            # # Remove rows with duplicate "Start" and "Note" values
-            # delete_duplicates_query = f'''
-            # DELETE FROM {table_name} 
-            # WHERE rowid NOT IN (
-            #     SELECT MIN(rowid) 
-            #     FROM {table_name} 
-            #     GROUP BY Start, Note
-            # );
-            # '''
-            # sql_commands.append(delete_duplicates_query)
-
-            # # Delete the "Duration" column by recreating the table without it
-            # recreate_without_duration_query = f'''
-            # CREATE TABLE {table_name}_temp AS 
-            # SELECT Start, End, Note, Velocity 
-            # FROM {table_name};
-
-            # DROP TABLE {table_name};
-
-            # ALTER TABLE {table_name}_temp RENAME TO {table_name};
-            # '''
-            # sql_commands.append(recreate_without_duration_query)
-
-            # # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
-            # def parse_pitch_data(dataframe):
-            #     dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
-            #     dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
-            #     dataframe['Note'] = dataframe['Note'].astype(int)
-            #     return dataframe
+        #     # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
+        #     def parse_pitch_data(dataframe):
+        #         dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
+        #         dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
+        #         dataframe['Note'] = dataframe['Note'].astype(int)
+        #         return dataframe
 
         # return sql_commands
     
