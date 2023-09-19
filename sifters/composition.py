@@ -207,7 +207,7 @@ class Composition:
                 UPDATE "{texture}"
                 SET "Duration" = {new_duration};
                 '''
-                sql_commands.append(update_command)
+                # sql_commands.append(update_command)
 
                 union_all_statements = " UNION ALL ".join(select_statements)
                 create_command = f'''
@@ -273,7 +273,7 @@ class Composition:
                         WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
                             LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
                         ELSE
-                            Duration
+                            Duration * {grid * self.scaling_factor}
                     END as ModifiedDuration
                 FROM {texture}_max_duration
             )
@@ -291,7 +291,7 @@ class Composition:
                 Note
             FROM ModifiedDurations;
             '''
-            # sql_commands.append(insert_data_query)
+            sql_commands.append(insert_data_query)
 
             # Add the "End" column and update its values
             add_end_column_query = f"ALTER TABLE {texture} ADD COLUMN End INTEGER;"
@@ -356,8 +356,8 @@ class Composition:
 
     def process_table_data(self):
         self._convert_and_store_dataframes()
-        # sql_commands = self._generate_sql_commands()
-        # self._execute_sql_commands(sql_commands)
+        sql_commands = self._generate_sql_commands()
+        self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_data)
         
 
