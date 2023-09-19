@@ -28,7 +28,7 @@ class Texture:
         
         self.notes_data = self.set_notes_data()
 
-        self.notes_data.to_csv(f'data/csv/.{self.__class__.__name__}_{self.part_id}.csv')
+        self.notes_data.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
 
 
     def _get_successive_diff(self, lst):
@@ -155,11 +155,10 @@ class Texture:
             for index in indices:
                 velocity = 64
                 start = index * duration
-                end = start + duration
 
-                notes_data.append((start, end, velocity, next(note_pool)))
+                notes_data.append((start, velocity, next(note_pool), duration))
 
-        return pandas.DataFrame(notes_data, columns=['Start', 'End', 'Velocity', 'Note']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
 
 
     # @staticmethod

@@ -183,8 +183,8 @@ class Composition:
             # Fetch column names from the current table
             self.cursor.execute(f'PRAGMA table_info("{texture}")')
             columns = [row[1] for row in self.cursor.fetchall()]
-            # Exclude 'Start' and 'End' from the list
-            columns = [col for col in columns if col not in ['Start', 'End']]
+            # Exclude 'Start' from the list
+            columns = [col for col in columns if col not in ['Start']]
             columns_string = ', '.join([f'"{col}"' for col in columns])
 
             for grid, repeat in zip(self.grids_set, self.repeats):
@@ -194,11 +194,20 @@ class Composition:
 
                 select_statements = []
                 for _ in range(repeat):
-                    select_statement = f'''SELECT {columns_string}, 
-                    "Start" * {grid * self.scaling_factor} + {accumulative_value} AS "Start", 
-                    "End" * {grid * self.scaling_factor} + {accumulative_value} AS "End" FROM "{texture}"'''
+                    select_statement = f'''
+                    SELECT {columns_string}, 
+                    "Start" * {grid * self.scaling_factor} + {accumulative_value} AS 
+                    "Start" FROM "{texture}"'''
                     select_statements.append(select_statement)
                     accumulative_value += length_of_one_rep
+
+                new_duration = grid * self.scaling_factor
+                # Update the Duration column in the original table
+                update_command = f'''
+                UPDATE "{texture}"
+                SET "Duration" = {new_duration};
+                '''
+                sql_commands.append(update_command)
 
                 union_all_statements = " UNION ALL ".join(select_statements)
                 create_command = f'''
@@ -214,101 +223,89 @@ class Composition:
             select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
 
             # Join the SELECT statements using UNION ALL and create the combined table
-            combine_command = f'''CREATE TABLE "{texture}_temp" AS 
+            combine_command = f'''CREATE TABLE "{texture}_combined" AS 
                                 {" UNION ".join(select_statements)};'''
             sql_commands.append(combine_command)
 
-            # Delete original table and rename the combined table to the original name
-            sql_commands.append(f'DROP TABLE "{texture}";')
-            sql_commands.append(f'ALTER TABLE "{texture}_temp" RENAME TO "{texture}";')
-
-            # Drop the new tables as they are no longer needed
-            for new_table in new_tables:
-                sql_commands.append(f'DROP TABLE "{new_table}";')
-
             # Continue appending other SQL commands
-            columns_with_end = columns + ["End"]
-            group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns_with_end]
+            group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
             group_query_body = ', '.join(group_query_parts)
 
             group_query = f'''
             CREATE TABLE "{texture}_grouped" AS
             SELECT Start, {group_query_body}
-            FROM "{texture}"
+            FROM "{texture}_combined"
             GROUP BY Start;
             '''
             sql_commands.append(group_query)
 
-        return "\n".join(sql_commands)
+            max_duration_query = f'''
+            CREATE TABLE {texture}_max_duration AS
+            WITH max_durations AS (
+                SELECT Start, MAX(Duration) as MaxDuration
+                FROM {texture}_combined
+                GROUP BY Start
+            )
+            SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
+            FROM {texture}_grouped g
+            JOIN max_durations m ON g.Start = m.Start;
+            '''
+            sql_commands.append(max_duration_query)
 
+            create_table_query = f'''
+            CREATE TABLE {texture}_end_column (
+                Start INTEGER, 
+                End INTEGER, 
+                Duration INTEGER,
+                Velocity INTEGER, 
+                Note TEXT
+            );
+            '''
+            sql_commands.append(create_table_query)
 
-        #     max_duration_query = f'''
-        #     CREATE TABLE {table_name}_max_duration AS
-        #     WITH max_durations AS (
-        #         SELECT Start, MAX(Duration) as MaxDuration
-        #         FROM {table_name}
-        #         GROUP BY Start
-        #     )
-        #     SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
-        #     FROM {table_name}_grouped g
-        #     JOIN max_durations m ON g.Start = m.Start;
-        #     '''
-        #     sql_commands.append(max_duration_query)
+            insert_data_query = f'''
+            WITH ModifiedDurations AS (
+                SELECT 
+                    Start,
+                    Velocity,
+                    Note,
+                    CASE 
+                        WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
+                            LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
+                        ELSE
+                            Duration
+                    END as ModifiedDuration
+                FROM {texture}_max_duration
+            )
 
-        #     create_table_query = f'''
-        #     CREATE TABLE {table_name}_end_column (
-        #         Start INTEGER, 
-        #         End INTEGER, 
-        #         Duration INTEGER,
-        #         Velocity INTEGER, 
-        #         Note TEXT
-        #     );
-        #     '''
-        #     sql_commands.append(create_table_query)
+            INSERT INTO {texture}_end_column
+            SELECT 
+                Start,
+                CASE 
+                    WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
+                    WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
+                    ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
+                END as End,
+                ModifiedDuration,
+                Velocity,
+                Note
+            FROM ModifiedDurations;
+            '''
+            # sql_commands.append(insert_data_query)
 
-        #     insert_data_query = f'''
-        #     WITH ModifiedDurations AS (
-        #         SELECT 
-        #             Start,
-        #             Velocity,
-        #             Note,
-        #             CASE 
-        #                 WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
-        #                     LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
-        #                 ELSE
-        #                     Duration
-        #             END as ModifiedDuration
-        #         FROM {table_name}_max_duration
-        #     )
+            # Add the "End" column and update its values
+            add_end_column_query = f"ALTER TABLE {texture} ADD COLUMN End INTEGER;"
+            # sql_commands.append(add_end_column_query)
 
-        #     INSERT INTO {table_name}_end_column
-        #     SELECT 
-        #         Start,
-        #         CASE 
-        #             WHEN LEAD(Start, 1, NULL) OVER(ORDER BY Start) IS NULL THEN (Start + ModifiedDuration)
-        #             WHEN (Start + ModifiedDuration) < LEAD(Start, 1, NULL) OVER(ORDER BY Start) THEN (Start + ModifiedDuration)
-        #             ELSE LEAD(Start, 1, NULL) OVER(ORDER BY Start)
-        #         END as End,
-        #         ModifiedDuration,
-        #         Velocity,
-        #         Note
-        #     FROM ModifiedDurations;
-        #     '''
-        #     sql_commands.append(insert_data_query)
-
-        #     # Add the "End" column and update its values
-        #     add_end_column_query = f"ALTER TABLE {table_name} ADD COLUMN End INTEGER;"
-        #     sql_commands.append(add_end_column_query)
-
-        #     update_end_column_query = f'''
-        #     UPDATE {table_name}
-        #     SET End = (
-        #         SELECT End 
-        #         FROM {table_name}_end_column
-        #         WHERE {table_name}.Start = {table_name}_end_column.Start
-        #     );
-        #     '''
-        #     sql_commands.append(update_end_column_query)
+            update_end_column_query = f'''
+            UPDATE {texture}
+            SET End = (
+                SELECT End 
+                FROM {texture}_end_column
+                WHERE {texture}.Start = {texture}_end_column.Start
+            );
+            '''
+            # sql_commands.append(update_end_column_query)
 
         #     # Remove rows with duplicate "Start" and "Note" values
         #     delete_duplicates_query = f'''
@@ -340,7 +337,7 @@ class Composition:
         #         dataframe['Note'] = dataframe['Note'].astype(int)
         #         return dataframe
 
-        # return sql_commands
+        return "\n".join(sql_commands)
     
     
     def _execute_sql_commands(self, sql_commands):
@@ -359,8 +356,8 @@ class Composition:
 
     def process_table_data(self):
         self._convert_and_store_dataframes()
-        sql_commands = self._generate_sql_commands()
-        self._execute_sql_commands(sql_commands)
+        # sql_commands = self._generate_sql_commands()
+        # self._execute_sql_commands(sql_commands)
         # self._cleanup_tables(table_data)
         
 
