@@ -246,9 +246,10 @@ class Composition:
                 FROM {texture}_combined
                 GROUP BY Start
             )
-            SELECT g.Start, g.Velocity, g.Note, m.MaxDuration as Duration
-            FROM {texture}_grouped g
-            JOIN max_durations m ON g.Start = m.Start;
+            SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
+            FROM {texture}_combined c
+            JOIN max_durations m ON c.Start = m.Start
+            WHERE c.Duration = m.MaxDuration;  -- this ensures you pick the row with maximum Duration for each Start value.
             '''
             sql_commands.append(max_duration_query)
 
@@ -293,42 +294,6 @@ class Composition:
             '''
             sql_commands.append(insert_data_query)
 
-            # Add the "End" column and update its values
-            add_end_column_query = f"ALTER TABLE {texture} ADD COLUMN End INTEGER;"
-            # sql_commands.append(add_end_column_query)
-
-            update_end_column_query = f'''
-            UPDATE {texture}
-            SET End = (
-                SELECT End 
-                FROM {texture}_end_column
-                WHERE {texture}.Start = {texture}_end_column.Start
-            );
-            '''
-            # sql_commands.append(update_end_column_query)
-
-        #     # Remove rows with duplicate "Start" and "Note" values
-        #     delete_duplicates_query = f'''
-        #     DELETE FROM {table_name} 
-        #     WHERE rowid NOT IN (
-        #         SELECT MIN(rowid) 
-        #         FROM {table_name} 
-        #         GROUP BY Start, Note
-        #     );
-        #     '''
-        #     sql_commands.append(delete_duplicates_query)
-
-        #     # Delete the "Duration" column by recreating the table without it
-        #     recreate_without_duration_query = f'''
-        #     CREATE TABLE {table_name}_temp AS 
-        #     SELECT Start, End, Note, Velocity 
-        #     FROM {table_name};
-
-        #     DROP TABLE {table_name};
-
-        #     ALTER TABLE {table_name}_temp RENAME TO {table_name};
-        #     '''
-        #     sql_commands.append(recreate_without_duration_query)
 
         #     # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
         #     def parse_pitch_data(dataframe):
