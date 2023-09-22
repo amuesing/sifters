@@ -248,10 +248,18 @@ class Composition:
             )
             SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
             FROM {texture}_combined c
-            JOIN max_durations m ON c.Start = m.Start
-            WHERE c.Duration = m.MaxDuration;  -- this ensures you pick the row with maximum Duration for each Start value.
+            LEFT JOIN max_durations m ON c.Start = m.Start;
             '''
             sql_commands.append(max_duration_query)
+
+            drop_duplicates_from_max_duration = f'''
+            CREATE TABLE temp_table AS
+            SELECT DISTINCT * FROM {texture}_max_duration;
+            DROP TABLE {texture}_max_duration;
+            ALTER TABLE temp_table RENAME TO {texture}_max_duration;
+            '''
+
+            sql_commands.append(drop_duplicates_from_max_duration)
 
             create_table_query = f'''
             CREATE TABLE {texture}_end_column (
@@ -271,7 +279,8 @@ class Composition:
                     Velocity,
                     Note,
                     CASE 
-                        WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration THEN
+                        WHEN LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start < Duration 
+                            AND LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start > 0 THEN
                             LEAD(Start, 1, Start + Duration) OVER(ORDER BY Start) - Start
                         ELSE
                             Duration * {grid * self.scaling_factor}
@@ -294,13 +303,17 @@ class Composition:
             '''
             sql_commands.append(insert_data_query)
 
-
-        #     # Function to process pitch data from a dataframe, splitting decimal notes into note and pitch values.
-        #     def parse_pitch_data(dataframe):
-        #         dataframe['Note'] = dataframe['Note'].apply(numpy.floor)
-        #         dataframe['Pitch'] = ((dataframe['Note'] - dataframe['Note'].values) * 4095).astype(int)
-        #         dataframe['Note'] = dataframe['Note'].astype(int)
-        #         return dataframe
+            add_pitch_column = f'''
+            CREATE TABLE "{texture}_end_column_with_pitch" AS 
+            SELECT 
+                Start,
+                End,
+                Velocity,
+                CAST(Note AS INTEGER) AS Note,
+                CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
+            FROM "{texture}_end_column";
+            '''
+            sql_commands.append(add_pitch_column)
 
         return "\n".join(sql_commands)
     
