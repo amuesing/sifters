@@ -179,21 +179,21 @@ class Composition:
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         texture_names = [row[0] for row in self.cursor.fetchall()]
 
+        # Pre-calculate repeated values
+        exclude_columns_set = {'Start', 'Duration'}
+        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
+        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
+
         for texture in texture_names:
             # Fetch column names from the current table
             self.cursor.execute(f'PRAGMA table_info("{texture}")')
-            columns = [row[1] for row in self.cursor.fetchall()]
-            # Exclude 'Start' and 'Duration' from the list
-            columns = [col for col in columns if col not in ['Start', 'Duration']]
+            columns = [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
             columns_string = ', '.join([f'"{col}"' for col in columns])
 
-            for grid, repeat in zip(self.grids_set, self.repeats):
-                duration_value = grid * self.scaling_factor
-                length_of_one_rep = int(math.pow(self.period, 2) * duration_value)
-                new_table_name = f'{texture}_{duration_value}'
+            for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
                 accumulative_value = 0
-
                 select_statements = []
+
                 for _ in range(repeat):
                     select_statement = f'''
                     SELECT {columns_string}, 
@@ -203,16 +203,15 @@ class Composition:
                     select_statements.append(select_statement)
                     accumulative_value += length_of_one_rep
 
-
                 union_all_statements = " UNION ALL ".join(select_statements)
                 create_command = f'''
-                CREATE TABLE "{new_table_name}" AS 
+                CREATE TABLE "{texture}_{duration_value}" AS 
                 {union_all_statements};
                 '''
                 sql_commands.append(create_command)
             
             # List of new tables to combine
-            new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in self.grids_set]
+            new_tables = [f'{texture}_{duration}' for duration in duration_values]
 
             # Collect all SELECT statements into a list
             select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
@@ -233,33 +232,31 @@ class Composition:
             FROM "{texture}_combined"
             GROUP BY Start;
             '''
-
             sql_commands.append(group_query)
 
             max_duration_query = f'''
-            CREATE TABLE {texture}_max_duration AS
+            CREATE TABLE "{texture}_max_duration" AS
             WITH max_durations AS (
                 SELECT Start, MAX(Duration) as MaxDuration
-                FROM {texture}_combined
+                FROM "{texture}_combined"
                 GROUP BY Start
             )
             SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-            FROM {texture}_combined c
+            FROM "{texture}_combined" c
             LEFT JOIN max_durations m ON c.Start = m.Start;
             '''
             sql_commands.append(max_duration_query)
 
             drop_duplicates_from_max_duration = f'''
             CREATE TABLE temp_table AS
-            SELECT DISTINCT * FROM {texture}_max_duration;
-            DROP TABLE {texture}_max_duration;
-            ALTER TABLE temp_table RENAME TO {texture}_max_duration;
+            SELECT DISTINCT * FROM "{texture}_max_duration";
+            DROP TABLE "{texture}_max_duration";
+            ALTER TABLE temp_table RENAME TO "{texture}_max_duration";
             '''
-
             sql_commands.append(drop_duplicates_from_max_duration)
 
             create_end_table_query = f'''
-            CREATE TABLE {texture}_end_column (
+            CREATE TABLE "{texture}_end_column" (
                 Start INTEGER, 
                 End INTEGER, 
                 Duration INTEGER,
@@ -269,30 +266,22 @@ class Composition:
             '''
             sql_commands.append(create_end_table_query)
 
-            ### CHECK TO CONFIRM THAT THIS COMMAND IS WORKING  -- TRACK HOW DURATION IS CALCULATED WHEN NOT TIRED
-            ### DOES IT MAKE SENSE TO CALCULATE THE DURATION AT AGAINST THE GRID WHEN CALCULATING START
-            insert_end_data_query_for_grid = f'''
+            insert_end_data_query = f'''
             WITH ModifiedDurations AS (
                 SELECT 
                     Start,
                     Velocity,
                     Note,
                     Duration as ModifiedDuration
-                FROM {texture}_max_duration
+                FROM "{texture}_max_duration"
             ),
             DistinctEnds AS (
                 SELECT
                     Start,
-                    CASE 
-                        WHEN COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) > Start + ModifiedDuration THEN
-                            Start + ModifiedDuration
-                        ELSE
-                            COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration)
-                    END as End
+                    COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
                 FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
             )
-
-            INSERT INTO {texture}_end_column
+            INSERT INTO "{texture}_end_column"
             SELECT 
                 m.Start,
                 d.End,
@@ -302,10 +291,10 @@ class Composition:
             FROM ModifiedDurations m
             JOIN DistinctEnds d ON m.Start = d.Start;
             '''
-            sql_commands.append(insert_end_data_query_for_grid)
+            sql_commands.append(insert_end_data_query)
 
             add_pitch_column = f'''
-            CREATE TABLE "{texture}_end_column_with_pitch" AS 
+            CREATE TABLE "{texture}_base" AS 
             SELECT 
                 Start,
                 End,
@@ -315,6 +304,19 @@ class Composition:
             FROM "{texture}_end_column";
             '''
             sql_commands.append(add_pitch_column)
+
+            # At the end of the method, before returning, add the cleanup SQL commands:
+            temporary_tables = [
+                f'"{texture}_combined"',
+                f'"{texture}_max_duration"',
+                'temp_table',
+                f'"{texture}_end_column"'
+            ]
+
+            # Generate DROP TABLE commands for the temporary tables
+            for table in temporary_tables:
+                drop_command = f'DROP TABLE IF EXISTS {table};'
+                sql_commands.append(drop_command)
 
         return "\n".join(sql_commands)
 
