@@ -172,151 +172,188 @@ class Composition:
             dataframe.to_sql(name=f'{texture_key}', con=self.database_connection, if_exists='replace', index=False)
 
 
-    def _generate_sql_commands(self):
-        sql_commands = []
-
-        # Query all table names
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        texture_names = [row[0] for row in self.cursor.fetchall()]
-
-        # Pre-calculate repeated values
-        exclude_columns_set = {'Start', 'Duration'}
+    def _generate_sql_for_duration_values(self, texture, columns_string):
         duration_values = [grid * self.scaling_factor for grid in self.grids_set]
         length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
 
-        for texture in texture_names:
-            # Fetch column names from the current table
-            self.cursor.execute(f'PRAGMA table_info("{texture}")')
-            columns = [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
-            columns_string = ', '.join([f'"{col}"' for col in columns])
+        table_commands = {}
+        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
+            table_name = f"{texture}_{duration_value}"
+            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
+        
+        return table_commands
+    
 
-            for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-                accumulative_value = 0
-                select_statements = []
+    def _generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
+        accumulative_value = 0
+        select_statements = []
 
-                for _ in range(repeat):
-                    select_statement = f'''
-                    SELECT {columns_string}, 
-                    "Start" * {duration_value} + {accumulative_value} AS "Start",
-                    "Duration" * {duration_value} AS "Duration"
-                    FROM "{texture}"'''
-                    select_statements.append(select_statement)
-                    accumulative_value += length_of_one_rep
+        for _ in range(repeat):
+            select_statements.append(f'''
+            SELECT {columns_string}, 
+            "Start" * {duration_value} + {accumulative_value} AS "Start",
+            "Duration" * {duration_value} AS "Duration"
+            FROM "{texture}"''')
+            accumulative_value += length_of_one_rep
+        
+        return " UNION ALL ".join(select_statements)
+    
 
-                union_all_statements = " UNION ALL ".join(select_statements)
-                create_command = f'''
-                CREATE TABLE "{texture}_{duration_value}" AS 
-                {union_all_statements};
-                '''
-                sql_commands.append(create_command)
-            
-            # List of new tables to combine
-            new_tables = [f'{texture}_{duration}' for duration in duration_values]
+    def _generate_combined_commands(self, texture, duration_values):
+        new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in duration_values]
+        select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
+        return f'''CREATE TABLE "{texture}_combined" AS 
+                            {" UNION ".join(select_statements)};'''
+    
 
-            # Collect all SELECT statements into a list
-            select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
+    def _generate_grouped_commands(self, texture, columns):
+        group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
+        group_query_parts.append('GROUP_CONCAT("Duration") AS "Duration"')
+        group_query_body = ', '.join(group_query_parts)
+        return f'''
+        CREATE TABLE "{texture}_grouped" AS
+        SELECT Start, {group_query_body}
+        FROM "{texture}_combined"
+        GROUP BY Start;
+        '''
+    
 
-            # Join the SELECT statements using UNION ALL and create the combined table
-            combine_command = f'''CREATE TABLE "{texture}_combined" AS 
-                                {" UNION ".join(select_statements)};'''
-            sql_commands.append(combine_command)
-
-            # Continue appending other SQL commands
-            group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
-            group_query_parts.append('GROUP_CONCAT("Duration") AS "Duration"')  # Concatenate "Duration" values
-            group_query_body = ', '.join(group_query_parts)
-
-            group_query = f'''
-            CREATE TABLE "{texture}_grouped" AS
-            SELECT Start, {group_query_body}
+    def _generate_max_duration_command(self, texture):
+        return f'''
+        CREATE TABLE "{texture}_max_duration" AS
+        WITH max_durations AS (
+            SELECT Start, MAX(Duration) as MaxDuration
             FROM "{texture}_combined"
-            GROUP BY Start;
-            '''
-            sql_commands.append(group_query)
+            GROUP BY Start
+        )
+        SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
+        FROM "{texture}_combined" c
+        LEFT JOIN max_durations m ON c.Start = m.Start;
+        '''
 
-            max_duration_query = f'''
-            CREATE TABLE "{texture}_max_duration" AS
-            WITH max_durations AS (
-                SELECT Start, MAX(Duration) as MaxDuration
-                FROM "{texture}_combined"
-                GROUP BY Start
-            )
-            SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-            FROM "{texture}_combined" c
-            LEFT JOIN max_durations m ON c.Start = m.Start;
-            '''
-            sql_commands.append(max_duration_query)
 
-            drop_duplicates_from_max_duration = f'''
-            CREATE TABLE temp_table AS
-            SELECT DISTINCT * FROM "{texture}_max_duration";
-            DROP TABLE "{texture}_max_duration";
-            ALTER TABLE temp_table RENAME TO "{texture}_max_duration";
-            '''
-            sql_commands.append(drop_duplicates_from_max_duration)
+    def _generate_drop_duplicates_command(self, texture):
+        return f'''
+        CREATE TABLE temp_table AS
+        SELECT DISTINCT * FROM "{texture}_max_duration";
+        DROP TABLE "{texture}_max_duration";
+        ALTER TABLE temp_table RENAME TO "{texture}_max_duration";
+        '''
 
-            create_end_table_query = f'''
-            CREATE TABLE "{texture}_end_column" (
-                Start INTEGER, 
-                End INTEGER, 
-                Duration INTEGER,
-                Velocity INTEGER, 
-                Note TEXT
-            );
-            '''
-            sql_commands.append(create_end_table_query)
 
-            insert_end_data_query = f'''
-            WITH ModifiedDurations AS (
-                SELECT 
-                    Start,
-                    Velocity,
-                    Note,
-                    Duration as ModifiedDuration
-                FROM "{texture}_max_duration"
-            ),
-            DistinctEnds AS (
-                SELECT
-                    Start,
-                    COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
-                FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
-            )
-            INSERT INTO "{texture}_end_column"
-            SELECT 
-                m.Start,
-                d.End,
-                m.ModifiedDuration,
-                m.Velocity,
-                m.Note
-            FROM ModifiedDurations m
-            JOIN DistinctEnds d ON m.Start = d.Start;
-            '''
-            sql_commands.append(insert_end_data_query)
+    def _generate_create_end_table_command(self, texture):
+        return f'''
+        CREATE TABLE "{texture}_end_column" (
+            Start INTEGER, 
+            End INTEGER, 
+            Duration INTEGER,
+            Velocity INTEGER, 
+            Note TEXT
+        );
+        '''
 
-            add_pitch_column = f'''
-            CREATE TABLE "{texture}_base" AS 
+
+    def _generate_insert_end_data_command(self, texture):
+        return f'''
+        WITH ModifiedDurations AS (
             SELECT 
                 Start,
-                End,
                 Velocity,
-                CAST(Note AS INTEGER) AS Note,
-                CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
-            FROM "{texture}_end_column";
-            '''
-            sql_commands.append(add_pitch_column)
+                Note,
+                Duration as ModifiedDuration
+            FROM "{texture}_max_duration"
+        ),
+        DistinctEnds AS (
+            SELECT
+                Start,
+                COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
+            FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
+        )
+        INSERT INTO "{texture}_end_column"
+        SELECT 
+            m.Start,
+            d.End,
+            m.ModifiedDuration,
+            m.Velocity,
+            m.Note
+        FROM ModifiedDurations m
+        JOIN DistinctEnds d ON m.Start = d.Start;
+        '''
 
-            # At the end of the method, before returning, add the cleanup SQL commands:
-            temporary_tables = [
-                f'"{texture}_combined"',
-                f'"{texture}_max_duration"',
-                'temp_table',
-                f'"{texture}_end_column"'
-            ]
 
-            # Generate DROP TABLE commands for the temporary tables
-            for table in temporary_tables:
-                drop_command = f'DROP TABLE IF EXISTS {table};'
-                sql_commands.append(drop_command)
+    def _generate_add_pitch_column_command(self, texture):
+        return f'''
+        CREATE TABLE "{texture}_base" AS 
+        SELECT 
+            Start,
+            End,
+            Velocity,
+            CAST(Note AS INTEGER) AS Note,
+            CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
+        FROM "{texture}_end_column";
+        '''
+    
+
+    def _generate_cleanup_commands(self, texture):
+        temporary_tables = [
+            f'"{texture}_combined"',
+            f'"{texture}_max_duration"',
+            'temp_table',
+            f'"{texture}_end_column"'
+        ]
+        return [f'DROP TABLE IF EXISTS {table};' for table in temporary_tables]
+
+
+    def _fetch_texture_names(self):
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        return [row[0] for row in self.cursor.fetchall()]
+
+
+    def _fetch_columns(self, texture):
+        exclude_columns_set = {'Start', 'Duration'}
+        self.cursor.execute(f'PRAGMA table_info("{texture}")')
+        return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
+
+
+    def _generate_sql_for_duration_values(self, texture, columns_string):
+        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
+        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
+
+        table_commands = {}
+        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
+            table_name = f"{texture}_{duration_value}"
+            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
+        
+        return table_commands
+
+
+    def _generate_sql_commands(self):
+        sql_commands = []
+
+        # Fetch texture names and columns once and store
+        texture_names = self._fetch_texture_names()
+        texture_columns = {texture: self._fetch_columns(texture) for texture in texture_names}
+
+        for texture in texture_names:
+            columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
+            
+            table_commands = self._generate_sql_for_duration_values(texture, columns_string)
+            for table_name, union_statements in table_commands.items():
+                sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
+
+            # Add other SQL commands for processing
+            sql_commands.extend([
+                self._generate_combined_commands(texture, self.grids_set),
+                self._generate_grouped_commands(texture, texture_columns[texture]),
+                self._generate_max_duration_command(texture),
+                self._generate_drop_duplicates_command(texture),
+                self._generate_create_end_table_command(texture),
+                self._generate_insert_end_data_command(texture),
+                self._generate_add_pitch_column_command(texture)
+            ])
+            
+            # Cleanup
+            sql_commands.extend(self._generate_cleanup_commands(texture))
 
         return "\n".join(sql_commands)
 
