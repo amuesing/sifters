@@ -164,12 +164,33 @@ class Composition:
 
     
     def _convert_and_store_dataframes(self):
-
         for texture_key, texture_object in self.texture_objects.items():
-
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
             dataframe.to_sql(name=f'{texture_key}', con=self.database_connection, if_exists='replace', index=False)
+
+
+    def _fetch_texture_names(self):
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        return [row[0] for row in self.cursor.fetchall()]
+
+
+    def _fetch_columns(self, texture):
+        exclude_columns_set = {'Start', 'Duration'}
+        self.cursor.execute(f'PRAGMA table_info("{texture}")')
+        return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
+
+
+    def _generate_sql_for_duration_values(self, texture, columns_string):
+        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
+        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
+
+        table_commands = {}
+        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
+            table_name = f"{texture}_{duration_value}"
+            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
+        
+        return table_commands
 
 
     def _generate_sql_for_duration_values(self, texture, columns_string):
@@ -293,44 +314,51 @@ class Composition:
         FROM "{texture}_end_column";
         '''
     
+    
+    def _generate_midi_messages_table_command(self, texture):
+        return f'''
+        -- Create a copy of the base table with added Message and Time columns
+        CREATE TABLE "{texture}_midi_messages" AS
+        SELECT 
+            *,
+            'note_on' AS Message,
+            0 AS Time
+        FROM "{texture}_base";
+        
+        -- Append the 'pitchwheel' rows
+        INSERT INTO "{texture}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
+        SELECT 
+            Start, End, Velocity, Note, Pitch,
+            'pitchwheel' AS Message,
+            Time
+        FROM "{texture}_midi_messages"
+        WHERE Message = 'note_on' AND Pitch != 0.0;
+
+        -- Append the 'note_off' rows
+        INSERT INTO "{texture}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
+        SELECT 
+            Start, End, Velocity, Note, Pitch,
+            'note_off' AS Message,
+            ROUND((End - Start) * {self.ticks_per_beat}) AS Time
+        FROM "{texture}_midi_messages"
+        WHERE Message = 'note_on';
+        '''
+
+
+
 
     def _generate_cleanup_commands(self, texture):
         temporary_tables = [
             f'"{texture}_combined"',
             f'"{texture}_max_duration"',
-            'temp_table',
             f'"{texture}_end_column"'
         ]
         return [f'DROP TABLE IF EXISTS {table};' for table in temporary_tables]
 
 
-    def _fetch_texture_names(self):
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        return [row[0] for row in self.cursor.fetchall()]
-
-
-    def _fetch_columns(self, texture):
-        exclude_columns_set = {'Start', 'Duration'}
-        self.cursor.execute(f'PRAGMA table_info("{texture}")')
-        return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
-
-
-    def _generate_sql_for_duration_values(self, texture, columns_string):
-        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
-        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
-
-        table_commands = {}
-        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"{texture}_{duration_value}"
-            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
-        
-        return table_commands
-
-
     def _generate_sql_commands(self):
         sql_commands = []
 
-        # Fetch texture names and columns once and store
         texture_names = self._fetch_texture_names()
         texture_columns = {texture: self._fetch_columns(texture) for texture in texture_names}
 
@@ -341,7 +369,6 @@ class Composition:
             for table_name, union_statements in table_commands.items():
                 sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
-            # Add other SQL commands for processing
             sql_commands.extend([
                 self._generate_combined_commands(texture, self.grids_set),
                 self._generate_grouped_commands(texture, texture_columns[texture]),
@@ -349,10 +376,10 @@ class Composition:
                 self._generate_drop_duplicates_command(texture),
                 self._generate_create_end_table_command(texture),
                 self._generate_insert_end_data_command(texture),
-                self._generate_add_pitch_column_command(texture)
+                self._generate_add_pitch_column_command(texture),
+                self._generate_midi_messages_table_command(texture),
             ])
-            
-            # Cleanup
+                
             sql_commands.extend(self._generate_cleanup_commands(texture))
 
         return "\n".join(sql_commands)
@@ -367,83 +394,15 @@ class Composition:
 
 
     ### SET MIDI DATA
-        
-    def set_track_list(self):
-        track_list = []
-        
-        for kwarg in self.kwargs.values():
-            midi_track = mido.MidiTrack()
-            # midi_track.append(mido.Message('program_change', program=0))
-            midi_track.name = f'{kwarg.name}'
-            track_list.append(midi_track)
-            
-        return track_list
-    
-    # @staticmethod
-    # def filter_first_match(objects, indices):
-        
-    #     updated_objects = []
-    #     first_match_found = False
-        
-    #     # Loop over all objects in the list.
-    #     for i, obj in enumerate(objects):
-            
-    #         # Check if the current index is in the indices list.
-    #         if i in indices and not first_match_found:
-                
-    #             # If the current index is in the indices list and a match hasn't been found yet, add the object to the updated list.
-    #             updated_objects.append(obj)
-    #             first_match_found = True
-                
-    #         # If the current index is not in the indices list, add the object to the updated list.
-    #         elif i not in indices:
-    #             updated_objects.append(obj)
-
-    #     # Return the updated list.
-    #     return updated_objects
-        
-    # # # Update track list to match the combined parts.
-    # # self.track_list = filter_first_match(self.track_list, indices)
-    
-    # # Filter notes data to match the combined parts and update it with the combined notes.
-    # filtered_notes_data = filter_first_match(self.normalized_parts_data, indices)
-    # filtered_notes_data[indices[0]] = combined_notes_data
-    # self.normalized_parts_data = filtered_notes_data
-    
-    # # Remove the arguments for the combined parts from self.kwargs.
-    # for arg in args[1:]:
-    #     del self.kwargs[arg]
 
 
     def set_midi_messages(self):
         
         messages_data = []
 
-        def parse_pitch_data(dataframe):
-            
-            # Compute 'Pitch' and 'Note' columns for each row
-            for index, row in dataframe.iterrows():
-                pitch = round(row['Note'] - math.floor(row['Note']), 4)
-                note = math.floor(row['Note'])
-                dataframe.at[index, 'Note'] = note
-                
-                # Calculate Pitch value by multiplying the float by 4095.
-                # 4095 equates to the number of bits in a semitone 'pitchwheel' message
-                # There are 4096 total bits, and the Mido library numbers them 0-4095.
-                dataframe.at[index, 'Pitch'] = pitch * 4095
-            
-            # Convert 'Note' column to integer data type
-            dataframe['Note'] = dataframe['Note'].astype(int)
-            dataframe['Pitch'] = dataframe['Pitch'].astype(int)
-            
-            # Return the updated dataframe
-            return dataframe
-        
-    
         for part in self.normalized_parts_data:
 
             new_rows = []
-            part = parse_pitch_data(part)
 
             for _, row in part.iterrows():
                 part['Message'] = 'note_on'
