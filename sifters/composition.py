@@ -322,15 +322,18 @@ class Composition:
         SELECT 
             *,
             'note_on' AS Message,
-            0 AS Time
+            CASE 
+                WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat}) 
+                ELSE 0 
+            END AS Time
         FROM "{texture}_base";
-        
+            
         -- Append the 'pitchwheel' rows
         INSERT INTO "{texture}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
         SELECT 
             Start, End, Velocity, Note, Pitch,
             'pitchwheel' AS Message,
-            Time
+            0 AS Time
         FROM "{texture}_midi_messages"
         WHERE Message = 'note_on' AND Pitch != 0.0;
 
@@ -339,12 +342,10 @@ class Composition:
         SELECT 
             Start, End, Velocity, Note, Pitch,
             'note_off' AS Message,
-            ROUND((End - Start) * {self.ticks_per_beat}) AS Time
+            (End - Start) * {self.ticks_per_beat} AS Time
         FROM "{texture}_midi_messages"
         WHERE Message = 'note_on';
         '''
-
-
 
 
     def _generate_cleanup_commands(self, texture):
@@ -392,101 +393,49 @@ class Composition:
         self.database_connection.commit()
         self.database_connection.close()
 
-
-    ### SET MIDI DATA
-
-
-    def set_midi_messages(self):
+       
+    def write_midi(self):
         
-        messages_data = []
+        messages_data = self.set_midi_messages()
+        
+        def csv_to_midi_messages(dataframe):
 
-        for part in self.normalized_parts_data:
-
-            new_rows = []
-
-            for _, row in part.iterrows():
-                part['Message'] = 'note_on'
-                part['Time'] = 0
-                
-            for _, row in part.iterrows():
-                new_rows.append(row)
+            messages = []
+            for _, row in dataframe.iterrows():
                 if row['Message'] == 'note_on':
-                    if row['Pitch'] != 0.0:
-                        pitchwheel_row = row.copy()
-                        pitchwheel_row['Message'] = 'pitchwheel'
-                        # Why us this creating a float and not an integer
-                        # pitchwheel_row['Pitch'] = pitchwheel_row['Pitch'] * 4095
-                        new_rows.append(pitchwheel_row)
-                    note_off_row = row.copy()
-                    note_off_row['Message'] = 'note_off'
-                    note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-                    new_rows.append(note_off_row)
-            
-            ### THERE IS AN EASIER WAY TO DO THIS BY SIMPLY ASSIGNING THE STARTS OFFSET TO THE TIME OF THE FIRST NOTE_ON MESSAGE    
-            # Check if the DataFrame begins with a note or a rest.
-            # If the compostion begins with a rest, create a 'note_off' message that is equal to the duration of the rest.
-            if part.iloc[0]['Start'] != 0.0:
-                note_off_row = part.iloc[0].copy()
-                note_off_row['Velocity'] = 0
-                note_off_row['Note'] = 0
-                note_off_row['Message'] = 'note_off'
-                note_off_row['Duration'] = part.iloc[0]['Start']
-                note_off_row['Time'] = round(note_off_row['Duration'] * self.ticks_per_beat)
-                note_off_row['Start'] = 0.0
-                new_rows.insert(0, note_off_row)
-                
-            messages_dataframe = pandas.DataFrame(new_rows)
-            column_order = ['Start', 'Message', 'Note', 'Pitch', 'Velocity', 'Time']
-            messages_dataframe = messages_dataframe.reindex(columns=column_order)
-            messages_dataframe.reset_index(drop=True, inplace=True)
-            
-            messages_data.append(messages_dataframe)
-                        
-            return messages_data
-    
-             
-    # def write_midi(self):
+                    messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+                elif row['Message'] == 'pitchwheel':
+                    messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
+                elif row['Message'] == 'note_off':
+                    messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+
+            return messages
         
-    #     messages_data = self.set_midi_messages()
+        # Create a new MIDI file object
+        score = mido.MidiFile()
+
+        # Set the ticks per beat resolution
+        score.ticks_per_beat = self.ticks_per_beat
+
+        # # Write method to determine TimeSignature
+        time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
+        self.track_list[0].append(time_signature)
+
+        # Convert the CSV data to Note messages and PitchBend messages
+        midi_messages = [csv_to_midi_messages(part) for part in messages_data]
         
-    #     def csv_to_midi_messages(dataframe):
+        # Add the Tracks to the MIDI File
+        for track in self.track_list:
+            score.tracks.append(track)
 
-    #         messages = []
-    #         for _, row in dataframe.iterrows():
-    #             if row['Message'] == 'note_on':
-    #                 messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
-    #             elif row['Message'] == 'pitchwheel':
-    #                 messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
-    #             elif row['Message'] == 'note_off':
-    #                 messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+        # Add the Note messages and PitchBend messages to the MIDI file
+        for i, _ in enumerate(self.track_list):
+            for message in midi_messages:
+                for msg in message:
+                    self.track_list[i].append(msg)
 
-    #         return messages
-        
-    #     # Create a new MIDI file object
-    #     score = mido.MidiFile()
-
-    #     # Set the ticks per beat resolution
-    #     score.ticks_per_beat = self.ticks_per_beat
-
-    #     # # Write method to determine TimeSignature
-    #     time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
-    #     self.track_list[0].append(time_signature)
-
-    #     # Convert the CSV data to Note messages and PitchBend messages
-    #     midi_messages = [csv_to_midi_messages(part) for part in messages_data]
-        
-    #     # Add the Tracks to the MIDI File
-    #     for track in self.track_list:
-    #         score.tracks.append(track)
-
-    #     # Add the Note messages and PitchBend messages to the MIDI file
-    #     for i, _ in enumerate(self.track_list):
-    #         for message in midi_messages:
-    #             for msg in message:
-    #                 self.track_list[i].append(msg)
-
-    #     # Write the MIDI file
-    #     score.save('data/mid/score.mid')
+        # Write the MIDI file
+        score.save('data/mid/score.mid')
         
         
 if __name__ == '__main__':
