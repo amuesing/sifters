@@ -26,6 +26,8 @@ class Composition:
         # Connect to SQLite database
         self.database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
 
+        self.database_connection.row_factory = sqlite3.Row 
+
         self.cursor = self.database_connection.cursor()
 
         # Initialize an instance of the Utility class to call helper methods from.
@@ -60,6 +62,11 @@ class Composition:
         self.texture_objects = self.set_texture_objects()
 
         self.process_table_data()
+
+        self.write_midi()
+
+        self.database_connection.commit()
+        self.database_connection.close()
 
 
     def set_binary(self, siev):
@@ -179,18 +186,6 @@ class Composition:
         exclude_columns_set = {'Start', 'Duration'}
         self.cursor.execute(f'PRAGMA table_info("{texture}")')
         return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
-
-
-    def _generate_sql_for_duration_values(self, texture, columns_string):
-        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
-        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
-
-        table_commands = {}
-        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"{texture}_{duration_value}"
-            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
-        
-        return table_commands
 
 
     def _generate_sql_for_duration_values(self, texture, columns_string):
@@ -345,6 +340,15 @@ class Composition:
             (End - Start) * {self.ticks_per_beat} AS Time
         FROM "{texture}_midi_messages"
         WHERE Message = 'note_on';
+
+        -- Order the table by Start
+        CREATE TABLE "{texture}_midi_messages_ordered" AS
+        SELECT * FROM "{texture}_midi_messages"
+        ORDER BY Start ASC;
+
+        -- Optionally, you can now drop the old table and rename the ordered one:
+        DROP TABLE "{texture}_midi_messages";
+        ALTER TABLE "{texture}_midi_messages_ordered" RENAME TO "{texture}_midi_messages";
         '''
 
 
@@ -390,64 +394,111 @@ class Composition:
         self._convert_and_store_dataframes()
         sql_commands = self._generate_sql_commands()
         self.cursor.executescript(sql_commands)
-        self.database_connection.commit()
-        self.database_connection.close()
 
-       
+
+
     def write_midi(self):
-        
-        messages_data = self.set_midi_messages()
-        
-        def csv_to_midi_messages(dataframe):
 
+        midi_track = mido.MidiTrack()
+        midi_track.name = 'mono'
+        
+        def fetch_midi_messages_from_sql(self):
+            table_name = 'monophonic_midi_messages'
+            # table_name = f"{texture}_midi_messages"  # Constructing the table name
+            query = f"SELECT * FROM {table_name}"  # Fetching data from the specific table
+            self.cursor.execute(query)
+            return self.cursor.fetchall()
+
+
+        def data_to_midi_messages(data):
             messages = []
-            for _, row in dataframe.iterrows():
+            for row in data:
                 if row['Message'] == 'note_on':
                     messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
                 elif row['Message'] == 'pitchwheel':
                     messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
                 elif row['Message'] == 'note_off':
                     messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
-
             return messages
-        
+
         # Create a new MIDI file object
         score = mido.MidiFile()
 
         # Set the ticks per beat resolution
         score.ticks_per_beat = self.ticks_per_beat
 
-        # # Write method to determine TimeSignature
+        # Write method to determine TimeSignature
         time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
-        self.track_list[0].append(time_signature)
+        # Assuming track_list[0] is initialized and exists
+        midi_track.append(time_signature)
 
-        # Convert the CSV data to Note messages and PitchBend messages
-        midi_messages = [csv_to_midi_messages(part) for part in messages_data]
-        
-        # Add the Tracks to the MIDI File
-        for track in self.track_list:
-            score.tracks.append(track)
+        # Fetch data for each texture and convert it to MIDI messages
 
-        # Add the Note messages and PitchBend messages to the MIDI file
-        for i, _ in enumerate(self.track_list):
-            for message in midi_messages:
-                for msg in message:
-                    self.track_list[i].append(msg)
+        data = fetch_midi_messages_from_sql(self)
+        midi_messages = data_to_midi_messages(data)
 
-        # Write the MIDI file
+        # Save the MIDI file
         score.save('data/mid/score.mid')
+
+       
+    # def write_midi(self):
+        
+    #     messages_data = self.set_midi_messages()
+        
+    #     def csv_to_midi_messages(dataframe):
+
+    #         messages = []
+    #         for _, row in dataframe.iterrows():
+    #             if row['Message'] == 'note_on':
+    #                 messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+    #             elif row['Message'] == 'pitchwheel':
+    #                 messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
+    #             elif row['Message'] == 'note_off':
+    #                 messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+
+    #         return messages
+        
+    #     # Create a new MIDI file object
+    #     score = mido.MidiFile()
+
+    #     # Set the ticks per beat resolution
+    #     score.ticks_per_beat = self.ticks_per_beat
+
+    #     # # Write method to determine TimeSignature
+    #     time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
+    #     self.track_list[0].append(time_signature)
+
+    #     # Convert the CSV data to Note messages and PitchBend messages
+    #     midi_messages = [csv_to_midi_messages(part) for part in messages_data]
+        
+    #     # Add the Tracks to the MIDI File
+    #     for track in self.track_list:
+    #         score.tracks.append(track)
+
+    #     # Add the Note messages and PitchBend messages to the MIDI file
+    #     for i, _ in enumerate(self.track_list):
+    #         for message in midi_messages:
+    #             for msg in message:
+    #                 self.track_list[i].append(msg)
+
+    #     # Write the MIDI file
+    #     score.save('data/mid/score.mid')
         
         
 if __name__ == '__main__':
 
+    # sieve = '''
+    #         (((8@0|8@1|8@7)&(5@1|5@3))|
+    #         ((8@0|8@1|8@2)&5@0)|
+    #         ((8@5|8@6)&(5@2|5@3|5@4))|
+    #         (8@6&5@1)|
+    #         (8@3)|
+    #         (8@4)|
+    #         (8@1&5@2))
+    #         '''
+
     sieve = '''
-            (((8@0|8@1|8@7)&(5@1|5@3))|
-            ((8@0|8@1|8@2)&5@0)|
-            ((8@5|8@6)&(5@2|5@3|5@4))|
-            (8@6&5@1)|
-            (8@3)|
-            (8@4)|
-            (8@1&5@2))
-            '''
+        ((8@0|8@1|8@7)&(5@1|5@3))
+        '''
         
     comp = Composition(sieve)
