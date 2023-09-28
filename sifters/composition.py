@@ -414,12 +414,13 @@ class Composition:
             messages = []
             for row in data:
                 if row['Message'] == 'note_on':
-                    messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+                    messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time'] / self.scaling_factor))
                 elif row['Message'] == 'pitchwheel':
-                    messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time']))
+                    messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time'] / self.scaling_factor))
                 elif row['Message'] == 'note_off':
-                    messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time']))
+                    messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time'] / self.scaling_factor))
             return messages
+
 
         # Create a new MIDI file object
         score = mido.MidiFile()
@@ -436,6 +437,9 @@ class Composition:
 
         data = fetch_midi_messages_from_sql(self)
         midi_messages = data_to_midi_messages(data)
+
+        for message in midi_messages:
+            midi_track.append(message)
 
         # Save the MIDI file
         score.save('data/mid/score.mid')
