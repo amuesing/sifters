@@ -63,7 +63,7 @@ class Composition:
 
         self.process_table_data()
 
-        # self.write_midi()
+        self.write_midi()
 
         self.database_connection.commit()
         self.database_connection.close()
@@ -311,67 +311,73 @@ class Composition:
     
     def _generate_midi_messages_table_command(self, texture):
         return f'''
-        -- [1] Create the initial MIDI messages table:
-        CREATE TABLE "{texture}_midi_messages_temp" AS
-        SELECT 
-            *,
-            'note_on' AS Message,
-            CASE 
-                WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
-                ELSE 0 
-            END AS Time
-        FROM "{texture}_base";
-
-        -- [2] Create rests by calculating delta between current Start and previous End
-        -- Begin updating the table containing MIDI messages. The exact table name depends on the 'texture' variable.
-        UPDATE "{texture}_midi_messages_temp"
-
-        -- Adjust the value of the "Time" column. If the calculation results in NULL, set it to 0.
-        SET Time = COALESCE("{texture}_midi_messages_temp".Start - t.PreviousEnd, 0)
-
-        -- Start of the subquery to provide additional data for the main UPDATE command.
-        FROM (
-            -- Select the "Start" value of the current row and the "End" value of the previous row.
+            -- [1] Create the initial MIDI messages table:
+            -- This step constructs a new table based on the 'texture' variable with "_midi_messages_temp" appended.
+            -- Each row is initialized with a "note_on" message, and the Time column is calculated based on certain conditions.
+            CREATE TABLE "{texture}_midi_messages_temp" AS
             SELECT 
-                Start,
-                -- Use LAG() to get the "End" value of the previous row, ordering the data by the "Start" value in ascending order.
-                LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
-            -- Data for the subquery is sourced from the table named based on the 'texture' variable.
+                *,
+                'note_on' AS Message,
+                CASE 
+                    WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
+                    ELSE 0 
+                END AS Time
+            FROM "{texture}_base";
+
+            -- [2.1] Create a table of rows meeting the delta condition (generating rests):
+            -- Before adjusting the main table, we'll identify and store rows that meet the delta condition into a new table.
+            -- This table captures rows that would generate rests in the MIDI.
+            CREATE TABLE "{texture}_midi_rests" AS
+            SELECT 
+                a.*
+            FROM "{texture}_midi_messages_temp" AS a
+            JOIN (
+                SELECT 
+                    Start,
+                    LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
+                FROM "{texture}_midi_messages_temp"
+            ) AS t
+            ON a.Start = t.Start  -- Join the main table and subquery based on the 'Start' column.
+            WHERE a.Start != t.PreviousEnd;  -- Condition to identify rows generating rests.
+
+            -- [2.2] Update the Time column in the main table based on delta condition:
+            -- The "Time" column is adjusted based on the difference between the current row's 'Start' and the previous row's 'End'.
+            UPDATE "{texture}_midi_messages_temp"
+            SET Time = COALESCE("{texture}_midi_messages_temp".Start - t.PreviousEnd, 0)
+            FROM (
+                SELECT 
+                    Start,
+                    LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
+                FROM "{texture}_midi_messages_temp"
+            ) AS t
+            WHERE 
+                "{texture}_midi_messages_temp".Start = t.Start 
+                AND "{texture}_midi_messages_temp".Start != t.PreviousEnd;
+
+            -- [3] Append rows for 'pitchwheel' and 'note_off' events:
+            -- This step identifies 'note_on' messages in the main table and creates corresponding 'pitchwheel' and 'note_off' events.
+            INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
+            SELECT 
+                Start, End, Velocity, Note, Pitch,
+                CASE 
+                    WHEN Pitch != 0.0 THEN 'pitchwheel'
+                    ELSE 'note_off'
+                END AS Message,
+                CASE 
+                    WHEN Pitch != 0.0 THEN 0
+                    ELSE (End - Start) * {self.ticks_per_beat}
+                END AS Time
             FROM "{texture}_midi_messages_temp"
-        -- Alias the subquery as 't' for reference in the main UPDATE query.
-        ) AS t
+            WHERE Message = 'note_on';
 
-        -- Conditions for the rows to be updated:
-        WHERE 
-            -- Ensure we're referencing the correct row by matching the "Start" values.
-            "{texture}_midi_messages_temp".Start = t.Start 
-            -- Avoid updating rows where the "Start" value matches the "End" value of the previous row.
-            AND "{texture}_midi_messages_temp".Start != t.PreviousEnd;
+            -- [4] Organize the MIDI messages by 'Start' time and store in a new table:
+            -- This final table captures the fully processed MIDI messages in chronological order.
+            CREATE TABLE "{texture}_midi_messages" AS
+            SELECT * FROM "{texture}_midi_messages_temp"
+            ORDER BY Start ASC;
 
-
-
-        -- [3] Append rows for 'pitchwheel' and 'note_off' events in one go:
-        INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
-        SELECT 
-            Start, End, Velocity, Note, Pitch,
-            CASE 
-                WHEN Pitch != 0.0 THEN 'pitchwheel'
-                ELSE 'note_off'
-            END AS Message,
-            CASE 
-                WHEN Pitch != 0.0 THEN 0
-                ELSE (End - Start) * {self.ticks_per_beat}
-            END AS Time
-        FROM "{texture}_midi_messages_temp"
-        WHERE Message = 'note_on';
-
-        -- [4] Order the MIDI messages by Start time and rename the table:
-        CREATE TABLE "{texture}_midi_messages" AS
-        SELECT * FROM "{texture}_midi_messages_temp"
-        ORDER BY Start ASC;
-
-        -- [5] Cleanup: Drop the temporary table:
-        DROP TABLE "{texture}_midi_messages_temp";
+            -- [5] Cleanup: Drop the temporary table to free up resources:
+            DROP TABLE "{texture}_midi_messages_temp";
         '''
 
 
@@ -465,7 +471,7 @@ class Composition:
         midi_messages, midi_data_list = data_to_midi_messages(data)
 
         # Save to CSV
-        save_messages_to_csv(midi_data_list, 'messages.csv')
+        save_messages_to_csv(midi_data_list, 'data/csv/messages.csv')
 
         # Append messages to MIDI track and save MIDI file
         for message in midi_messages:
