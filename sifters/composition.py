@@ -63,7 +63,7 @@ class Composition:
 
         self.process_table_data()
 
-        self.write_midi()
+        # self.write_midi()
 
         self.database_connection.commit()
         self.database_connection.close()
@@ -309,46 +309,69 @@ class Composition:
         FROM "{texture}_end_column";
         '''
     
-    
     def _generate_midi_messages_table_command(self, texture):
         return f'''
-        -- Create a copy of the base table with added Message and Time columns
-        CREATE TABLE "{texture}_midi_messages" AS
+        -- [1] Create the initial MIDI messages table:
+        CREATE TABLE "{texture}_midi_messages_temp" AS
         SELECT 
             *,
             'note_on' AS Message,
             CASE 
-                WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat}) 
+                WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                 ELSE 0 
             END AS Time
         FROM "{texture}_base";
-            
-        -- Append the 'pitchwheel' rows
-        INSERT INTO "{texture}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
-        SELECT 
-            Start, End, Velocity, Note, Pitch,
-            'pitchwheel' AS Message,
-            0 AS Time
-        FROM "{texture}_midi_messages"
-        WHERE Message = 'note_on' AND Pitch != 0.0;
 
-        -- Append the 'note_off' rows
-        INSERT INTO "{texture}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
+        -- [2] Create rests by calculating delta between current Start and previous End
+        -- Begin updating the table containing MIDI messages. The exact table name depends on the 'texture' variable.
+        UPDATE "{texture}_midi_messages_temp"
+
+        -- Adjust the value of the "Time" column. If the calculation results in NULL, set it to 0.
+        SET Time = COALESCE("{texture}_midi_messages_temp".Start - t.PreviousEnd, 0)
+
+        -- Start of the subquery to provide additional data for the main UPDATE command.
+        FROM (
+            -- Select the "Start" value of the current row and the "End" value of the previous row.
+            SELECT 
+                Start,
+                -- Use LAG() to get the "End" value of the previous row, ordering the data by the "Start" value in ascending order.
+                LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
+            -- Data for the subquery is sourced from the table named based on the 'texture' variable.
+            FROM "{texture}_midi_messages_temp"
+        -- Alias the subquery as 't' for reference in the main UPDATE query.
+        ) AS t
+
+        -- Conditions for the rows to be updated:
+        WHERE 
+            -- Ensure we're referencing the correct row by matching the "Start" values.
+            "{texture}_midi_messages_temp".Start = t.Start 
+            -- Avoid updating rows where the "Start" value matches the "End" value of the previous row.
+            AND "{texture}_midi_messages_temp".Start != t.PreviousEnd;
+
+
+
+        -- [3] Append rows for 'pitchwheel' and 'note_off' events in one go:
+        INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
         SELECT 
             Start, End, Velocity, Note, Pitch,
-            'note_off' AS Message,
-            (End - Start) * {self.ticks_per_beat} AS Time
-        FROM "{texture}_midi_messages"
+            CASE 
+                WHEN Pitch != 0.0 THEN 'pitchwheel'
+                ELSE 'note_off'
+            END AS Message,
+            CASE 
+                WHEN Pitch != 0.0 THEN 0
+                ELSE (End - Start) * {self.ticks_per_beat}
+            END AS Time
+        FROM "{texture}_midi_messages_temp"
         WHERE Message = 'note_on';
 
-        -- Order the table by Start
-        CREATE TABLE "{texture}_midi_messages_ordered" AS
-        SELECT * FROM "{texture}_midi_messages"
+        -- [4] Order the MIDI messages by Start time and rename the table:
+        CREATE TABLE "{texture}_midi_messages" AS
+        SELECT * FROM "{texture}_midi_messages_temp"
         ORDER BY Start ASC;
 
-        -- Optionally, you can now drop the old table and rename the ordered one:
-        DROP TABLE "{texture}_midi_messages";
-        ALTER TABLE "{texture}_midi_messages_ordered" RENAME TO "{texture}_midi_messages";
+        -- [5] Cleanup: Drop the temporary table:
+        DROP TABLE "{texture}_midi_messages_temp";
         '''
 
 
@@ -396,31 +419,38 @@ class Composition:
         self.cursor.executescript(sql_commands)
 
 
-
     def write_midi(self):
 
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
-        
-        def fetch_midi_messages_from_sql(self):
+            
+        def fetch_midi_messages_from_sql():
             table_name = 'monophonic_midi_messages'
-            # table_name = f"{texture}_midi_messages"  # Constructing the table name
-            query = f"SELECT * FROM {table_name}"  # Fetching data from the specific table
+            query = f"SELECT * FROM {table_name}"
             self.cursor.execute(query)
             return self.cursor.fetchall()
-
-
+            
         def data_to_midi_messages(data):
             messages = []
+            midi_data_list = []
             for row in data:
-                if row['Message'] == 'note_on':
-                    messages.append(mido.Message('note_on', note=row['Note'], velocity=row['Velocity'], time=row['Time'] / self.scaling_factor))
+                message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / self.scaling_factor), 'Pitch': ''}
+                if row['Message'] == 'note_on' or row['Message'] == 'note_off':
+                    msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=message_dict['Time'])
+                    message_dict['Note'] = row['Note']
+                    message_dict['Velocity'] = row['Velocity']
                 elif row['Message'] == 'pitchwheel':
-                    messages.append(mido.Message('pitchwheel', pitch=row['Pitch'], time=row['Time'] / self.scaling_factor))
-                elif row['Message'] == 'note_off':
-                    messages.append(mido.Message('note_off', note=row['Note'], velocity=row['Velocity'], time=row['Time'] / self.scaling_factor))
-            return messages
+                    msg = mido.Message(row['Message'], pitch=row['Pitch'], time=message_dict['Time'])
+                    message_dict['Pitch'] = row['Pitch']
 
+                messages.append(msg)
+                midi_data_list.append(message_dict)
+
+            return messages, midi_data_list
+
+        def save_messages_to_csv(midi_data_list, filename):
+            df = pandas.DataFrame(midi_data_list)
+            df.to_csv(filename, index=False)
 
         # Create a new MIDI file object
         score = mido.MidiFile()
@@ -428,20 +458,20 @@ class Composition:
         # Set the ticks per beat resolution
         score.ticks_per_beat = self.ticks_per_beat
 
-        # Write method to determine TimeSignature
-        time_signature = mido.MetaMessage('time_signature', numerator=5, denominator=4)
-        # Assuming track_list[0] is initialized and exists
-        midi_track.append(time_signature)
+        midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
-        # Fetch data for each texture and convert it to MIDI messages
+        # Fetch data and convert to MIDI messages
+        data = fetch_midi_messages_from_sql()
+        midi_messages, midi_data_list = data_to_midi_messages(data)
 
-        data = fetch_midi_messages_from_sql(self)
-        midi_messages = data_to_midi_messages(data)
+        # Save to CSV
+        save_messages_to_csv(midi_data_list, 'messages.csv')
 
+        # Append messages to MIDI track and save MIDI file
         for message in midi_messages:
             midi_track.append(message)
 
-        # Save the MIDI file
+        score.tracks.append(midi_track)
         score.save('data/mid/score.mid')
 
        
@@ -495,14 +525,14 @@ if __name__ == '__main__':
     #         (((8@0|8@1|8@7)&(5@1|5@3))|
     #         ((8@0|8@1|8@2)&5@0)|
     #         ((8@5|8@6)&(5@2|5@3|5@4))|
-    #         (8@6&5@1)|
-    #         (8@3)|
-    #         (8@4)|
+    #         # (8@6&5@1)|
+    #         # (8@3)|
+    #         # (8@4)|
     #         (8@1&5@2))
     #         '''
 
     sieve = '''
-        ((8@0|8@1|8@7)&(5@1|5@3))
+        (8@3)
         '''
         
     comp = Composition(sieve)
