@@ -61,13 +61,6 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
 
-        self.process_table_data()
-
-        self.write_midi()
-
-        self.database_connection.commit()
-        self.database_connection.close()
-
 
     def set_binary(self, siev):
         obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
@@ -439,18 +432,18 @@ class Composition:
         self.cursor.executescript(sql_commands)
 
 
-    def write_midi(self):
+    def bpm_to_tempo(self, bpm):
+        return int(60_000_000 / bpm)
+    
 
+    def write_midi(self, table_name):
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
-        
 
         def fetch_midi_messages_from_sql():
-            table_name = 'monophonic_midi_messages'
             query = f"SELECT * FROM {table_name}"
             self.cursor.execute(query)
             return self.cursor.fetchall()
-        
 
         def data_to_midi_messages(data):
             messages = []
@@ -470,7 +463,6 @@ class Composition:
 
             return messages, midi_data_list
 
-
         def save_messages_to_csv(midi_data_list, filename):
             df = pandas.DataFrame(midi_data_list)
             df.to_csv(filename, index=False)
@@ -481,6 +473,11 @@ class Composition:
         # Set the ticks per beat resolution
         score.ticks_per_beat = self.ticks_per_beat
 
+        # Setting BPM
+        bpm = 33  # You can change this value to set a different BPM
+        tempo = self.bpm_to_tempo(bpm)
+        midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
+        
         midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
         # Fetch data and convert to MIDI messages
@@ -515,3 +512,10 @@ if __name__ == '__main__':
         '''
         
     comp = Composition(sieve)
+    
+    comp.process_table_data()
+
+    comp.write_midi('monophonic_midi_messages')
+
+    comp.database_connection.commit()
+    comp.database_connection.close()
