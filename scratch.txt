@@ -1,0 +1,6 @@
+GOALS:
+
+1) Move SQL Commands to UTILITY class
+
+2) Update commands to accommodate for a relational database strategy
+in which a texture has many midi messages (and a composition has many textures)
