@@ -5,14 +5,14 @@ import itertools
 import math
 import sqlite3
 
-import datetime
+
 import mido
 import music21
 import numpy
 import pandas
 import tqdm
 
-import utility
+import sifters.database as database
 
 from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
 
@@ -20,18 +20,9 @@ class Composition:
     
     def __init__(self, sieve):
 
-        # Get the current timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        
-        # Connect to SQLite database
-        self.database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
-
-        self.database_connection.row_factory = sqlite3.Row 
-
-        self.cursor = self.database_connection.cursor()
 
         # Initialize an instance of the Utility class to call helper methods from.
-        self.utility = utility.Utility()
+        self.database = database.Database()
 
         # Assign sieves argument to self.
         self.sieve = sieve
@@ -121,7 +112,7 @@ class Composition:
     # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
     def _set_normalized_numerators(self, grids):
         # Compute the least common multiple (LCM) of all denominators in the list.
-        lcm = self.utility.get_least_common_multiple([fraction.denominator for fraction in grids])
+        lcm = self.database.get_least_common_multiple([fraction.denominator for fraction in grids])
         
         # Normalize each fraction in the list by adjusting the numerator to the LCM.
         normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids]
@@ -136,7 +127,7 @@ class Composition:
         normalized_numerators = self._set_normalized_numerators(self.grids_set)
         
         # Determine the least common multiple of the normalized numerators.
-        least_common_multiple = self.utility.get_least_common_multiple(normalized_numerators)
+        least_common_multiple = self.database.get_least_common_multiple(normalized_numerators)
 
         # Calculate the repetition for each fraction by dividing the LCM by the normalized numerator.
         repeats = [least_common_multiple // num for num in normalized_numerators]
@@ -167,18 +158,18 @@ class Composition:
         for texture_key, texture_object in self.texture_objects.items():
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-            dataframe.to_sql(name=f'{texture_key}', con=self.database_connection, if_exists='replace', index=False)
+            dataframe.to_sql(name=f'{texture_key}', con=self.database.database_connection, if_exists='replace', index=False)
 
 
     def _fetch_texture_names(self):
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        return [row[0] for row in self.cursor.fetchall()]
+        self.database.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        return [row[0] for row in self.database.cursor.fetchall()]
 
 
     def _fetch_columns(self, texture):
         exclude_columns_set = {'Start', 'Duration'}
-        self.cursor.execute(f'PRAGMA table_info("{texture}")')
-        return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
+        self.database.cursor.execute(f'PRAGMA table_info("{texture}")')
+        return [row[1] for row in self.database.cursor.fetchall() if row[1] not in exclude_columns_set]
 
 
     def _generate_sql_for_duration_values(self, texture, columns_string):
@@ -400,8 +391,8 @@ class Composition:
     def _generate_sql_commands(self):
         sql_commands = []
 
-        texture_names = self._fetch_texture_names()
-        texture_columns = {texture: self._fetch_columns(texture) for texture in texture_names}
+        texture_names = self.database._fetch_texture_names()
+        texture_columns = {texture: self.database._fetch_columns(texture) for texture in texture_names}
 
         for texture in texture_names:
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
@@ -411,17 +402,17 @@ class Composition:
                 sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
             sql_commands.extend([
-                self._generate_combined_commands(texture, self.grids_set),
-                self._generate_grouped_commands(texture, texture_columns[texture]),
-                self._generate_max_duration_command(texture),
-                self._generate_drop_duplicates_command(texture),
-                self._generate_create_end_table_command(texture),
-                self._generate_insert_end_data_command(texture),
-                self._generate_add_pitch_column_command(texture),
-                self._generate_midi_messages_table_command(texture),
+                self.database._generate_combined_commands(texture, self.grids_set),
+                self.database._generate_grouped_commands(texture, texture_columns[texture]),
+                self.database._generate_max_duration_command(texture),
+                self.database._generate_drop_duplicates_command(texture),
+                self.database._generate_create_end_table_command(texture),
+                self.database._generate_insert_end_data_command(texture),
+                self.database._generate_add_pitch_column_command(texture),
+                self.database._generate_midi_messages_table_command(texture),
             ])
                 
-            sql_commands.extend(self._generate_cleanup_commands(texture))
+            sql_commands.extend(self.database._generate_cleanup_commands(texture))
 
         return "\n".join(sql_commands)
 
@@ -429,7 +420,7 @@ class Composition:
     def process_table_data(self):
         self._convert_and_store_dataframes()
         sql_commands = self._generate_sql_commands()
-        self.cursor.executescript(sql_commands)
+        self.database.cursor.executescript(sql_commands)
 
 
     def bpm_to_tempo(self, bpm):
@@ -442,8 +433,8 @@ class Composition:
 
         def fetch_midi_messages_from_sql():
             query = f"SELECT * FROM {table_name}"
-            self.cursor.execute(query)
-            return self.cursor.fetchall()
+            self.database.cursor.execute(query)
+            return self.database.cursor.fetchall()
 
         def data_to_midi_messages(data):
             messages = []
@@ -517,5 +508,5 @@ if __name__ == '__main__':
 
     comp.write_midi('monophonic_midi_messages')
 
-    comp.database_connection.commit()
-    comp.database_connection.close()
+    comp.utility.database_connection.commit()
+    comp.utility.database_connection.close()
