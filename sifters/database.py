@@ -39,18 +39,6 @@ class Database:
         return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
 
 
-    def _generate_sql_for_duration_values(self, texture, columns_string):
-        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
-        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
-
-        table_commands = {}
-        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"{texture}_{duration_value}"
-            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
-        
-        return table_commands
-    
-
     def _generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
         accumulative_value = 0
         select_statements = []
@@ -64,6 +52,18 @@ class Database:
             accumulative_value += length_of_one_rep
         
         return " UNION ALL ".join(select_statements)
+    
+
+    def _generate_sql_for_duration_values(self, texture, columns_string):
+        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
+        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
+
+        table_commands = {}
+        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
+            table_name = f"{texture}_{duration_value}"
+            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
+        
+        return table_commands
     
 
     def _generate_combined_commands(self, texture, duration_values):

@@ -38,7 +38,7 @@ class Composition:
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
 
         # Derive self-similar lists of integers based on the self.changes attribute.
-        self.form = [[num]*len(self.changes) for num in self.changes]
+        self.form = [[num] * len(self.changes) for num in self.changes]
 
         # Derive a list of metric grids based on the percent of change that each integer with self.changes represents.
         self.grids_set = self.set_grids()
@@ -92,7 +92,6 @@ class Composition:
         return list(collections.OrderedDict.fromkeys(input_list))
 
 
-
     # This function generates grids that illustrate the fractions of the period for each change in the self.changes list.
     def set_grids(self):
 
@@ -108,6 +107,7 @@ class Composition:
         # Return the grids containing unique fractions representing the proportion of period.
         return grids
     
+
     def _get_least_common_multiple(self, nums):
 
         if isinstance(nums, list):
@@ -159,7 +159,7 @@ class Composition:
             
         objects_dict = {}
         for key, instance in textures.items():
-            objects_dict[key] = instance(self.binary, self.database.cursor)  # Directly pass the single binary list
+            objects_dict[key] = instance(self.database.cursor, self.binary, self.period)  # Directly pass the single binary list
 
         return objects_dict
 

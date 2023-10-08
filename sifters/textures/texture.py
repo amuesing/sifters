@@ -6,14 +6,13 @@ import numpy
 
 class Texture:
         
-    def __init__(self, source_data, database_connection):
+    def __init__(self, database_connection, binary, period):
 
-        # Initialize an instance of the Utility class to call helper methods from.
         self.database_connection = database_connection
         
-        self.binary = source_data
+        self.binary = binary
 
-        self.period = len(self.binary)
+        self.period = period
 
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
