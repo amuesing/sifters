@@ -2,6 +2,7 @@ import collections
 import decimal
 import fractions
 import itertools
+import functools
 import math
 import sqlite3
 
@@ -12,17 +13,13 @@ import numpy
 import pandas
 import tqdm
 
-import sifters.database as database
+import database as database
 
 from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
 
 class Composition:
     
     def __init__(self, sieve):
-
-
-        # Initialize an instance of the Utility class to call helper methods from.
-        self.database = database.Database()
 
         # Assign sieves argument to self.
         self.sieve = sieve
@@ -48,6 +45,9 @@ class Composition:
 
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
+
+        # Initialize an instance of the Utility class to call helper methods from.
+        self.database = database.Database(self.period, self.grids_set, self.repeats)
 
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.texture_objects = self.set_texture_objects()
@@ -108,11 +108,21 @@ class Composition:
         # Return the grids containing unique fractions representing the proportion of period.
         return grids
     
+    def _get_least_common_multiple(self, nums):
+
+        if isinstance(nums, list):
+            sub_lcm = [self._get_least_common_multiple(lst) for lst in nums]
+
+            return functools.reduce(math.lcm, sub_lcm)
+        
+        else:
+            return nums
+    
     
     # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
     def _set_normalized_numerators(self, grids):
         # Compute the least common multiple (LCM) of all denominators in the list.
-        lcm = self.database.get_least_common_multiple([fraction.denominator for fraction in grids])
+        lcm = self._get_least_common_multiple([fraction.denominator for fraction in grids])
         
         # Normalize each fraction in the list by adjusting the numerator to the LCM.
         normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids]
@@ -127,7 +137,7 @@ class Composition:
         normalized_numerators = self._set_normalized_numerators(self.grids_set)
         
         # Determine the least common multiple of the normalized numerators.
-        least_common_multiple = self.database.get_least_common_multiple(normalized_numerators)
+        least_common_multiple = self._get_least_common_multiple(normalized_numerators)
 
         # Calculate the repetition for each fraction by dividing the LCM by the normalized numerator.
         repeats = [least_common_multiple // num for num in normalized_numerators]
@@ -149,7 +159,7 @@ class Composition:
             
         objects_dict = {}
         for key, instance in textures.items():
-            objects_dict[key] = instance(self.binary)  # Directly pass the single binary list
+            objects_dict[key] = instance(self.binary, self.database.cursor)  # Directly pass the single binary list
 
         return objects_dict
 
@@ -158,234 +168,7 @@ class Composition:
         for texture_key, texture_object in self.texture_objects.items():
             dataframe = texture_object.notes_data
             dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-            dataframe.to_sql(name=f'{texture_key}', con=self.database.database_connection, if_exists='replace', index=False)
-
-
-    def _fetch_texture_names(self):
-        self.database.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        return [row[0] for row in self.database.cursor.fetchall()]
-
-
-    def _fetch_columns(self, texture):
-        exclude_columns_set = {'Start', 'Duration'}
-        self.database.cursor.execute(f'PRAGMA table_info("{texture}")')
-        return [row[1] for row in self.database.cursor.fetchall() if row[1] not in exclude_columns_set]
-
-
-    def _generate_sql_for_duration_values(self, texture, columns_string):
-        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
-        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
-
-        table_commands = {}
-        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"{texture}_{duration_value}"
-            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
-        
-        return table_commands
-    
-
-    def _generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
-        accumulative_value = 0
-        select_statements = []
-
-        for _ in range(repeat):
-            select_statements.append(f'''
-            SELECT {columns_string}, 
-            "Start" * {duration_value} + {accumulative_value} AS "Start",
-            "Duration" * {duration_value} AS "Duration"
-            FROM "{texture}"''')
-            accumulative_value += length_of_one_rep
-        
-        return " UNION ALL ".join(select_statements)
-    
-
-    def _generate_combined_commands(self, texture, duration_values):
-        new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in duration_values]
-        select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
-        return f'''CREATE TABLE "{texture}_combined" AS 
-                            {" UNION ".join(select_statements)};'''
-    
-
-    def _generate_grouped_commands(self, texture, columns):
-        group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
-        group_query_parts.append('GROUP_CONCAT("Duration") AS "Duration"')
-        group_query_body = ', '.join(group_query_parts)
-        return f'''
-        CREATE TABLE "{texture}_grouped" AS
-        SELECT Start, {group_query_body}
-        FROM "{texture}_combined"
-        GROUP BY Start;
-        '''
-    
-
-    def _generate_max_duration_command(self, texture):
-        return f'''
-        CREATE TABLE "{texture}_max_duration" AS
-        WITH max_durations AS (
-            SELECT Start, MAX(Duration) as MaxDuration
-            FROM "{texture}_combined"
-            GROUP BY Start
-        )
-        SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-        FROM "{texture}_combined" c
-        LEFT JOIN max_durations m ON c.Start = m.Start;
-        '''
-
-
-    def _generate_drop_duplicates_command(self, texture):
-        return f'''
-        CREATE TABLE temp_table AS
-        SELECT DISTINCT * FROM "{texture}_max_duration";
-        DROP TABLE "{texture}_max_duration";
-        ALTER TABLE temp_table RENAME TO "{texture}_max_duration";
-        '''
-
-
-    def _generate_create_end_table_command(self, texture):
-        return f'''
-        CREATE TABLE "{texture}_end_column" (
-            Start INTEGER, 
-            End INTEGER, 
-            Duration INTEGER,
-            Velocity INTEGER, 
-            Note TEXT
-        );
-        '''
-
-
-    def _generate_insert_end_data_command(self, texture):
-        return f'''
-        WITH ModifiedDurations AS (
-            SELECT 
-                Start,
-                Velocity,
-                Note,
-                Duration as ModifiedDuration
-            FROM "{texture}_max_duration"
-        ),
-        DistinctEnds AS (
-            SELECT
-                Start,
-                COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
-            FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
-        )
-        INSERT INTO "{texture}_end_column"
-        SELECT 
-            m.Start,
-            d.End,
-            m.ModifiedDuration,
-            m.Velocity,
-            m.Note
-        FROM ModifiedDurations m
-        JOIN DistinctEnds d ON m.Start = d.Start;
-        '''
-
-
-    def _generate_add_pitch_column_command(self, texture):
-        return f'''
-        CREATE TABLE "{texture}_base" AS 
-        SELECT 
-            Start,
-            End,
-            Velocity,
-            CAST(Note AS INTEGER) AS Note,
-            CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
-        FROM "{texture}_end_column";
-        '''
-    
-    
-    def _generate_midi_messages_table_command(self, texture):
-        return f'''
-            -- [1] Create the initial MIDI messages table:
-            CREATE TABLE "{texture}_midi_messages_temp" AS
-            SELECT 
-                *,
-                'note_on' AS Message,
-                CASE 
-                    WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
-                    ELSE 0 
-                END AS Time
-            FROM "{texture}_base";
-
-            -- [2.1] Create a table of rows meeting the delta condition (generating rests):
-            CREATE TABLE "{texture}_midi_rests" AS
-            SELECT 
-                a.*
-            FROM "{texture}_midi_messages_temp" AS a
-            JOIN (
-                SELECT 
-                    Start,
-                    LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
-                    LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                FROM "{texture}_midi_messages_temp"
-            ) AS t
-            ON a.Start = t.Start
-            WHERE 
-                a.Start != t.PreviousEnd 
-                AND a.Start != t.PreviousStart;
-
-            -- [2.2] Update the Time column in the main table based on delta condition:
-            UPDATE "{texture}_midi_messages_temp"
-            SET Time = (
-                SELECT COALESCE("{texture}_midi_messages_temp".Start - t.PreviousEnd, 0)
-                FROM (
-                    SELECT 
-                        Start,
-                        LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
-                    FROM "{texture}_midi_messages_temp"
-                ) AS t
-                WHERE 
-                    "{texture}_midi_messages_temp".Start = t.Start
-            )
-            WHERE EXISTS (
-                SELECT 1
-                FROM (
-                    SELECT 
-                        Start,
-                        LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
-                        LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                    FROM "{texture}_midi_messages_temp"
-                ) AS t_sub
-                WHERE 
-                    "{texture}_midi_messages_temp".Start = t_sub.Start 
-                    AND "{texture}_midi_messages_temp".Start != t_sub.PreviousEnd
-                    AND "{texture}_midi_messages_temp".Start != t_sub.PreviousStart
-            );
-
-            -- [3] Append rows for 'pitchwheel' and 'note_off' events:
-            INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
-            SELECT 
-                Start, End, Velocity, Note, Pitch,
-                'pitchwheel' AS Message,
-                0 AS Time
-            FROM "{texture}_midi_messages_temp"
-            WHERE Message = 'note_on' AND Pitch != 0.0;
-
-            INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
-            SELECT 
-                Start, End, Velocity, Note, Pitch,
-                'note_off' AS Message,
-                (End - Start) * {self.ticks_per_beat} AS Time
-            FROM "{texture}_midi_messages_temp"
-            WHERE Message = 'note_on';
-
-            -- [4] Organize the MIDI messages by 'Start' time and store in a new table:
-            CREATE TABLE "{texture}_midi_messages" AS
-            SELECT * FROM "{texture}_midi_messages_temp"
-            ORDER BY Start ASC;
-
-            -- [5] Cleanup: Drop the temporary table to free up resources:
-            DROP TABLE "{texture}_midi_messages_temp";
-        '''
-
-
-    def _generate_cleanup_commands(self, texture):
-        temporary_tables = [
-            f'"{texture}_combined"',
-            f'"{texture}_max_duration"',
-            f'"{texture}_end_column"'
-        ]
-        return [f'DROP TABLE IF EXISTS {table};' for table in temporary_tables]
+            dataframe.to_sql(name=f'{texture_key}', con=self.database.connection, if_exists='replace', index=False)
 
 
     def _generate_sql_commands(self):
@@ -397,7 +180,7 @@ class Composition:
         for texture in texture_names:
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
             
-            table_commands = self._generate_sql_for_duration_values(texture, columns_string)
+            table_commands = self.database._generate_sql_for_duration_values(texture, columns_string)
             for table_name, union_statements in table_commands.items():
                 sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
@@ -508,5 +291,5 @@ if __name__ == '__main__':
 
     comp.write_midi('monophonic_midi_messages')
 
-    comp.utility.database_connection.commit()
-    comp.utility.database_connection.close()
+    comp.database.connection.commit()
+    comp.database.connection.close()

@@ -4,10 +4,10 @@ class Monophonic(Texture):
 
     part_id = 1
 
-    def __init__(self, source_data):
+    def __init__(self, source_data, database_connection):
         
         # Call superclass constructor.
-        super().__init__(source_data)
+        super().__init__(source_data, database_connection)
 
         self.part_id = Monophonic.part_id
 

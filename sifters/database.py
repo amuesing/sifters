@@ -1,4 +1,3 @@
-import functools
 import math
 
 import datetime
@@ -6,65 +5,28 @@ import sqlite3
 
 class Database:
 
-    def __init__(self):
+    def __init__(self, period, grids_set, repeats):
 
         # Get the current timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         
         # Connect to SQLite database
-        self.database_connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
+        self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
 
-        self.database_connection.row_factory = sqlite3.Row 
+        self.connection.row_factory = sqlite3.Row 
 
-        self.cursor = self.database_connection.cursor()
+        self.cursor = self.connection.cursor()
+
+        self.grids_set = grids_set
+
+        self.repeats = repeats
+
+        self.period = period
 
         self.ticks_per_beat = 480
 
         self.scaling_factor = 100000
 
-
-    def get_least_common_multiple(self, nums):
-
-        if isinstance(nums, list):
-            sub_lcm = [self.get_least_common_multiple(lst) for lst in nums]
-
-            return functools.reduce(math.lcm, sub_lcm)
-        
-        else:
-            return nums
-
-
-    def flatten_list(self, nested_list):
-        
-        flattened_list = []
-        
-        for item in nested_list:
-            
-            if isinstance(item, list):
-                flattened_list.extend(self.flatten_list(item))
-                
-            else:
-                flattened_list.append(item)
-                
-        return flattened_list
-    
-    
-    @staticmethod
-    def group_by_start(dataframe):
-        # Get all column names in the DataFrame
-        columns = dataframe.columns
-
-        # Check if 'Start' is one of the column names
-        if 'Start' in columns:
-            # Sort the DataFrame based on the 'Start' column
-            dataframe = dataframe.sort_values('Start')
-            
-            # Group the sorted DataFrame by the 'Start' column and create a new DataFrame with lists of values
-            agg_dict = {col: list for col in columns if col != 'Start'}  # Exclude 'Start' column from aggregation
-            dataframe = dataframe.groupby('Start').agg(agg_dict).reset_index()
-
-        return dataframe
-    
 
     def _fetch_texture_names(self):
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")

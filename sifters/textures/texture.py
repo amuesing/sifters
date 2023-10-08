@@ -3,14 +3,13 @@ import decimal
 import pandas
 import numpy
 
-import sifters.database as database
 
 class Texture:
         
-    def __init__(self, source_data):
+    def __init__(self, source_data, database_connection):
 
         # Initialize an instance of the Utility class to call helper methods from.
-        self.utility = database.Utility()
+        self.database_connection = database_connection
         
         self.binary = source_data
 
