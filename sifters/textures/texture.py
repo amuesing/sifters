@@ -1,18 +1,19 @@
-import itertools
 import decimal
-import pandas
+import itertools
+
 import numpy
+import pandas
 
 
 class Texture:
         
-    def __init__(self, database_connection, binary, period):
+    def __init__(self, mediator):
 
-        self.database_connection = database_connection
+        self.mediator = mediator
         
-        self.binary = binary
+        self.binary = mediator.binary
 
-        self.period = period
+        self.period = mediator.period
 
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
         self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
@@ -24,9 +25,7 @@ class Texture:
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
-        self.notes_data = self.set_notes_data()
-
-        self.notes_data.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
+        self.set_notes_data()
 
 
     def _get_successive_diff(self, lst):
@@ -156,8 +155,10 @@ class Texture:
 
                 notes_data.append((start, velocity, next(note_pool), duration))
 
-        return pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
-
+        dataframe = pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+        dataframe.to_sql(name=f'{self.__class__.__name__}', con=self.mediator.connection, if_exists='replace', index=False)
+        dataframe.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
 
     # @staticmethod
     # def get_closest_note(dataframe):

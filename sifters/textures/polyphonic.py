@@ -4,9 +4,9 @@ class Polyphonic(Texture):
 
     part_id = 1
 
-    def __init__(self, database_connection, binary, period):
+    def __init__(self, mediator):
         
-        super().__init__(database_connection, binary, period)
+        super().__init__(mediator)
 
         self.part_id = Polyphonic.part_id
 

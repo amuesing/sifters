@@ -4,10 +4,11 @@ class Homophonic(Texture):
 
     part_id = 1
     
-    def __init__(self, database_connection, binary, period):
+    def __init__(self, mediator):
         
         # Call superclass constructor.
-        super().__init__(database_connection, binary, period)
+        super().__init__(mediator)
+
 
         self.part_id = Homophonic.part_id
 

@@ -1,21 +1,20 @@
 import collections
+import datetime
 import decimal
 import fractions
-import itertools
 import functools
+import itertools
 import math
 import sqlite3
 
-
+import database
 import mido
 import music21
-import numpy
 import pandas
 import tqdm
+from textures import (heterophonic, homophonic, monophonic, nonpitched,
+                      polyphonic)
 
-import database as database
-
-from textures import heterophonic, homophonic, monophonic, nonpitched, polyphonic
 
 class Composition:
     
@@ -23,6 +22,16 @@ class Composition:
 
         # Assign sieves argument to self.
         self.sieve = sieve
+
+        # Get the current timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        
+        # Connect to SQLite database
+        self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
+
+        self.connection.row_factory = sqlite3.Row
+
+        self.cursor = self.connection.cursor()
 
         # Initialize a period variable which will be assigned to an integer within the set_binary method.
         self.period = None
@@ -47,11 +56,13 @@ class Composition:
         self.repeats = self.set_repeats()
 
         # Initialize an instance of the Utility class to call helper methods from.
-        self.database = database.Database(self.period, self.grids_set, self.repeats)
+        self.database = database.Database(self)
 
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
-        self.texture_objects = self.set_texture_objects()
+        self.set_texture_objects()
 
+        self.generate_sql_commands()
+            
 
     def set_binary(self, siev):
         obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
@@ -158,26 +169,19 @@ class Composition:
         }
             
         objects_dict = {}
-        for key, instance in textures.items():
-            objects_dict[key] = instance(self.database.cursor, self.binary, self.period)  # Directly pass the single binary list
+        for key, instance in tqdm.tqdm(textures.items(), desc="Creating Texture Objects"):
+            objects_dict[key] = instance(self)  # Directly pass the single binary list
 
         return objects_dict
 
-    
-    def _convert_and_store_dataframes(self):
-        for texture_key, texture_object in self.texture_objects.items():
-            dataframe = texture_object.notes_data
-            dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-            dataframe.to_sql(name=f'{texture_key}', con=self.database.connection, if_exists='replace', index=False)
 
-
-    def _generate_sql_commands(self):
+    def generate_sql_commands(self):
         sql_commands = []
 
         texture_names = self.database._fetch_texture_names()
         texture_columns = {texture: self.database._fetch_columns(texture) for texture in texture_names}
 
-        for texture in texture_names:
+        for texture in tqdm.tqdm(texture_names, desc="Processing Textures"):
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
             
             table_commands = self.database._generate_sql_for_duration_values(texture, columns_string)
@@ -197,22 +201,16 @@ class Composition:
                 
             sql_commands.extend(self.database._generate_cleanup_commands(texture))
 
-        return "\n".join(sql_commands)
+        sql_commands = "\n".join(sql_commands)
+        self.cursor.executescript(sql_commands)
 
-
-    def process_table_data(self):
-        self._convert_and_store_dataframes()
-        sql_commands = self._generate_sql_commands()
-        self.database.cursor.executescript(sql_commands)
-
-
-    def bpm_to_tempo(self, bpm):
-        return int(60_000_000 / bpm)
-    
 
     def write_midi(self, table_name):
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
+
+        def bpm_to_tempo(bpm):
+            return int(60_000_000 / bpm)
 
         def fetch_midi_messages_from_sql():
             query = f"SELECT * FROM {table_name}"
@@ -249,7 +247,7 @@ class Composition:
 
         # Setting BPM
         bpm = 33  # You can change this value to set a different BPM
-        tempo = self.bpm_to_tempo(bpm)
+        tempo = bpm_to_tempo(bpm)
         midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
         
         midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
@@ -271,25 +269,24 @@ class Composition:
         
 if __name__ == '__main__':
 
-    # sieve = '''
-    #         (((8@0|8@1|8@7)&(5@1|5@3))|
-    #         ((8@0|8@1|8@2)&5@0)|
-    #         ((8@5|8@6)&(5@2|5@3|5@4))|
-    #         (8@6&5@1)|
-    #         (8@3)|
-    #         (8@4)|
-    #         (8@1&5@2))
-    #         '''
-
     sieve = '''
-        ((8@0|8@1|8@7)&(5@1|5@3))
-        '''
-        
+            (((8@0|8@1|8@7)&(5@1|5@3))|
+            ((8@0|8@1|8@2)&5@0)|
+            ((8@5|8@6)&(5@2|5@3|5@4))|
+            (8@6&5@1)|
+            (8@3)|
+            (8@4)|
+            (8@1&5@2))
+            '''
+
+    # sieve = '''
+    #     ((8@0|8@1|8@7)&(5@1|5@3))
+    #     '''
+    
     comp = Composition(sieve)
     
-    comp.process_table_data()
+    comp.connection.commit()
 
-    comp.write_midi('monophonic_midi_messages')
+    comp.write_midi('Monophonic_midi_messages')
 
-    comp.database.connection.commit()
-    comp.database.connection.close()
+    comp.connection.close()

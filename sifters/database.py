@@ -1,31 +1,21 @@
 import math
 
-import datetime
-import sqlite3
 
 class Database:
 
-    def __init__(self, period, grids_set, repeats):
+    def __init__(self, mediator):
 
-        # Get the current timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        
-        # Connect to SQLite database
-        self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
+        self.cursor = mediator.cursor
 
-        self.connection.row_factory = sqlite3.Row 
+        self.grids_set = mediator.grids_set
 
-        self.cursor = self.connection.cursor()
+        self.repeats = mediator.repeats
 
-        self.grids_set = grids_set
+        self.period = mediator.period
 
-        self.repeats = repeats
+        self.ticks_per_beat = mediator.ticks_per_beat
 
-        self.period = period
-
-        self.ticks_per_beat = 480
-
-        self.scaling_factor = 100000
+        self.scaling_factor = mediator.scaling_factor
 
 
     def _fetch_texture_names(self):
