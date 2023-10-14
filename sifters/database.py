@@ -5,6 +5,8 @@ class Database:
 
     def __init__(self, mediator):
 
+        self.connection = mediator.connection
+
         self.cursor = mediator.cursor
 
         self.grids_set = mediator.grids_set
@@ -17,9 +19,59 @@ class Database:
 
         self.scaling_factor = mediator.scaling_factor
 
+        self.create_textures_table()
+
+        self.create_notes_table()
+
+        self.create_midi_messages_table()
+
+    
+    def create_textures_table(self):
+        sql_command = f'''
+        CREATE TABLE IF NOT EXISTS textures (
+            texture_id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL
+        )'''
+        self.cursor.execute(sql_command)
+        self.connection.commit()
+
+
+    def create_notes_table(self):
+        sql_command = '''
+        CREATE TABLE IF NOT EXISTS notes (
+            note_id INTEGER PRIMARY KEY,
+            texture_id INTEGER,
+            start INTEGER,
+            end INTEGER,
+            velocity INTEGER,
+            note_value TEXT,
+            pitch INTEGER,
+            FOREIGN KEY (texture_id) REFERENCES textures(texture_id)
+        )'''
+        self.cursor.execute(sql_command)
+        self.connection.commit()
+
+
+    def create_midi_messages_table(self):
+        sql_command = '''
+        CREATE TABLE IF NOT EXISTS midi_messages (
+            message_id INTEGER PRIMARY KEY,
+            note_id INTEGER,
+            message_type TEXT,
+            time INTEGER,
+            FOREIGN KEY (note_id) REFERENCES notes(note_id)
+        )'''
+        self.cursor.execute(sql_command)
+        self.connection.commit()
+
+
+    def _insert_texture(self, texture):
+        return f'INSERT INTO textures (name) VALUES ("{texture}");'
+
+
 
     def _fetch_texture_names(self):
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('textures', 'notes', 'midi_messages')")
         return [row[0] for row in self.cursor.fetchall()]
 
 

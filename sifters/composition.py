@@ -11,7 +11,6 @@ import database
 import mido
 import music21
 import pandas
-import tqdm
 from textures import (heterophonic, homophonic, monophonic, nonpitched,
                       polyphonic)
 
@@ -59,7 +58,7 @@ class Composition:
         self.database = database.Database(self)
 
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
-        self.set_texture_objects()
+        self.initialize_texture_objects()
 
         self.generate_sql_commands()
             
@@ -157,22 +156,19 @@ class Composition:
         return repeats
 
 
-    # This function generates and manages texture objects based on various texture types.
-    def set_texture_objects(self):
-        # Establish a dictionary mapping texture types to their associated classes.
-        textures = {
-            'heterophonic': heterophonic.Heterophonic,
-            'homophonic': homophonic.Homophonic,
-            'monophonic': monophonic.Monophonic,
-            'nonpitched': nonpitched.NonPitched,
-            'polyphonic': polyphonic.Polyphonic,
-        }
-            
-        objects_dict = {}
-        for key, instance in tqdm.tqdm(textures.items(), desc="Creating Texture Objects"):
-            objects_dict[key] = instance(self)  # Directly pass the single binary list
-
-        return objects_dict
+    def initialize_texture_objects(self):
+        # List of texture classes.
+        texture_classes = [
+            heterophonic.Heterophonic,
+            homophonic.Homophonic,
+            monophonic.Monophonic,
+            nonpitched.NonPitched,
+            polyphonic.Polyphonic,
+        ]
+        
+        # Simply initialize each texture object. No need to store them.
+        for TextureClass in texture_classes:
+            TextureClass(self)  # Initialize with the Composition instance as a mediator
 
 
     def generate_sql_commands(self):
@@ -181,7 +177,7 @@ class Composition:
         texture_names = self.database._fetch_texture_names()
         texture_columns = {texture: self.database._fetch_columns(texture) for texture in texture_names}
 
-        for texture in tqdm.tqdm(texture_names, desc="Processing Textures"):
+        for texture in texture_names:
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
             
             table_commands = self.database._generate_sql_for_duration_values(texture, columns_string)
@@ -189,14 +185,15 @@ class Composition:
                 sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
             sql_commands.extend([
-                self.database._generate_combined_commands(texture, self.grids_set),
-                self.database._generate_grouped_commands(texture, texture_columns[texture]),
-                self.database._generate_max_duration_command(texture),
-                self.database._generate_drop_duplicates_command(texture),
-                self.database._generate_create_end_table_command(texture),
-                self.database._generate_insert_end_data_command(texture),
-                self.database._generate_add_pitch_column_command(texture),
-                self.database._generate_midi_messages_table_command(texture),
+                self.database._insert_texture(texture),
+                # self.database._generate_combined_commands(texture, self.grids_set),
+                # self.database._generate_grouped_commands(texture, texture_columns[texture]),
+                # self.database._generate_max_duration_command(texture),
+                # self.database._generate_drop_duplicates_command(texture),
+                # self.database._generate_create_end_table_command(texture),
+                # self.database._generate_insert_end_data_command(texture),
+                # self.database._generate_add_pitch_column_command(texture),
+                # self.database._generate_midi_messages_table_command(texture),
             ])
                 
             sql_commands.extend(self.database._generate_cleanup_commands(texture))
@@ -269,24 +266,24 @@ class Composition:
         
 if __name__ == '__main__':
 
-    sieve = '''
-            (((8@0|8@1|8@7)&(5@1|5@3))|
-            ((8@0|8@1|8@2)&5@0)|
-            ((8@5|8@6)&(5@2|5@3|5@4))|
-            (8@6&5@1)|
-            (8@3)|
-            (8@4)|
-            (8@1&5@2))
-            '''
-
     # sieve = '''
-    #     ((8@0|8@1|8@7)&(5@1|5@3))
-    #     '''
+    #         (((8@0|8@1|8@7)&(5@1|5@3))|
+    #         ((8@0|8@1|8@2)&5@0)|
+    #         ((8@5|8@6)&(5@2|5@3|5@4))|
+    #         (8@6&5@1)|
+    #         (8@3)|
+    #         (8@4)|
+    #         (8@1&5@2))
+    #         '''
+
+    sieve = '''
+        ((8@0|8@1|8@7)&(5@1|5@3))
+        '''
     
     comp = Composition(sieve)
     
     comp.connection.commit()
 
-    comp.write_midi('Monophonic_midi_messages')
+    # comp.write_midi('Monophonic_midi_messages')
 
     comp.connection.close()

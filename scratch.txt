@@ -1,6 +1,26 @@
+sifters
+_______________________________________________________________________________
+Interlude I
+
+zerØ Σum 
+
+Interlude II
+
+sign//ified
+
+Interlude III
+
+it's not just me
+
+Interlude IV
+_______________________________________________________________________________
 isort sifters/composition.py
 
 GOALS:
 
 1) Update commands to accommodate for a relational database strategy
 in which a texture has many midi messages (and a composition has many textures)
+
+Texture has many Notes
+
+Note has many Midi Messages
