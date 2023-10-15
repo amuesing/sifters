@@ -24,3 +24,5 @@ in which a texture has many midi messages (and a composition has many textures)
 Texture has many Notes
 
 Note has many Midi Messages
+
+idle eyes

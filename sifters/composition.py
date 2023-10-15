@@ -173,31 +173,36 @@ class Composition:
 
     def generate_sql_commands(self):
         sql_commands = []
+        exclude_columns_set = {'Start', 'Duration'}
+        texture_names = self.database.fetch_texture_names()
+        texture_columns = {texture: self.database.fetch_columns(texture, exclude_columns_set) for texture in texture_names}
 
-        texture_names = self.database._fetch_texture_names()
-        texture_columns = {texture: self.database._fetch_columns(texture) for texture in texture_names}
-
-        for texture in texture_names:
-            columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
-            texture_id = self.database.find_first_texture_id(texture)
+        for texture_name in texture_names:
+            table_names = []
+            columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_name]])
+            texture_id = self.database.find_first_texture_id(texture_name)
             
-            table_commands = self.database._generate_sql_for_duration_values(texture, columns_string)
+            print(columns_string)
+            
+            table_commands = self.database.generate_sql_for_duration_values(texture_name, columns_string)
             for table_name, union_statements in table_commands.items():
-                sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
+                table_names.append(table_name)
+                self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
             sql_commands.extend([
-                self.database._insert_texture(texture_id, texture),
-                # self.database._generate_combined_commands(texture, self.grids_set),
-                # self.database._generate_grouped_commands(texture, texture_columns[texture]),
-                # self.database._generate_max_duration_command(texture),
-                # self.database._generate_drop_duplicates_command(texture),
-                # self.database._generate_create_end_table_command(texture),
-                # self.database._generate_insert_end_data_command(texture),
-                # self.database._generate_add_pitch_column_command(texture),
-                # self.database._generate_midi_messages_table_command(texture),
+                self.database.insert_texture(texture_id, texture_name),
+                self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
+                # self.database.generate_combined_commands(texture, self.grids_set),
+                # self.database.generate_grouped_commands(texture, texture_columns[texture]),
+                # self.database.generate_max_duration_command(texture),
+                # self.database.generate_drop_duplicates_command(texture),
+                # self.database.generate_create_end_table_command(texture),
+                # self.database.generate_insert_end_data_command(texture),
+                # self.database.generate_add_pitch_column_command(texture),
+                # self.database.generate_midi_messages_table_command(texture),
             ])
                 
-            sql_commands.extend(self.database._generate_cleanup_commands(texture))
+            sql_commands.extend(self.database.generate_cleanup_commands(texture_name))
 
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)

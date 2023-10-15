@@ -29,7 +29,7 @@ class Database:
     def create_textures_table(self):
         sql_command = f'''
         CREATE TABLE IF NOT EXISTS textures (
-            texture_id INTEGER NOT NULL,
+            texture_id INTEGER PRIMARY KEY,
             name TEXT NOT NULL
         )'''
         self.cursor.execute(sql_command)
@@ -41,11 +41,10 @@ class Database:
         CREATE TABLE IF NOT EXISTS notes (
             note_id INTEGER PRIMARY KEY,
             texture_id INTEGER,
-            start INTEGER,
-            end INTEGER,
-            velocity INTEGER,
-            note_value TEXT,
-            pitch INTEGER,
+            Start INTEGER,
+            Velocity INTEGER,
+            Note TEXT,
+            Duration INTEGER,
             FOREIGN KEY (texture_id) REFERENCES textures(texture_id)
         )'''
         self.cursor.execute(sql_command)
@@ -65,19 +64,22 @@ class Database:
         self.connection.commit()
 
 
-    def _fetch_texture_names(self):
+    def fetch_texture_names(self):
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('textures', 'notes', 'midi_messages')")
         return [row[0] for row in self.cursor.fetchall()]
 
 
-    def _fetch_columns(self, texture):
-        exclude_columns_set = {'Start', 'Duration'}
+    def fetch_columns(self, texture, exclude_columns_set={}):
         self.cursor.execute(f'PRAGMA table_info("{texture}")')
         return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
+
+    
+    # def fetch_columns(self, texture):
+    #     self.cursor.execute(f'PRAGMA table_info("{texture}")')
+    #     return [row[1] for row in self.cursor.fetchall()]
     
 
     def find_first_texture_id(self, texture):
-
         sql_query = f'SELECT texture_id FROM "{texture}" LIMIT 1' # Define the SQL query to retrieve the first texture_id value.
         self.cursor.execute(sql_query) # Execute the SQL query.
         result = self.cursor.fetchone() # Fetch the result (should be a single row with the first texture_id).
@@ -88,15 +90,20 @@ class Database:
             return None  # Return None if no result was found
 
     
-    def _insert_texture(self, texture_id, texture_name):
+    def insert_texture(self, texture_id, texture_name):
         return f'INSERT INTO textures (texture_id, name) VALUES ({texture_id}, "{texture_name}");'
+    
+
+    def insert_into_notes_command(self, texture_table_names):        
+        for texture_table_name in texture_table_names:
+            cols = self.fetch_columns(texture_table_name)
+            cols_string = ', '.join([f'"{col}"' for col in cols])
+            sql_command = f'INSERT INTO notes ({cols_string}) SELECT {cols_string} FROM "{texture_table_name}";'
+
+        return sql_command
 
 
-    # def _insert_texture(self, texture_name):
-    #     return f'INSERT INTO textures (name) VALUES ("{texture_name}");'
-
-
-    def _generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
+    def generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
         accumulative_value = 0
         select_statements = []
 
@@ -111,26 +118,26 @@ class Database:
         return " UNION ALL ".join(select_statements)
     
 
-    def _generate_sql_for_duration_values(self, texture, columns_string):
+    def generate_sql_for_duration_values(self, texture, columns_string):
         duration_values = [grid * self.scaling_factor for grid in self.grids_set]
         length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
 
         table_commands = {}
         for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
             table_name = f"{texture}_{duration_value}"
-            table_commands[table_name] = self._generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
+            table_commands[table_name] = self.generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
         
         return table_commands
     
 
-    def _generate_combined_commands(self, texture, duration_values):
+    def generate_combined_commands(self, texture, duration_values):
         new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in duration_values]
         select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
         return f'''CREATE TABLE "{texture}_combined" AS 
                             {" UNION ".join(select_statements)};'''
     
 
-    def _generate_grouped_commands(self, texture, columns):
+    def generate_grouped_commands(self, texture, columns):
         group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
         group_query_parts.append('GROUP_CONCAT("Duration") AS "Duration"')
         group_query_body = ', '.join(group_query_parts)
@@ -142,7 +149,7 @@ class Database:
         '''
 
 
-    def _generate_max_duration_command(self, texture):
+    def generate_max_duration_command(self, texture):
         return f'''
         CREATE TABLE "{texture}_max_duration" AS
         WITH max_durations AS (
@@ -156,7 +163,7 @@ class Database:
         '''
 
 
-    def _generate_drop_duplicates_command(self, texture):
+    def generate_drop_duplicates_command(self, texture):
         return f'''
         CREATE TABLE temp_table AS
         SELECT DISTINCT * FROM "{texture}_max_duration";
@@ -165,7 +172,7 @@ class Database:
         '''
 
 
-    def _generate_create_end_table_command(self, texture):
+    def generate_create_end_table_command(self, texture):
         return f'''
         CREATE TABLE "{texture}_end_column" (
             Start INTEGER, 
@@ -177,7 +184,7 @@ class Database:
         '''
 
 
-    def _generate_insert_end_data_command(self, texture):
+    def generate_insert_end_data_command(self, texture):
         return f'''
         WITH ModifiedDurations AS (
             SELECT 
@@ -205,7 +212,7 @@ class Database:
         '''
 
 
-    def _generate_add_pitch_column_command(self, texture):
+    def generate_add_pitch_column_command(self, texture):
         return f'''
         CREATE TABLE "{texture}_base" AS 
         SELECT 
@@ -218,7 +225,7 @@ class Database:
         '''
     
     
-    def _generate_midi_messages_table_command(self, texture):
+    def generate_midi_messages_table_command(self, texture):
         return f'''
             -- [1] Create the initial MIDI messages table:
             CREATE TABLE "{texture}_midi_messages_temp" AS
@@ -303,7 +310,7 @@ class Database:
         '''
 
 
-    def _generate_cleanup_commands(self, texture):
+    def generate_cleanup_commands(self, texture):
         temporary_tables = [
             f'"{texture}_combined"',
             f'"{texture}_max_duration"',
