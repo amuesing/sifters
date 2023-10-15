@@ -63,8 +63,8 @@ class Composition:
         self.generate_sql_commands()
             
 
-    def set_binary(self, siev):
-        obj = music21.sieve.Sieve(siev)  # Convert sieve to Sieve object.
+    def set_binary(self, sieve):
+        obj = music21.sieve.Sieve(sieve)  # Convert sieve to Sieve object.
         self.period = obj.period()  # Store the period of the Sieve object.
         obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
         binary = obj.segment(segmentFormat='binary')  # Convert to binary and store.
@@ -179,13 +179,14 @@ class Composition:
 
         for texture in texture_names:
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture]])
+            texture_id = self.database.find_first_texture_id(texture)
             
             table_commands = self.database._generate_sql_for_duration_values(texture, columns_string)
             for table_name, union_statements in table_commands.items():
                 sql_commands.append(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
             sql_commands.extend([
-                self.database._insert_texture(texture),
+                self.database._insert_texture(texture_id, texture),
                 # self.database._generate_combined_commands(texture, self.grids_set),
                 # self.database._generate_grouped_commands(texture, texture_columns[texture]),
                 # self.database._generate_max_duration_command(texture),

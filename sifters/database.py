@@ -29,7 +29,7 @@ class Database:
     def create_textures_table(self):
         sql_command = f'''
         CREATE TABLE IF NOT EXISTS textures (
-            texture_id INTEGER PRIMARY KEY,
+            texture_id INTEGER NOT NULL,
             name TEXT NOT NULL
         )'''
         self.cursor.execute(sql_command)
@@ -65,11 +65,6 @@ class Database:
         self.connection.commit()
 
 
-    def _insert_texture(self, texture):
-        return f'INSERT INTO textures (name) VALUES ("{texture}");'
-
-
-
     def _fetch_texture_names(self):
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('textures', 'notes', 'midi_messages')")
         return [row[0] for row in self.cursor.fetchall()]
@@ -79,6 +74,26 @@ class Database:
         exclude_columns_set = {'Start', 'Duration'}
         self.cursor.execute(f'PRAGMA table_info("{texture}")')
         return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
+    
+
+    def find_first_texture_id(self, texture):
+
+        sql_query = f'SELECT texture_id FROM "{texture}" LIMIT 1' # Define the SQL query to retrieve the first texture_id value.
+        self.cursor.execute(sql_query) # Execute the SQL query.
+        result = self.cursor.fetchone() # Fetch the result (should be a single row with the first texture_id).
+
+        if result: # Check if a result was found.
+            return result[0]  # Extract the first texture_id value from the result
+        else:
+            return None  # Return None if no result was found
+
+    
+    def _insert_texture(self, texture_id, texture_name):
+        return f'INSERT INTO textures (texture_id, name) VALUES ({texture_id}, "{texture_name}");'
+
+
+    # def _insert_texture(self, texture_name):
+    #     return f'INSERT INTO textures (name) VALUES ("{texture_name}");'
 
 
     def _generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):

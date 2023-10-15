@@ -6,8 +6,12 @@ import pandas
 
 
 class Texture:
+
+    texture_id = 1
         
     def __init__(self, mediator):
+
+        self.texture_id = Texture.texture_id
 
         self.mediator = mediator
         
@@ -26,6 +30,8 @@ class Texture:
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
         self.set_notes_data()
+
+        Texture.texture_id += 1
 
 
     def _get_successive_diff(self, lst):
@@ -153,9 +159,9 @@ class Texture:
                 velocity = 64
                 start = index * duration
 
-                notes_data.append((start, velocity, next(note_pool), duration))
+                notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
 
-        dataframe = pandas.DataFrame(notes_data, columns=['Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        dataframe = pandas.DataFrame(notes_data, columns=['texture_id', 'Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
         dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
         dataframe.to_sql(name=f'{self.__class__.__name__}', con=self.mediator.connection, if_exists='replace', index=False)
         dataframe.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
