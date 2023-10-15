@@ -95,12 +95,14 @@ class Database:
     
 
     def insert_into_notes_command(self, texture_table_names):        
+        commands = []
         for texture_table_name in texture_table_names:
             cols = self.fetch_columns(texture_table_name)
             cols_string = ', '.join([f'"{col}"' for col in cols])
             sql_command = f'INSERT INTO notes ({cols_string}) SELECT {cols_string} FROM "{texture_table_name}";'
+            commands.append(sql_command)
 
-        return sql_command
+        return "\n".join(commands)
 
 
     def generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):

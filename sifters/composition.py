@@ -182,8 +182,6 @@ class Composition:
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_name]])
             texture_id = self.database.find_first_texture_id(texture_name)
             
-            print(columns_string)
-            
             table_commands = self.database.generate_sql_for_duration_values(texture_name, columns_string)
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
