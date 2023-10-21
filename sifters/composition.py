@@ -60,7 +60,9 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.initialize_texture_objects()
 
-        self.generate_sql_commands()
+        self.generate_notes_table_commands()
+
+        self.generate_midi_messages_table_commands()
             
 
     def set_binary(self, sieve):
@@ -171,7 +173,7 @@ class Composition:
             TextureClass(self)  # Initialize with the Composition instance as a mediator
 
 
-    def generate_sql_commands(self):
+    def generate_notes_table_commands(self):
         sql_commands = []
         exclude_columns_set = {'Start', 'Duration'}
         texture_names = self.database.fetch_texture_names()
@@ -200,13 +202,25 @@ class Composition:
                 # self.database.generate_add_pitch_column_command(texture_name),
                 # self.database.generate_midi_messages_table_command(texture_name),
             ])
-                
-            # sql_commands.extend(self.database.generate_cleanup_commands(texture_name))
-
 
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)
-        self.database.generate_midi_messages_from_notes()
+
+
+    def generate_midi_messages_table_commands(self):
+        """Generate MIDI messages from notes in the database."""
+        # Fetch the distinct textures
+        textures = self.database.fetch_distinct_textures()
+
+        for texture_id in textures:
+            # Fetch notes for the texture
+            notes_for_texture = self.database.fetch_notes_for_texture(texture_id)
+
+            # Process each note to generate MIDI messages
+            for note in notes_for_texture:
+                midi_message_data = self.database.process_note_to_midi(note)
+            #     self.database.insert_midi_message(midi_message_data)
+
 
 
     def write_midi(self, table_name):

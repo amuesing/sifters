@@ -99,19 +99,37 @@ class Database:
 
         return "\n".join(commands)
     
-### MOVE THIS METHOD TO COMPOSITION
-    def generate_midi_messages_from_notes(self):
-        # Fetch distinct textures from the notes table
+
+    def fetch_distinct_textures(self):
+        """Fetch distinct texture_ids from the notes table."""
         self.cursor.execute("SELECT DISTINCT texture_id FROM notes")
-        textures = [row[0] for row in self.cursor.fetchall()]
+        return [row[0] for row in self.cursor.fetchall()]
 
-        # For each texture, process its notes to generate MIDI messages
-        for texture_id in textures:
-            self.cursor.execute("SELECT * FROM notes WHERE texture_id = ?", (texture_id,))
-            # notes_for_texture = self.cursor.fetchall()
-            textures = [row[2] for row in self.cursor.fetchall()]
-            print(textures)
 
+    def fetch_notes_for_texture(self, texture_id):
+        """Fetch notes associated with a specific texture."""
+        self.cursor.execute("SELECT * FROM notes WHERE texture_id = ?", (texture_id,))
+        return self.cursor.fetchall()
+
+
+    def insert_midi_message(self, midi_message_data):
+        """Insert the generated MIDI message into the midi_messages table."""
+        sql_insert = '''
+            INSERT INTO midi_messages (note_id, message_type, time, ...)
+            VALUES (?, ?, ?, ...)
+        '''
+        self.cursor.execute(sql_insert, midi_message_data)
+        self.connection.commit()
+
+
+    def process_note_to_midi(self, note):
+        """Process note data to convert to MIDI message format.
+           This function is just a placeholder for whatever processing logic you need.
+           Returns the MIDI message data.
+        """
+        midi_message_data = []
+        print(note[1])
+        return midi_message_data
 
 
     def generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
