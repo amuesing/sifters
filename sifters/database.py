@@ -72,11 +72,6 @@ class Database:
     def fetch_columns(self, texture, exclude_columns_set={}):
         self.cursor.execute(f'PRAGMA table_info("{texture}")')
         return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
-
-    
-    # def fetch_columns(self, texture):
-    #     self.cursor.execute(f'PRAGMA table_info("{texture}")')
-    #     return [row[1] for row in self.cursor.fetchall()]
     
 
     def find_first_texture_id(self, texture):
@@ -103,6 +98,20 @@ class Database:
             commands.append(sql_command)
 
         return "\n".join(commands)
+    
+### MOVE THIS METHOD TO COMPOSITION
+    def generate_midi_messages_from_notes(self):
+        # Fetch distinct textures from the notes table
+        self.cursor.execute("SELECT DISTINCT texture_id FROM notes")
+        textures = [row[0] for row in self.cursor.fetchall()]
+
+        # For each texture, process its notes to generate MIDI messages
+        for texture_id in textures:
+            self.cursor.execute("SELECT * FROM notes WHERE texture_id = ?", (texture_id,))
+            # notes_for_texture = self.cursor.fetchall()
+            textures = [row[2] for row in self.cursor.fetchall()]
+            print(textures)
+
 
 
     def generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
@@ -311,11 +320,18 @@ class Database:
             DROP TABLE "{texture}_midi_messages_temp";
         '''
 
+    def cleanup_database(self, texture_name):
+        # Fetch names of all tables in the database
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        all_tables = [row[0] for row in self.cursor.fetchall()]
 
-    def generate_cleanup_commands(self, texture):
-        temporary_tables = [
-            f'"{texture}_combined"',
-            f'"{texture}_max_duration"',
-            f'"{texture}_end_column"'
-        ]
-        return [f'DROP TABLE IF EXISTS {table};' for table in temporary_tables]
+        # List of tables you want to keep
+        keep_tables = ['textures', 'notes', 'midi_messages']
+
+        # Find tables that start with the texture name and are not in the keep list
+        tables_to_drop = [table for table in all_tables if table.startswith(texture_name) and table not in keep_tables]
+
+        # Generate DROP TABLE SQL statements for the tables to drop and concatenate them
+        sql_commands_to_drop = '\n'.join([f'DROP TABLE IF EXISTS {table};' for table in tables_to_drop])
+
+        return sql_commands_to_drop

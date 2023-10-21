@@ -190,20 +190,23 @@ class Composition:
             sql_commands.extend([
                 self.database.insert_texture(texture_id, texture_name),
                 self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
-                # self.database.generate_combined_commands(texture, self.grids_set),
-                # self.database.generate_grouped_commands(texture, texture_columns[texture]),
-                # self.database.generate_max_duration_command(texture),
-                # self.database.generate_drop_duplicates_command(texture),
-                # self.database.generate_create_end_table_command(texture),
-                # self.database.generate_insert_end_data_command(texture),
-                # self.database.generate_add_pitch_column_command(texture),
-                # self.database.generate_midi_messages_table_command(texture),
+                self.database.cleanup_database(texture_name),
+                # self.database.generate_combined_commands(texture_name, self.grids_set),
+                # self.database.generate_grouped_commands(texture_name, texture_columns[texture_name]),
+                # self.database.generate_max_duration_command(texture_name),
+                # self.database.generate_drop_duplicates_command(texture_name),
+                # self.database.generate_create_end_table_command(texture_name),
+                # self.database.generate_insert_end_data_command(texture_name),
+                # self.database.generate_add_pitch_column_command(texture_name),
+                # self.database.generate_midi_messages_table_command(texture_name),
             ])
                 
-            sql_commands.extend(self.database.generate_cleanup_commands(texture_name))
+            # sql_commands.extend(self.database.generate_cleanup_commands(texture_name))
+
 
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)
+        self.database.generate_midi_messages_from_notes()
 
 
     def write_midi(self, table_name):
