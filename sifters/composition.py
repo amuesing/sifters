@@ -208,19 +208,17 @@ class Composition:
 
 
     def generate_midi_messages_table_commands(self):
-        """Generate MIDI messages from notes in the database."""
         # Fetch the distinct textures
+        sql_commands = []
         textures = self.database.fetch_distinct_textures()
 
         for texture_id in textures:
             # Fetch notes for the texture
-            notes_for_texture = self.database.fetch_notes_for_texture(texture_id)
+            notes = self.database.fetch_notes_for_texture(texture_id)
 
-            # Process each note to generate MIDI messages
-            for note in notes_for_texture:
-                midi_message_data = self.database.process_note_to_midi(note)
-            #     self.database.insert_midi_message(midi_message_data)
-
+            sql_commands.extend([
+                self.database.create_temporary_texture_tables(notes)
+            ])
 
 
     def write_midi(self, table_name):

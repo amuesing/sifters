@@ -101,19 +101,16 @@ class Database:
     
 
     def fetch_distinct_textures(self):
-        """Fetch distinct texture_ids from the notes table."""
         self.cursor.execute("SELECT DISTINCT texture_id FROM notes")
         return [row[0] for row in self.cursor.fetchall()]
 
 
     def fetch_notes_for_texture(self, texture_id):
-        """Fetch notes associated with a specific texture."""
         self.cursor.execute("SELECT * FROM notes WHERE texture_id = ?", (texture_id,))
         return self.cursor.fetchall()
 
 
     def insert_midi_message(self, midi_message_data):
-        """Insert the generated MIDI message into the midi_messages table."""
         sql_insert = '''
             INSERT INTO midi_messages (note_id, message_type, time, ...)
             VALUES (?, ?, ?, ...)
@@ -123,10 +120,6 @@ class Database:
 
 
     def process_note_to_midi(self, note):
-        """Process note data to convert to MIDI message format.
-           This function is just a placeholder for whatever processing logic you need.
-           Returns the MIDI message data.
-        """
         midi_message_data = []
         print(note[1])
         return midi_message_data
@@ -164,6 +157,10 @@ class Database:
         select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
         return f'''CREATE TABLE "{texture}_combined" AS 
                             {" UNION ".join(select_statements)};'''
+    
+    def create_temporary_texture_tables(self, notes):
+        for note in notes:
+            print(note[1])
     
 
     def generate_grouped_commands(self, texture, columns):
