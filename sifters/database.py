@@ -158,9 +158,47 @@ class Database:
         return f'''CREATE TABLE "{texture}_combined" AS 
                             {" UNION ".join(select_statements)};'''
     
-    def create_temporary_texture_tables(self, notes):
+
+    def create_temporary_texture_table(self, notes, texture_id):
+        table_name = f"temp_texture_{texture_id}"
+        columns = list(notes[0].keys())
+        column_def = ", ".join([f'"{column}" TEXT' for column in columns])
+        
+        # Create table command
+        create_table_command = f'''
+        CREATE TABLE {table_name} (
+            {column_def}
+        );
+        '''
+
+        # Return the create table SQL command
+        return create_table_command
+
+
+    def insert_into_temp_texture_table(self, notes, texture_id):
+        """Generate a SQL command to insert provided notes into a temporary table."""
+
+        table_name = f"temp_texture_{texture_id}"
+
+        # Extract columns from the first note (which is an sqlite3.Row object)
+        columns = ', '.join(['"' + col + '"' for col in notes[0].keys()])
+
+        print(columns)
+
         for note in notes:
-            print(note[1])
+            print(note[0])
+
+        # # Generate a list of full insert commands with values directly embedded
+        # insert_commands = [
+        #     f'INSERT INTO {table_name} ({columns}) VALUES ({", ".join(map(repr, tuple(note)))});'
+        #     for note in notes
+        # ]
+
+        # # Return the combined insert SQL commands
+        # return "\n".join(insert_commands)
+        return None
+
+
     
 
     def generate_grouped_commands(self, texture, columns):

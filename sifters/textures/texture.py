@@ -143,27 +143,37 @@ class Texture:
         notes_data = []
         
         for factor_index in range(len(self.factors)):
-
             note_pool = itertools.cycle(self._generate_note_pool(factor_index))
-
-            # Repeat form a number of times sufficient to normalize pattern length against sieves represented in self.binary.
+            
+            # Repeat to normalize pattern length against sieves represented in self.binary.
             pattern = numpy.tile(self.binary, self.factors[factor_index])
             
-            # Create a list of indices where non-zero elements occur within the pattern.
+            # List of indices where non-zero elements occur within the pattern.
             indices = numpy.nonzero(pattern)[0]
             
             duration = self.period // self.factors[factor_index]
 
-            # For each non-zero indice append notes_data list with corresponding note information.
+            # For each non-zero index, append notes_data list with note information.
             for index in indices:
                 velocity = 64
                 start = index * duration
 
-                notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
+                # We'll populate the texture_id later, after inserting into the textures table.
+                notes_data.append((None, start, velocity, next(note_pool), duration))
 
         dataframe = pandas.DataFrame(notes_data, columns=['texture_id', 'Start', 'Velocity', 'Note', 'Duration']).sort_values(by='Start').drop_duplicates().reset_index(drop=True)
         dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-        dataframe.to_sql(name=f'{self.__class__.__name__}', con=self.mediator.connection, if_exists='replace', index=False)
+
+        # Insert the class name into the 'textures' table and get the ID.
+        cursor = self.mediator.connection.cursor()
+        cursor.execute("INSERT INTO textures (name) VALUES (?)", (self.__class__.__name__,))
+        texture_id = cursor.lastrowid  # Get the last inserted ID
+
+        # Update the 'texture_id' column in the dataframe with the newly obtained ID.
+        dataframe['texture_id'] = texture_id
+
+        # Insert the notes data into the 'notes' table
+        dataframe.to_sql(name='notes', con=self.mediator.connection, if_exists='append', index=False)
         dataframe.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
 
     # @staticmethod

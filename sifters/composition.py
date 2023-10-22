@@ -60,9 +60,9 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.initialize_texture_objects()
 
-        self.generate_notes_table_commands()
+        # self.generate_notes_table_commands()
 
-        self.generate_midi_messages_table_commands()
+        # self.generate_midi_messages_table_commands()
             
 
     def set_binary(self, sieve):
@@ -167,10 +167,13 @@ class Composition:
             nonpitched.NonPitched,
             polyphonic.Polyphonic,
         ]
+        # HERE I SHOULD ALSO CREATE THE COORESPONDING ROW IN THE TEXTURES TABLE
+        # THEN SAVE THE NOTES DATA DIRECTLY TO THE NOTES TABLE INSTEAD OF CREATING A TEMPORARY TABLE
         
         # Simply initialize each texture object. No need to store them.
         for TextureClass in texture_classes:
-            TextureClass(self)  # Initialize with the Composition instance as a mediator
+            texture = TextureClass(self)  # Initialize with the Composition instance as a mediator
+            print(texture.set_notes_data)
 
 
     def generate_notes_table_commands(self):
@@ -192,19 +195,12 @@ class Composition:
             sql_commands.extend([
                 self.database.insert_texture(texture_id, texture_name),
                 self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
-                self.database.cleanup_database(texture_name),
-                # self.database.generate_combined_commands(texture_name, self.grids_set),
-                # self.database.generate_grouped_commands(texture_name, texture_columns[texture_name]),
-                # self.database.generate_max_duration_command(texture_name),
-                # self.database.generate_drop_duplicates_command(texture_name),
-                # self.database.generate_create_end_table_command(texture_name),
-                # self.database.generate_insert_end_data_command(texture_name),
-                # self.database.generate_add_pitch_column_command(texture_name),
-                # self.database.generate_midi_messages_table_command(texture_name),
+                # self.database.cleanup_database(texture_name),
             ])
 
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)
+        self.connection.commit()
 
 
     def generate_midi_messages_table_commands(self):
@@ -215,10 +211,26 @@ class Composition:
         for texture_id in textures:
             # Fetch notes for the texture
             notes = self.database.fetch_notes_for_texture(texture_id)
-
+            
             sql_commands.extend([
-                self.database.create_temporary_texture_tables(notes)
-            ])
+            # Get the SQL command for creating and inserting data into a temporary table
+            ### IS IT ACTUALLY NECESSARY TO CREATE THESE TEMPORARY TABLES? 
+            ### CAN I JUST GENERATE THE MIDI MESSAGES DIRECTLY FROM THE NOTES TABLE?
+                self.database.create_temporary_texture_table(notes, texture_id),
+                self.database.insert_into_temp_texture_table(notes, texture_id)
+                # self.database.generate_combined_commands(texture_name, self.grids_set),
+                # self.database.generate_grouped_commands(texture_name, texture_columns[texture_name]),
+                # self.database.generate_max_duration_command(texture_name),
+                # self.database.generate_drop_duplicates_command(texture_name),
+                # self.database.generate_create_end_table_command(texture_name),
+                # self.database.generate_insert_end_data_command(texture_name),
+                # self.database.generate_add_pitch_column_command(texture_name),
+                # self.database.generate_midi_messages_table_command(texture_name),
+                ])
+
+        combined_sql = "\n".join(sql_commands)
+        self.cursor.executescript(combined_sql)
+        self.connection.commit()
 
 
     def write_midi(self, table_name):
