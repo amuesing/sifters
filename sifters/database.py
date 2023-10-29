@@ -64,9 +64,11 @@ class Database:
         self.connection.commit()
 
 
-    def fetch_texture_names(self):
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('textures', 'notes', 'midi_messages')")
-        return [row[0] for row in self.cursor.fetchall()]
+    # def fetch_texture_names(self):
+    #     self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('textures', 'notes', 'midi_messages')")
+    #     return [row[0] for row in self.cursor.fetchall()]
+
+    
 
 
     def fetch_columns(self, texture, exclude_columns_set={}):
@@ -83,21 +85,102 @@ class Database:
             return result[0]  # Extract the first texture_id value from the result
         else:
             return None  # Return None if no result was found
+        
+    def fetch_columns_by_texture_id(self, texture_id, exclude_columns_set={}):
+        # Get the first row for the given texture_id
+        self.cursor.execute(f'SELECT * FROM notes WHERE texture_id = ? LIMIT 1', (texture_id,))
+        row = self.cursor.fetchone()
+
+        # If there's a row, get its column names; otherwise, return an empty list
+        if row:
+            # Use the keys of the row (which are column names) and filter out the ones in the exclude set
+            return [col for col in row.keys() if col not in exclude_columns_set]
+        else:
+            return []
+
+        
+        
+    def find_texture_name_by_id(self, texture_id):
+        """Fetch the texture name for a given texture_id."""
+        self.cursor.execute("SELECT name FROM textures WHERE texture_id = ?", (texture_id,))
+        result = self.cursor.fetchone()
+        
+        if result:
+            return result[0]
+        else:
+            return None
 
     
-    def insert_texture(self, texture_id, texture_name):
-        return f'INSERT INTO textures (texture_id, name) VALUES ({texture_id}, "{texture_name}");'
+    # def insert_texture(self, texture_id, texture_name):
+    #     return f'INSERT INTO textures (texture_id, name) VALUES ({texture_id}, "{texture_name}");'
+
+    def insert_texture(self, texture_name):
+        # Insert the texture name and allow the database to auto-increment the texture_id
+        return f'INSERT INTO textures (name) VALUES ("{texture_name}");'
     
 
-    def insert_into_notes_command(self, texture_table_names):        
+    def insert_into_notes_command(self, texture_id, texture_table_names):
         commands = []
+        # Given that texture_table_names holds the names of the tables which contain the notes
+        # related to the specific texture, we will loop through these tables and generate
+        # the insert commands.
         for texture_table_name in texture_table_names:
             cols = self.fetch_columns(texture_table_name)
             cols_string = ', '.join([f'"{col}"' for col in cols])
-            sql_command = f'INSERT INTO notes ({cols_string}) SELECT {cols_string} FROM "{texture_table_name}";'
+            
+            # This command will insert data from each of the texture-specific tables into the main notes table.
+            # Since we're working with the texture_id now, the INSERT command will also include this ID.
+            sql_command = f'''
+            INSERT INTO notes (texture_id, {cols_string})
+            SELECT {texture_id}, {cols_string}
+            FROM "{texture_table_name}";
+            '''
             commands.append(sql_command)
 
         return "\n".join(commands)
+
+    
+
+    # def insert_into_notes_command(self, texture_id):
+    #     # Prepare the SQL command to insert notes related to the specific texture_id
+    #     # into the notes table.
+    #     sql_command = f'''
+    #     INSERT INTO notes (texture_id, [other_columns...])
+    #     SELECT {texture_id}, [other_columns...]
+    #     FROM notes
+    #     WHERE texture_id = {texture_id};
+    #     '''
+    #     return sql_command
+
+    
+    # def insert_into_notes_command(self, texture_id):
+    #     # Generate an SQL command to insert notes for a given texture_id into the notes table
+    #     # This approach assumes the source data structure matches the destination notes table structure
+    #     # If this isn't the case, you might need further transformations
+
+    #     # The columns might be specific to each texture, or they might be standardized
+    #     # For this example, I'll assume a standard set of columns, but you can adjust as needed
+    #     columns = ['texture_id', 'Start', 'Velocity', 'Note', 'Duration']
+
+    #     columns_string = ', '.join([f'"{col}"' for col in columns])
+
+    #     # Generate the SQL command
+    #     sql_command = f'INSERT INTO notes ({columns_string}) SELECT {columns_string} FROM notes WHERE texture_id = {texture_id};'
+
+    #     return sql_command
+
+
+    
+
+    # def insert_into_notes_command(self, texture_table_names):        
+    #     commands = []
+    #     for texture_table_name in texture_table_names:
+    #         cols = self.fetch_columns(texture_table_name)
+    #         cols_string = ', '.join([f'"{col}"' for col in cols])
+    #         sql_command = f'INSERT INTO notes ({cols_string}) SELECT {cols_string} FROM "{texture_table_name}";'
+    #         commands.append(sql_command)
+
+    #     return "\n".join(commands)
     
 
     def fetch_distinct_textures(self):
@@ -125,7 +208,7 @@ class Database:
         return midi_message_data
 
 
-    def generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
+    def generate_union_all_statements(self, texture_id, columns_string, duration_value, length_of_one_rep, repeat):
         accumulative_value = 0
         select_statements = []
 
@@ -134,22 +217,48 @@ class Database:
             SELECT {columns_string}, 
             "Start" * {duration_value} + {accumulative_value} AS "Start",
             "Duration" * {duration_value} AS "Duration"
-            FROM "{texture}"''')
+            FROM notes WHERE texture_id = {texture_id}''')
             accumulative_value += length_of_one_rep
-        
+
         return " UNION ALL ".join(select_statements)
+
+    # def generate_union_all_statements(self, texture, columns_string, duration_value, length_of_one_rep, repeat):
+    #     accumulative_value = 0
+    #     select_statements = []
+
+    #     for _ in range(repeat):
+    #         select_statements.append(f'''
+    #         SELECT {columns_string}, 
+    #         "Start" * {duration_value} + {accumulative_value} AS "Start",
+    #         "Duration" * {duration_value} AS "Duration"
+    #         FROM "{texture}"''')
+    #         accumulative_value += length_of_one_rep
+        
+    #     return " UNION ALL ".join(select_statements)
     
 
-    def generate_sql_for_duration_values(self, texture, columns_string):
+    def generate_sql_for_duration_values(self, texture_id, columns_string):
         duration_values = [grid * self.scaling_factor for grid in self.grids_set]
         length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
 
         table_commands = {}
         for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"{texture}_{duration_value}"
-            table_commands[table_name] = self.generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
-        
+            # Here we will name the table with the texture_id instead of the texture name.
+            table_name = f"texture_{texture_id}_{duration_value}"
+            table_commands[table_name] = self.generate_union_all_statements(texture_id, columns_string, duration_value, length_of_one_rep, repeat)
+
         return table_commands
+
+    # def generate_sql_for_duration_values(self, texture, columns_string):
+    #     duration_values = [grid * self.scaling_factor for grid in self.grids_set]
+    #     length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
+
+    #     table_commands = {}
+    #     for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
+    #         table_name = f"{texture}_{duration_value}"
+    #         table_commands[table_name] = self.generate_union_all_statements(texture, columns_string, duration_value, length_of_one_rep, repeat)
+        
+    #     return table_commands
     
 
     def generate_combined_commands(self, texture, duration_values):

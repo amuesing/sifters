@@ -60,7 +60,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.initialize_texture_objects()
 
-        # self.generate_notes_table_commands()
+        self.normalize_notes_table()
 
         # self.generate_midi_messages_table_commands()
             
@@ -172,35 +172,107 @@ class Composition:
         
         # Simply initialize each texture object. No need to store them.
         for TextureClass in texture_classes:
-            texture = TextureClass(self)  # Initialize with the Composition instance as a mediator
-            print(texture.set_notes_data)
+            TextureClass(self)  # Initialize with the Composition instance as a mediator
 
-
-    def generate_notes_table_commands(self):
+    def normalize_notes_table(self):
         sql_commands = []
         exclude_columns_set = {'Start', 'Duration'}
-        texture_names = self.database.fetch_texture_names()
-        texture_columns = {texture: self.database.fetch_columns(texture, exclude_columns_set) for texture in texture_names}
 
-        for texture_name in texture_names:
+        # Fetching distinct texture_ids from the database.
+        texture_ids = self.database.fetch_distinct_textures()
+
+        # Mapping between texture_id and its columns.
+        texture_columns = {texture_id: self.database.fetch_columns_by_texture_id(texture_id, exclude_columns_set) for texture_id in texture_ids}
+
+        for texture_id in texture_ids:
             table_names = []
-            columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_name]])
-            texture_id = self.database.find_first_texture_id(texture_name)
-            
-            table_commands = self.database.generate_sql_for_duration_values(texture_name, columns_string)
+
+            columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_id]])
+
+            # Generate the SQL commands to get the duration values for this texture_id.
+            table_commands = self.database.generate_sql_for_duration_values(texture_id, columns_string)
+
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
                 self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
             sql_commands.extend([
-                self.database.insert_texture(texture_id, texture_name),
-                self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
-                # self.database.cleanup_database(texture_name),
+                self.database.insert_texture(texture_id),
+                self.database.insert_into_notes_command(texture_id, table_names),
+                # Assuming cleanup_database can work with texture_id as well.
+                # self.database.cleanup_database(texture_id),
             ])
 
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)
         self.connection.commit()
+
+
+
+    # def normalize_notes_table(self):
+    #     sql_commands = []
+    #     exclude_columns_set = {'Start', 'Duration'}
+        
+    #     # Fetching texture_ids instead of texture_names.
+    #     texture_ids = self.database.fetch_distinct_textures()
+
+    #     # Mapping between texture_id and its columns.
+    #     texture_columns = {texture_id: self.database.fetch_columns(self.database.find_texture_name_by_id(texture_id), exclude_columns_set) for texture_id in texture_ids}
+
+    #     for texture_id in texture_ids:
+    #         table_names = []
+            
+    #         # Retrieve the corresponding texture name for the texture_id.
+    #         texture_name = self.database.find_texture_name_by_id(texture_id)
+
+    #         columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_id]])
+
+    #         table_commands = self.database.generate_sql_for_duration_values(texture_name, columns_string)
+
+    #         # print(table_commands)
+
+    #         for table_name, union_statements in table_commands.items():
+    #             print(union_statements)
+        #         table_names.append(table_name)
+        #         self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
+
+        #     sql_commands.extend([
+        #         self.database.insert_texture(texture_id, texture_name),
+        #         self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
+        #         # self.database.cleanup_database(texture_name),  # If needed, this can be updated to use texture_id as well.
+        #     ])
+
+        # sql_commands = "\n".join(sql_commands)
+        # self.cursor.executescript(sql_commands)
+        # self.connection.commit()
+
+    ### REPLACE TEXTURE NAME WITH TEXTURE ID IN THIS METHOD 
+    # def normalize_notes_table(self):
+    #     sql_commands = []
+    #     exclude_columns_set = {'Start', 'Duration'}
+    #     texture_names = self.database.fetch_texture_names()
+    #     texture_columns = {texture: self.database.fetch_columns(texture, exclude_columns_set) for texture in texture_names}
+    #     print(texture_names)
+    #     for texture_name in texture_names:
+    #         table_names = []
+    #         columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_name]])
+    #         texture_id = self.database.find_first_texture_id(texture_name)
+            
+    #         table_commands = self.database.generate_sql_for_duration_values(texture_name, columns_string)
+
+    #         for table_name, union_statements in table_commands.items():
+    #             table_names.append(table_name)
+    #             self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
+
+    #         sql_commands.extend([
+    #             self.database.insert_texture(texture_id, texture_name),
+    #             self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
+    #             # self.database.cleanup_database(texture_name),
+    #         ])
+
+    #     sql_commands = "\n".join(sql_commands)
+    #     self.cursor.executescript(sql_commands)
+    #     self.connection.commit()
 
 
     def generate_midi_messages_table_commands(self):
