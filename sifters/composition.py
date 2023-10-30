@@ -196,9 +196,13 @@ class Composition:
                 table_names.append(table_name)
                 self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
 
+        ### HOW TO CLEAR NOTES TABLE BEFORE INSERTING NORMALIZED NOTES DATA
+        ### HOW TO AUTOINCREMENT NOTE_ID ONCE ALL DATA IS IN PLACE
+        # self.cursor.execute('DELETE FROM notes;')
+
+        for texture_id in texture_ids:
             sql_commands.extend([
-                self.database.insert_texture(texture_id),
-                self.database.insert_into_notes_command(texture_id, table_names),
+                self.database.insert_into_notes_command(table_names),
                 # Assuming cleanup_database can work with texture_id as well.
                 # self.database.cleanup_database(texture_id),
             ])
@@ -206,45 +210,7 @@ class Composition:
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)
         self.connection.commit()
-
-
-
-    # def normalize_notes_table(self):
-    #     sql_commands = []
-    #     exclude_columns_set = {'Start', 'Duration'}
         
-    #     # Fetching texture_ids instead of texture_names.
-    #     texture_ids = self.database.fetch_distinct_textures()
-
-    #     # Mapping between texture_id and its columns.
-    #     texture_columns = {texture_id: self.database.fetch_columns(self.database.find_texture_name_by_id(texture_id), exclude_columns_set) for texture_id in texture_ids}
-
-    #     for texture_id in texture_ids:
-    #         table_names = []
-            
-    #         # Retrieve the corresponding texture name for the texture_id.
-    #         texture_name = self.database.find_texture_name_by_id(texture_id)
-
-    #         columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_id]])
-
-    #         table_commands = self.database.generate_sql_for_duration_values(texture_name, columns_string)
-
-    #         # print(table_commands)
-
-    #         for table_name, union_statements in table_commands.items():
-    #             print(union_statements)
-        #         table_names.append(table_name)
-        #         self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
-
-        #     sql_commands.extend([
-        #         self.database.insert_texture(texture_id, texture_name),
-        #         self.database.insert_into_notes_command(table_names),  # Insert records from the texture into the notes table
-        #         # self.database.cleanup_database(texture_name),  # If needed, this can be updated to use texture_id as well.
-        #     ])
-
-        # sql_commands = "\n".join(sql_commands)
-        # self.cursor.executescript(sql_commands)
-        # self.connection.commit()
 
     ### REPLACE TEXTURE NAME WITH TEXTURE ID IN THIS METHOD 
     # def normalize_notes_table(self):
