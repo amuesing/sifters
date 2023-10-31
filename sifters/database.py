@@ -39,7 +39,7 @@ class Database:
     def create_notes_table(self):
         sql_command = '''
         CREATE TABLE IF NOT EXISTS notes (
-            -- note_id INTEGER PRIMARY KEY,
+            note_id INTEGER PRIMARY KEY,
             texture_id INTEGER,
             Start INTEGER,
             Velocity INTEGER,
@@ -102,7 +102,7 @@ class Database:
             return result[0]
         else:
             return None
-    
+        
 
     def insert_into_notes_command(self, table_names):
         commands = []

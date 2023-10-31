@@ -174,18 +174,19 @@ class Composition:
         for TextureClass in texture_classes:
             TextureClass(self)  # Initialize with the Composition instance as a mediator
 
+
     def normalize_notes_table(self):
         sql_commands = []
-        exclude_columns_set = {'Start', 'Duration'}
+        exclude_columns_set = {'note_id', 'Start', 'Duration'}
 
         # Fetching distinct texture_ids from the database.
         texture_ids = self.database.fetch_distinct_textures()
 
         # Mapping between texture_id and its columns.
         texture_columns = {texture_id: self.database.fetch_columns_by_texture_id(texture_id, exclude_columns_set) for texture_id in texture_ids}
-
+        print(texture_columns)
+        table_names = []
         for texture_id in texture_ids:
-            table_names = []
 
             columns_string = ', '.join([f'"{col}"' for col in texture_columns[texture_id]])
 
@@ -194,18 +195,15 @@ class Composition:
 
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
-                self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
+                self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
 
-        ### HOW TO CLEAR NOTES TABLE BEFORE INSERTING NORMALIZED NOTES DATA
         ### HOW TO AUTOINCREMENT NOTE_ID ONCE ALL DATA IS IN PLACE
-        # self.cursor.execute('DELETE FROM notes;')
+        self.cursor.execute('DELETE FROM notes;')
 
-        for texture_id in texture_ids:
-            sql_commands.extend([
-                self.database.insert_into_notes_command(table_names),
-                # Assuming cleanup_database can work with texture_id as well.
-                # self.database.cleanup_database(texture_id),
-            ])
+
+        sql_commands.extend([
+            self.database.insert_into_notes_command(table_names),
+        ])
 
         sql_commands = "\n".join(sql_commands)
         self.cursor.executescript(sql_commands)
