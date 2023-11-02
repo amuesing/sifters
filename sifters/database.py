@@ -23,7 +23,7 @@ class Database:
 
         self.create_notes_table()
 
-        self.create_midi_messages_table()
+        self.create_messages_table()
 
     
     def create_textures_table(self):
@@ -51,11 +51,12 @@ class Database:
         self.connection.commit()
 
 
-    def create_midi_messages_table(self):
+    def create_messages_table(self):
         sql_command = '''
-        CREATE TABLE IF NOT EXISTS midi_messages (
+        CREATE TABLE IF NOT EXISTS messages (
             message_id INTEGER PRIMARY KEY,
             note_id INTEGER,
+            texture_id INTEGER,
             message_type TEXT,
             time INTEGER,
             FOREIGN KEY (note_id) REFERENCES notes(note_id)
@@ -66,6 +67,7 @@ class Database:
 
     def fetch_columns(self, texture, exclude_columns_set={}):
         self.cursor.execute(f'PRAGMA table_info("{texture}")')
+
         return [row[1] for row in self.cursor.fetchall() if row[1] not in exclude_columns_set]
     
 
@@ -74,34 +76,17 @@ class Database:
         self.cursor.execute(sql_query) # Execute the SQL query.
         result = self.cursor.fetchone() # Fetch the result (should be a single row with the first texture_id).
 
-        if result: # Check if a result was found.
-            return result[0]  # Extract the first texture_id value from the result
-        else:
-            return None  # Return None if no result was found
+        return result[0]  # Extract the first texture_id value from the result
+        
 
-
-    def fetch_columns_by_texture_id(self, texture_id, exclude_columns_set={}):
-        # Get the first row for the given texture_id
-        self.cursor.execute(f'SELECT * FROM notes WHERE texture_id = ? LIMIT 1', (texture_id,))
+    def fetch_columns_by_table_name(self, table_name, exclude_columns_set={}):
+        # Get the first row for the given table_name
+        self.cursor.execute(f'SELECT * FROM "{table_name}"')
         row = self.cursor.fetchone()
+        # Use the keys of the row (which are column names) and filter out the ones in the exclude set
+        columns = [col for col in row.keys() if col not in exclude_columns_set]
 
-        # If there's a row, get its column names; otherwise, return an empty list
-        if row:
-            # Use the keys of the row (which are column names) and filter out the ones in the exclude set
-            return [col for col in row.keys() if col not in exclude_columns_set]
-        else:
-            return []
-
-        
-    def find_texture_name_by_id(self, texture_id):
-        """Fetch the texture name for a given texture_id."""
-        self.cursor.execute("SELECT name FROM textures WHERE texture_id = ?", (texture_id,))
-        result = self.cursor.fetchone()
-        
-        if result:
-            return result[0]
-        else:
-            return None
+        return ', '.join(columns)
         
 
     def insert_into_notes_command(self, table_names):
@@ -120,21 +105,14 @@ class Database:
 
     def fetch_distinct_textures(self):
         self.cursor.execute("SELECT DISTINCT texture_id FROM notes")
+
         return [row[0] for row in self.cursor.fetchall()]
 
 
     def fetch_notes_for_texture(self, texture_id):
         self.cursor.execute("SELECT * FROM notes WHERE texture_id = ?", (texture_id,))
+
         return self.cursor.fetchall()
-
-
-    def insert_midi_message(self, midi_message_data):
-        sql_insert = '''
-            INSERT INTO midi_messages (note_id, message_type, time, ...)
-            VALUES (?, ?, ?, ...)
-        '''
-        self.cursor.execute(sql_insert, midi_message_data)
-        self.connection.commit()
 
 
     def generate_union_all_statements(self, texture_id, columns_string, duration_value, length_of_one_rep, repeat):
@@ -168,6 +146,7 @@ class Database:
     def generate_combined_commands(self, texture, duration_values):
         new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in duration_values]
         select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
+
         return f'''CREATE TABLE "{texture}_combined" AS 
                             {" UNION ".join(select_statements)};'''
     
@@ -187,32 +166,6 @@ class Database:
         # Return the create table SQL command
         return create_table_command
 
-
-    def insert_into_temp_texture_table(self, notes, texture_id):
-        """Generate a SQL command to insert provided notes into a temporary table."""
-
-        table_name = f"temp_texture_{texture_id}"
-
-        # Extract columns from the first note (which is an sqlite3.Row object)
-        columns = ', '.join(['"' + col + '"' for col in notes[0].keys()])
-
-        print(columns)
-
-        for note in notes:
-            print(note[0])
-
-        # # Generate a list of full insert commands with values directly embedded
-        # insert_commands = [
-        #     f'INSERT INTO {table_name} ({columns}) VALUES ({", ".join(map(repr, tuple(note)))});'
-        #     for note in notes
-        # ]
-
-        # # Return the combined insert SQL commands
-        # return "\n".join(insert_commands)
-        return None
-
-
-    
 
     def generate_grouped_commands(self, texture, columns):
         group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
