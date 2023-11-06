@@ -169,88 +169,46 @@ class Composition:
         for TextureClass in texture_classes:
             TextureClass(self)
 
+
     def set_tables(self):
 
         # Fetching distinct texture_ids from the database.
         texture_ids = self.database.fetch_distinct_texture_ids()
 
+        table_names = []
+        columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'note_id', 'Start', 'Duration'})
 
-        def normalize_notes_table():
-            table_names = []
-            columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'note_id', 'Start', 'Duration'})
+        ### MAKE A METHOD FOR THIS LOOP IN DATABASE CLASS
+        for texture_id in texture_ids:
+            # Generate the SQL commands to get the duration values for this texture_id.
+            table_commands = self.database.generate_sql_for_duration_values(texture_id, columns_list)
 
-            for texture_id in texture_ids:
-                # Generate the SQL commands to get the duration values for this texture_id.
-                table_commands = self.database.generate_sql_for_duration_values(texture_id, columns_list)
-
-                for table_name, union_statements in table_commands.items():
-                    table_names.append(table_name)
-                    self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
-
-            self.cursor.execute('DELETE FROM notes;')
-            self.cursor.executescript(self.database.insert_into_notes_command(table_names))
-            self.connection.commit()
-                    
-
-        def combine_textures():
-            table_names = []
-            sql_commands = []
-            columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'Start'})
-
-            for texture_id in texture_ids:
-                # Create a temporary table for this group of rows.
-                table_name = f'texture_{texture_id}'
-                self.cursor.execute(f'CREATE TABLE "{table_name}" AS SELECT * FROM notes WHERE texture_id = {texture_id};')
+            for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
+                self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
 
-                sql_commands.extend([
-                    self.database.generate_grouped_commands(texture_id, columns_list),
-                    self.database.generate_max_duration_command(texture_id),
-                    self.database.generate_drop_duplicates_command(texture_id),
-                    self.database.generate_create_end_table_command(texture_id),
-                    self.database.generate_insert_end_data_command(texture_id),
-                    self.database.generate_add_pitch_column_command(texture_id),
-                    self.database.generate_midi_messages_table_command(texture_id),
-                    ])
-        
-            combined_sql = "\n".join(sql_commands)
-            self.cursor.executescript(combined_sql)
-            self.connection.commit()
+        self.cursor.execute('DELETE FROM notes;')
+        self.cursor.executescript(self.database.insert_into_notes_command(table_names))
+        self.connection.commit()
 
+        sql_commands = []
+        columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'Start'})
 
+        for texture_id in texture_ids:
+            sql_commands.extend([
+                self.database.generate_grouped_command(texture_id, columns_list),
+                ### NEED TO ADD NOTE_ID AND TEXTURE_ID COLUMNS TO THESE TABLES
+                ### MAKE TEMPORARY TABLES TEMPORARY
+                ### CONSILIDATE COMMANDS WHERE POSSIBLE
+                self.database.generate_max_duration_command(texture_id),
+                self.database.generate_create_and_insert_end_data_commands(texture_id),
+                self.database.generate_add_pitch_column_command(texture_id),
+                self.database.generate_midi_messages_table_command(texture_id),
+            ])
 
-
-        # def interpolate_midi_messages(self):
-        #     # Fetch the distinct textures
-        #     sql_commands = []
-        #     textures = self.database.fetch_distinct_texture_ids()
-
-        #     for texture_id in textures:
-        #         # Fetch notes for the texture
-        #         notes = self.database.fetch_notes_for_texture(texture_id)
-                
-        #         sql_commands.extend([
-        #         # Get the SQL command for creating and inserting data into a temporary table
-        #         ### IS IT ACTUALLY NECESSARY TO CREATE THESE TEMPORARY TABLES?
-        #         ### I DO NEED THE TEMPORARY TABLES SO THAT I CAN COMBINE EACH TABLE
-        #         ### PERHAPS THE COMBINING FUNCTION SHOULD BE DONE IN THE PREVIOUS METHOD?
-        #         ### CAN I JUST GENERATE THE MIDI MESSAGES DIRECTLY FROM THE NOTES TABLE?
-        #             # self.database.generate_combined_commands(texture_name, self.grids_set),
-        #             # self.database.generate_grouped_commands(texture_name, texture_columns[texture_name]),
-        #             # self.database.generate_max_duration_command(texture_name),
-        #             # self.database.generate_drop_duplicates_command(texture_name),
-        #             # self.database.generate_create_end_table_command(texture_name),
-        #             # self.database.generate_insert_end_data_command(texture_name),
-        #             # self.database.generate_add_pitch_column_command(texture_name),
-        #             # self.database.generate_midi_messages_table_command(texture_name),
-        #             ])
-
-        #     combined_sql = "\n".join(sql_commands)
-        #     self.cursor.executescript(combined_sql)
-        #     self.connection.commit()
-        normalize_notes_table()
-        combine_textures()
-
+        combined_sql = "\n".join(sql_commands)
+        self.cursor.executescript(combined_sql)
+        self.connection.commit()
 
 
     def write_midi(self, table_name):
