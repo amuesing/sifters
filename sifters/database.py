@@ -79,14 +79,15 @@ class Database:
         return result[0]  # Extract the first texture_id value from the result
         
 
-    def fetch_columns_by_table_name(self, table_name, exclude_columns_set={}):
+    def fetch_columns_by_table_name(self, table_name, exclude_columns={}):
         # Get the first row for the given table_name
         self.cursor.execute(f'SELECT * FROM "{table_name}"')
         row = self.cursor.fetchone()
         # Use the keys of the row (which are column names) and filter out the ones in the exclude set
-        columns = [col for col in row.keys() if col not in exclude_columns_set]
+        columns = [col for col in row.keys() if col not in exclude_columns]
 
-        return ', '.join(columns)
+        # return ', '.join(columns)
+        return columns
         
 
     def insert_into_notes_command(self, table_names):
@@ -103,7 +104,7 @@ class Database:
         return "\n".join(commands)
 
 
-    def fetch_distinct_textures(self):
+    def fetch_distinct_texture_ids(self):
         self.cursor.execute("SELECT DISTINCT texture_id FROM notes")
 
         return [row[0] for row in self.cursor.fetchall()]
@@ -130,7 +131,8 @@ class Database:
         return " UNION ALL ".join(select_statements)
     
 
-    def generate_sql_for_duration_values(self, texture_id, columns_string):
+    def generate_sql_for_duration_values(self, texture_id, columns_list):
+        columns_string = ', '.join(columns_list)
         duration_values = [grid * self.scaling_factor for grid in self.grids_set]
         length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
 
@@ -141,70 +143,45 @@ class Database:
             table_commands[table_name] = self.generate_union_all_statements(texture_id, columns_string, duration_value, length_of_one_rep, repeat)
 
         return table_commands
-    
-
-    def generate_combined_commands(self, texture, duration_values):
-        new_tables = [f'{texture}_{grid * self.scaling_factor}' for grid in duration_values]
-        select_statements = [f'SELECT * FROM "{new_table}"' for new_table in new_tables]
-
-        return f'''CREATE TABLE "{texture}_combined" AS 
-                            {" UNION ".join(select_statements)};'''
-    
-
-    def create_temporary_texture_table(self, notes, texture_id):
-        table_name = f"temp_texture_{texture_id}"
-        columns = list(notes[0].keys())
-        column_def = ", ".join([f'"{column}" TEXT' for column in columns])
-        
-        # Create table command
-        create_table_command = f'''
-        CREATE TABLE {table_name} (
-            {column_def}
-        );
-        '''
-
-        # Return the create table SQL command
-        return create_table_command
 
 
-    def generate_grouped_commands(self, texture, columns):
+    def generate_grouped_commands(self, texture_id, columns):
         group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
-        group_query_parts.append('GROUP_CONCAT("Duration") AS "Duration"')
         group_query_body = ', '.join(group_query_parts)
         return f'''
-        CREATE TABLE "{texture}_grouped" AS
+        CREATE TABLE "texture_{texture_id}_grouped" AS
         SELECT Start, {group_query_body}
-        FROM "{texture}_combined"
+        FROM "texture_{texture_id}"
         GROUP BY Start;
         '''
 
 
-    def generate_max_duration_command(self, texture):
+    def generate_max_duration_command(self, texture_id):
         return f'''
-        CREATE TABLE "{texture}_max_duration" AS
+        CREATE TABLE "texture_{texture_id}_max_duration" AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
-            FROM "{texture}_combined"
+            FROM "texture_{texture_id}"
             GROUP BY Start
         )
         SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-        FROM "{texture}_combined" c
+        FROM "texture_{texture_id}" c
         LEFT JOIN max_durations m ON c.Start = m.Start;
         '''
 
 
-    def generate_drop_duplicates_command(self, texture):
+    def generate_drop_duplicates_command(self, texture_id):
         return f'''
         CREATE TABLE temp_table AS
-        SELECT DISTINCT * FROM "{texture}_max_duration";
-        DROP TABLE "{texture}_max_duration";
-        ALTER TABLE temp_table RENAME TO "{texture}_max_duration";
+        SELECT DISTINCT * FROM "texture_{texture_id}_max_duration";
+        DROP TABLE "texture_{texture_id}_max_duration";
+        ALTER TABLE temp_table RENAME TO "texture_{texture_id}_max_duration";
         '''
 
 
     def generate_create_end_table_command(self, texture):
         return f'''
-        CREATE TABLE "{texture}_end_column" (
+        CREATE TABLE "texture_{texture}_end_column" (
             Start INTEGER, 
             End INTEGER, 
             Duration INTEGER,
@@ -214,7 +191,7 @@ class Database:
         '''
 
 
-    def generate_insert_end_data_command(self, texture):
+    def generate_insert_end_data_command(self, texture_id):
         return f'''
         WITH ModifiedDurations AS (
             SELECT 
@@ -222,7 +199,7 @@ class Database:
                 Velocity,
                 Note,
                 Duration as ModifiedDuration
-            FROM "{texture}_max_duration"
+            FROM "texture_{texture_id}_max_duration"
         ),
         DistinctEnds AS (
             SELECT
@@ -230,7 +207,7 @@ class Database:
                 COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
             FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
         )
-        INSERT INTO "{texture}_end_column"
+        INSERT INTO "texture_{texture_id}_end_column"
         SELECT 
             m.Start,
             d.End,
@@ -242,23 +219,23 @@ class Database:
         '''
 
 
-    def generate_add_pitch_column_command(self, texture):
+    def generate_add_pitch_column_command(self, texture_id):
         return f'''
-        CREATE TABLE "{texture}_base" AS 
+        CREATE TABLE "texture_{texture_id}_base" AS 
         SELECT 
             Start,
             End,
             Velocity,
             CAST(Note AS INTEGER) AS Note,
             CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
-        FROM "{texture}_end_column";
+        FROM "texture_{texture_id}_end_column";
         '''
     
     
-    def generate_midi_messages_table_command(self, texture):
+    def generate_midi_messages_table_command(self, texture_id):
         return f'''
             -- [1] Create the initial MIDI messages table:
-            CREATE TABLE "{texture}_midi_messages_temp" AS
+            CREATE TABLE "texture_{texture_id}_midi_messages_temp" AS
             SELECT 
                 *,
                 'note_on' AS Message,
@@ -266,19 +243,19 @@ class Database:
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "{texture}_base";
+            FROM "texture_{texture_id}_base";
 
             -- [2.1] Create a table of rows meeting the delta condition (generating rests):
-            CREATE TABLE "{texture}_midi_rests" AS
+            CREATE TABLE "texture_{texture_id}_midi_rests" AS
             SELECT 
                 a.*
-            FROM "{texture}_midi_messages_temp" AS a
+            FROM "texture_{texture_id}_midi_messages_temp" AS a
             JOIN (
                 SELECT 
                     Start,
                     LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
                     LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                FROM "{texture}_midi_messages_temp"
+                FROM "texture_{texture_id}_midi_messages_temp"
             ) AS t
             ON a.Start = t.Start
             WHERE 
@@ -286,17 +263,17 @@ class Database:
                 AND a.Start != t.PreviousStart;
 
             -- [2.2] Update the Time column in the main table based on delta condition:
-            UPDATE "{texture}_midi_messages_temp"
+            UPDATE "texture_{texture_id}_midi_messages_temp"
             SET Time = (
-                SELECT COALESCE("{texture}_midi_messages_temp".Start - t.PreviousEnd, 0)
+                SELECT COALESCE("texture_{texture_id}_midi_messages_temp".Start - t.PreviousEnd, 0)
                 FROM (
                     SELECT 
                         Start,
                         LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
-                    FROM "{texture}_midi_messages_temp"
+                    FROM "texture_{texture_id}_midi_messages_temp"
                 ) AS t
                 WHERE 
-                    "{texture}_midi_messages_temp".Start = t.Start
+                    "texture_{texture_id}_midi_messages_temp".Start = t.Start
             )
             WHERE EXISTS (
                 SELECT 1
@@ -305,52 +282,33 @@ class Database:
                         Start,
                         LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
                         LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                    FROM "{texture}_midi_messages_temp"
+                    FROM "texture_{texture_id}_midi_messages_temp"
                 ) AS t_sub
                 WHERE 
-                    "{texture}_midi_messages_temp".Start = t_sub.Start 
-                    AND "{texture}_midi_messages_temp".Start != t_sub.PreviousEnd
-                    AND "{texture}_midi_messages_temp".Start != t_sub.PreviousStart
+                    "texture_{texture_id}_midi_messages_temp".Start = t_sub.Start 
+                    AND "texture_{texture_id}_midi_messages_temp".Start != t_sub.PreviousEnd
+                    AND "texture_{texture_id}_midi_messages_temp".Start != t_sub.PreviousStart
             );
 
             -- [3] Append rows for 'pitchwheel' and 'note_off' events:
-            INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
                 Start, End, Velocity, Note, Pitch,
                 'pitchwheel' AS Message,
                 0 AS Time
-            FROM "{texture}_midi_messages_temp"
+            FROM "texture_{texture_id}_midi_messages_temp"
             WHERE Message = 'note_on' AND Pitch != 0.0;
 
-            INSERT INTO "{texture}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
                 Start, End, Velocity, Note, Pitch,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time
-            FROM "{texture}_midi_messages_temp"
+            FROM "texture_{texture_id}_midi_messages_temp"
             WHERE Message = 'note_on';
 
             -- [4] Organize the MIDI messages by 'Start' time and store in a new table:
-            CREATE TABLE "{texture}_midi_messages" AS
-            SELECT * FROM "{texture}_midi_messages_temp"
+            CREATE TABLE "texture_{texture_id}_midi_messages" AS
+            SELECT * FROM "texture_{texture_id}_midi_messages_temp"
             ORDER BY Start ASC;
-
-            -- [5] Cleanup: Drop the temporary table to free up resources:
-            DROP TABLE "{texture}_midi_messages_temp";
         '''
-
-    def cleanup_database(self, texture_name):
-        # Fetch names of all tables in the database
-        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        all_tables = [row[0] for row in self.cursor.fetchall()]
-
-        # List of tables you want to keep
-        keep_tables = ['textures', 'notes', 'midi_messages']
-
-        # Find tables that start with the texture name and are not in the keep list
-        tables_to_drop = [table for table in all_tables if table.startswith(texture_name) and table not in keep_tables]
-
-        # Generate DROP TABLE SQL statements for the tables to drop and concatenate them
-        sql_commands_to_drop = '\n'.join([f'DROP TABLE IF EXISTS {table};' for table in tables_to_drop])
-
-        return sql_commands_to_drop
