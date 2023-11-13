@@ -172,24 +172,35 @@ class Composition:
 
     def set_tables(self):
 
+        combined_table_names = []
+
         # Fetching distinct texture_ids from the database.
         texture_ids = self.database.fetch_distinct_texture_ids()
-
-        table_names = []
         columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'note_id', 'Start', 'Duration'})
 
-        ### MAKE A METHOD FOR THIS LOOP IN DATABASE CLASS
         for texture_id in texture_ids:
-            # Generate the SQL commands to get the duration values for this texture_id.
+            table_names = []
+
+
             table_commands = self.database.generate_sql_for_duration_values(texture_id, columns_list)
 
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
-                self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
+                self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
+
+            combined_table_name = f'combined_texture_{texture_id}'
+            combined_table_names.append(combined_table_name)
+            
+            union_query_parts = []
+            for table_name in table_names:
+                union_query_parts.append(f'SELECT * FROM "{table_name}"')
+            union_query = ' UNION ALL '.join(union_query_parts)
+                
+            self.cursor.execute(f'CREATE TABLE {combined_table_name} AS {union_query};')
 
         self.cursor.execute('DELETE FROM notes;')
-        self.cursor.executescript(self.database.insert_into_notes_command(table_names))
-        self.connection.commit()
+        self.cursor.executescript(self.database.insert_into_notes_command(combined_table_names))
+        # self.connection.commit()
 
         sql_commands = []
         columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'Start'})
@@ -200,6 +211,8 @@ class Composition:
                 ### NEED TO ADD NOTE_ID AND TEXTURE_ID COLUMNS TO THESE TABLES
                 ### MAKE TEMPORARY TABLES TEMPORARY
                 ### CONSILIDATE COMMANDS WHERE POSSIBLE
+                ### THE ISSUE I AM RUNNING INTO HAS TO DO WITH USING THE DISTINCT KEYWORD ALONG WITH FOREIGN KEYS
+                ### CAN I REMOVE DUPLICATES (USING DISTINCT) BEFORE I ASSIGN EACH AN ID?
                 self.database.generate_max_duration_command(texture_id),
                 self.database.generate_create_and_insert_end_data_commands(texture_id),
                 self.database.generate_add_pitch_column_command(texture_id),

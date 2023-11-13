@@ -122,7 +122,23 @@ class Database:
             table_commands[table_name] = self.generate_union_all_statements(texture_id, columns_string, duration_value, length_of_one_rep, repeat)
 
         return table_commands
-        
+    
+
+    # def insert_into_notes_command(self, table_names):
+    #     commands = []
+
+    #     print(table_names)
+
+    #     for table_name in table_names:
+    #         cols = self.fetch_columns_by_table_name(table_name)
+    #         cols_string = ', '.join([f'"{col}"' for col in cols])
+
+    #         # Insert distinct rows from each table into the notes table
+    #         sql_command = f'INSERT INTO notes ({cols_string}) SELECT DISTINCT {cols_string} FROM "{table_name}";'
+    #         commands.append(sql_command)
+
+    #     return "\n".join(commands)
+
 
     def insert_into_notes_command(self, table_names):
         commands = []
@@ -132,7 +148,7 @@ class Database:
             cols_string = ', '.join([f'"{col}"' for col in cols])
 
             # Insert data from each table into the notes table
-            sql_command = f'INSERT INTO notes ({cols_string}) SELECT {cols_string} FROM "{table_name}";'
+            sql_command = f'INSERT INTO notes ({cols_string}) SELECT DISTINCT {cols_string} FROM "{table_name}";'
             commands.append(sql_command)
 
         return "\n".join(commands)
@@ -142,9 +158,9 @@ class Database:
         group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
         group_query_body = ', '.join(group_query_parts)
         return f'''
-        CREATE TEMPORARY TABLE "texture_{texture_id}_grouped" AS
+        CREATE TABLE "texture_{texture_id}_grouped" AS
         SELECT Start, {group_query_body}
-        FROM "Notes"
+        FROM "notes"
         WHERE texture_id = {texture_id}
         GROUP BY Start;
         '''
@@ -152,22 +168,24 @@ class Database:
 
     def generate_max_duration_command(self, texture_id):
         return f'''
-        CREATE TEMPORARY TABLE "texture_{texture_id}_max_duration" AS
+        CREATE TABLE "texture_{texture_id}_max_duration" AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
-            FROM "Notes"
+            FROM "notes"
             WHERE texture_id = {texture_id}
             GROUP BY Start
         )
         SELECT DISTINCT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-        FROM "Notes" c
+        -- SELECT c.note_id, c.texture_id, c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
+        FROM "notes" c
         LEFT JOIN max_durations m ON c.Start = m.Start
         WHERE c.texture_id = {texture_id};
         '''
     
+
     def generate_create_and_insert_end_data_commands(self, texture_id):
         create_table_command = f'''
-        CREATE TEMPORARY TABLE "texture_{texture_id}_end_column" (
+        CREATE TABLE "texture_{texture_id}_end_column" (
             Start INTEGER, 
             End INTEGER, 
             Duration INTEGER,
@@ -207,7 +225,7 @@ class Database:
 
     def generate_add_pitch_column_command(self, texture_id):
         return f'''
-        CREATE TEMPORARY TABLE "texture_{texture_id}_base" AS 
+        CREATE TABLE "texture_{texture_id}_base" AS 
         SELECT 
             Start,
             End,
@@ -221,7 +239,7 @@ class Database:
     def generate_midi_messages_table_command(self, texture_id):
         return f'''
             -- [1] Create the initial MIDI messages table:
-            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages_temp" AS
+            CREATE TABLE "texture_{texture_id}_midi_messages_temp" AS
             SELECT 
                 *,
                 'note_on' AS Message,
