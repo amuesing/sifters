@@ -11,8 +11,7 @@ import database
 import mido
 import music21
 import pandas
-from textures import (heterophonic, homophonic, monophonic, nonpitched,
-                      polyphonic)
+from textures import (heterophonic, homophonic, monophonic, nonpitched, polyphonic)
 
 
 class Composition:
@@ -172,42 +171,28 @@ class Composition:
 
     def set_tables(self):
 
-        combined_table_names = []
+        table_names = []
 
         # Fetching distinct texture_ids from the database.
         texture_ids = self.database.fetch_distinct_texture_ids()
-        columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'note_id', 'Start', 'Duration'})
+        # Fetch columns names from the notes table.
+        columns_list = self.database.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
 
         for texture_id in texture_ids:
-            table_names = []
-
 
             table_commands = self.database.generate_sql_for_duration_values(texture_id, columns_list)
 
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
-                self.cursor.execute(f'CREATE TABLE "{table_name}" AS {union_statements};')
-
-            combined_table_name = f'combined_texture_{texture_id}'
-            combined_table_names.append(combined_table_name)
-            
-            union_query_parts = []
-            for table_name in table_names:
-                union_query_parts.append(f'SELECT * FROM "{table_name}"')
-            union_query = ' UNION ALL '.join(union_query_parts)
-                
-            self.cursor.execute(f'CREATE TABLE {combined_table_name} AS {union_query};')
+                self.cursor.execute(f'CREATE TEMP TABLE "{table_name}" AS {union_statements};')
 
         self.cursor.execute('DELETE FROM notes;')
-        self.cursor.executescript(self.database.insert_into_notes_command(combined_table_names))
-        # self.connection.commit()
+        self.cursor.executescript(self.database.insert_into_notes_command(table_names))
 
         sql_commands = []
-        columns_list = self.database.fetch_columns_by_table_name('Notes', exclude_columns={'Start'})
 
         for texture_id in texture_ids:
             sql_commands.extend([
-                self.database.generate_grouped_command(texture_id, columns_list),
                 ### NEED TO ADD NOTE_ID AND TEXTURE_ID COLUMNS TO THESE TABLES
                 ### MAKE TEMPORARY TABLES TEMPORARY
                 ### CONSILIDATE COMMANDS WHERE POSSIBLE
@@ -216,6 +201,7 @@ class Composition:
                 self.database.generate_max_duration_command(texture_id),
                 self.database.generate_create_and_insert_end_data_commands(texture_id),
                 self.database.generate_add_pitch_column_command(texture_id),
+                self.database.generate_duplicate_rows_command(texture_id),
                 self.database.generate_midi_messages_table_command(texture_id),
             ])
 

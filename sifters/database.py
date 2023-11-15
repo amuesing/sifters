@@ -122,22 +122,6 @@ class Database:
             table_commands[table_name] = self.generate_union_all_statements(texture_id, columns_string, duration_value, length_of_one_rep, repeat)
 
         return table_commands
-    
-
-    # def insert_into_notes_command(self, table_names):
-    #     commands = []
-
-    #     print(table_names)
-
-    #     for table_name in table_names:
-    #         cols = self.fetch_columns_by_table_name(table_name)
-    #         cols_string = ', '.join([f'"{col}"' for col in cols])
-
-    #         # Insert distinct rows from each table into the notes table
-    #         sql_command = f'INSERT INTO notes ({cols_string}) SELECT DISTINCT {cols_string} FROM "{table_name}";'
-    #         commands.append(sql_command)
-
-    #     return "\n".join(commands)
 
 
     def insert_into_notes_command(self, table_names):
@@ -148,22 +132,10 @@ class Database:
             cols_string = ', '.join([f'"{col}"' for col in cols])
 
             # Insert data from each table into the notes table
-            sql_command = f'INSERT INTO notes ({cols_string}) SELECT DISTINCT {cols_string} FROM "{table_name}";'
+            sql_command = f'INSERT INTO notes ({cols_string}) SELECT {cols_string} FROM "{table_name}";'
             commands.append(sql_command)
 
         return "\n".join(commands)
-
-
-    def generate_grouped_command(self, texture_id, columns):
-        group_query_parts = [f'GROUP_CONCAT("{column}") as "{column}"' for column in columns]
-        group_query_body = ', '.join(group_query_parts)
-        return f'''
-        CREATE TABLE "texture_{texture_id}_grouped" AS
-        SELECT Start, {group_query_body}
-        FROM "notes"
-        WHERE texture_id = {texture_id}
-        GROUP BY Start;
-        '''
 
 
     def generate_max_duration_command(self, texture_id):
@@ -175,8 +147,7 @@ class Database:
             WHERE texture_id = {texture_id}
             GROUP BY Start
         )
-        SELECT DISTINCT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-        -- SELECT c.note_id, c.texture_id, c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
+        SELECT c.note_id, c.texture_id, c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
         FROM "notes" c
         LEFT JOIN max_durations m ON c.Start = m.Start
         WHERE c.texture_id = {texture_id};
@@ -186,6 +157,8 @@ class Database:
     def generate_create_and_insert_end_data_commands(self, texture_id):
         create_table_command = f'''
         CREATE TABLE "texture_{texture_id}_end_column" (
+            note_id INTEGER,
+            texture_id INTEGER,
             Start INTEGER, 
             End INTEGER, 
             Duration INTEGER,
@@ -197,6 +170,8 @@ class Database:
         insert_data_command = f'''
         WITH ModifiedDurations AS (
             SELECT 
+                note_id,
+                texture_id,
                 Start,
                 Velocity,
                 Note,
@@ -210,7 +185,9 @@ class Database:
             FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
         )
         INSERT INTO "texture_{texture_id}_end_column"
-        SELECT 
+        SELECT
+            m.note_id,
+            m.texture_id, 
             m.Start,
             d.End,
             m.ModifiedDuration,
@@ -225,8 +202,10 @@ class Database:
 
     def generate_add_pitch_column_command(self, texture_id):
         return f'''
-        CREATE TABLE "texture_{texture_id}_base" AS 
+        CREATE TABLE "texture_{texture_id}_pitch_column" AS 
         SELECT 
+            -- note_id,
+            -- texture_id,
             Start,
             End,
             Velocity,
@@ -234,12 +213,33 @@ class Database:
             CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
         FROM "texture_{texture_id}_end_column";
         '''
+        
+        
+    def generate_duplicate_rows_command(self, texture_id):
+        return f'''
+        CREATE TABLE "texture_{texture_id}_all_columns_duplicates" AS
+        SELECT
+            *
+        FROM texture_{texture_id}_pitch_column
+        WHERE (Start, End, Velocity, Note, Pitch) IN (
+            SELECT
+                Start,
+                End,
+                Velocity,
+                Note,
+                Pitch
+            FROM texture_{texture_id}_pitch_column
+            GROUP BY Start, End, Velocity, Note, Pitch
+            HAVING COUNT(*) > 1
+        );
+        '''
+
     
     
     def generate_midi_messages_table_command(self, texture_id):
         return f'''
             -- [1] Create the initial MIDI messages table:
-            CREATE TABLE "texture_{texture_id}_midi_messages_temp" AS
+            CREATE TABLE "texture_{texture_id}_midi_messages" AS
             SELECT 
                 *,
                 'note_on' AS Message,
@@ -247,20 +247,20 @@ class Database:
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "texture_{texture_id}_base";
+            FROM "texture_{texture_id}_pitch_column";
 
             -- [2] Update the Time column in the main table based on delta condition:
-            UPDATE "texture_{texture_id}_midi_messages_temp"
+            UPDATE "texture_{texture_id}_midi_messages"
             SET Time = (
-                SELECT COALESCE("texture_{texture_id}_midi_messages_temp".Start - t.PreviousEnd, 0)
+                SELECT COALESCE("texture_{texture_id}_midi_messages".Start - t.PreviousEnd, 0)
                 FROM (
                     SELECT 
                         Start,
                         LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
-                    FROM "texture_{texture_id}_midi_messages_temp"
+                    FROM "texture_{texture_id}_midi_messages"
                 ) AS t
                 WHERE 
-                    "texture_{texture_id}_midi_messages_temp".Start = t.Start
+                    "texture_{texture_id}_midi_messages".Start = t.Start
             )
             WHERE EXISTS (
                 SELECT 1
@@ -269,34 +269,34 @@ class Database:
                         Start,
                         LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
                         LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                    FROM "texture_{texture_id}_midi_messages_temp"
+                    FROM "texture_{texture_id}_midi_messages"
                 ) AS t_sub
                 WHERE 
-                    "texture_{texture_id}_midi_messages_temp".Start = t_sub.Start 
-                    AND "texture_{texture_id}_midi_messages_temp".Start != t_sub.PreviousEnd
-                    AND "texture_{texture_id}_midi_messages_temp".Start != t_sub.PreviousStart
+                    "texture_{texture_id}_midi_messages".Start = t_sub.Start 
+                    AND "texture_{texture_id}_midi_messages".Start != t_sub.PreviousEnd
+                    AND "texture_{texture_id}_midi_messages".Start != t_sub.PreviousStart
             );
 
             -- [3] Append rows for 'pitchwheel' and 'note_off' events:
-            INSERT INTO "texture_{texture_id}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
                 Start, End, Velocity, Note, Pitch,
                 'pitchwheel' AS Message,
                 0 AS Time
-            FROM "texture_{texture_id}_midi_messages_temp"
+            FROM "texture_{texture_id}_midi_messages"
             WHERE Message = 'note_on' AND Pitch != 0.0;
 
-            INSERT INTO "texture_{texture_id}_midi_messages_temp" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
                 Start, End, Velocity, Note, Pitch,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time
-            FROM "texture_{texture_id}_midi_messages_temp"
+            FROM "texture_{texture_id}_midi_messages"
             WHERE Message = 'note_on';
 
             -- [4] Insert rows into the existing "messages" table:
             INSERT INTO "messages" (Start, End, Velocity, Note, Pitch, Message, Time)
-            SELECT * FROM "texture_{texture_id}_midi_messages_temp"
+            SELECT * FROM "texture_{texture_id}_midi_messages"
             ORDER BY Start ASC;
 
         '''
