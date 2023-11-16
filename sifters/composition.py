@@ -193,15 +193,12 @@ class Composition:
 
         for texture_id in texture_ids:
             sql_commands.extend([
-                ### NEED TO ADD NOTE_ID AND TEXTURE_ID COLUMNS TO THESE TABLES
                 ### MAKE TEMPORARY TABLES TEMPORARY
                 ### CONSILIDATE COMMANDS WHERE POSSIBLE
-                ### THE ISSUE I AM RUNNING INTO HAS TO DO WITH USING THE DISTINCT KEYWORD ALONG WITH FOREIGN KEYS
-                ### CAN I REMOVE DUPLICATES (USING DISTINCT) BEFORE I ASSIGN EACH AN ID?
                 self.database.generate_max_duration_command(texture_id),
                 self.database.generate_create_and_insert_end_data_commands(texture_id),
                 self.database.generate_add_pitch_column_command(texture_id),
-                self.database.generate_duplicate_rows_command(texture_id),
+                self.database.generate_filter_duplicate_rows_command(texture_id),
                 self.database.generate_midi_messages_table_command(texture_id),
             ])
 

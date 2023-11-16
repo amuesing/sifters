@@ -92,7 +92,6 @@ class Database:
         # Use the keys of the row (which are column names) and filter out the ones in the exclude set
         columns = [col for col in row.keys() if col not in exclude_columns]
 
-        # return ', '.join(columns)
         return columns
     
 
@@ -204,8 +203,8 @@ class Database:
         return f'''
         CREATE TABLE "texture_{texture_id}_pitch_column" AS 
         SELECT 
-            -- note_id,
-            -- texture_id,
+            note_id,
+            texture_id,
             Start,
             End,
             Velocity,
@@ -215,25 +214,31 @@ class Database:
         '''
         
         
-    def generate_duplicate_rows_command(self, texture_id):
+    def generate_filter_duplicate_rows_command(self, texture_id):
         return f'''
-        CREATE TABLE "texture_{texture_id}_all_columns_duplicates" AS
+        CREATE TABLE "texture_{texture_id}_pitch_column_no_duplicates" AS
         SELECT
-            *
-        FROM texture_{texture_id}_pitch_column
-        WHERE (Start, End, Velocity, Note, Pitch) IN (
+            note_id,
+            texture_id,
+            Start,
+            End,
+            Velocity,
+            Note,
+            Pitch
+        FROM (
             SELECT
+                note_id,
+                texture_id,
                 Start,
                 End,
                 Velocity,
                 Note,
-                Pitch
+                Pitch,
+                ROW_NUMBER() OVER (PARTITION BY Start, End, Velocity, Note, Pitch ORDER BY (SELECT NULL)) AS row_num
             FROM texture_{texture_id}_pitch_column
-            GROUP BY Start, End, Velocity, Note, Pitch
-            HAVING COUNT(*) > 1
-        );
+        ) AS numbered_rows
+        WHERE row_num = 1;
         '''
-
     
     
     def generate_midi_messages_table_command(self, texture_id):
@@ -247,7 +252,7 @@ class Database:
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "texture_{texture_id}_pitch_column";
+            FROM "texture_{texture_id}_pitch_column_no_duplicates";
 
             -- [2] Update the Time column in the main table based on delta condition:
             UPDATE "texture_{texture_id}_midi_messages"
@@ -278,24 +283,24 @@ class Database:
             );
 
             -- [3] Append rows for 'pitchwheel' and 'note_off' events:
-            INSERT INTO "texture_{texture_id}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
-                Start, End, Velocity, Note, Pitch,
+                note_id, texture_id, Start, End, Velocity, Note, Pitch,
                 'pitchwheel' AS Message,
                 0 AS Time
             FROM "texture_{texture_id}_midi_messages"
             WHERE Message = 'note_on' AND Pitch != 0.0;
 
-            INSERT INTO "texture_{texture_id}_midi_messages" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
-                Start, End, Velocity, Note, Pitch,
+                note_id, texture_id, Start, End, Velocity, Note, Pitch,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time
             FROM "texture_{texture_id}_midi_messages"
             WHERE Message = 'note_on';
 
             -- [4] Insert rows into the existing "messages" table:
-            INSERT INTO "messages" (Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT * FROM "texture_{texture_id}_midi_messages"
             ORDER BY Start ASC;
 
