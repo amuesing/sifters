@@ -173,9 +173,7 @@ class Composition:
 
         table_names = []
 
-        # Fetching distinct texture_ids from the database.
         texture_ids = self.database.fetch_distinct_texture_ids()
-        # Fetch columns names from the notes table.
         columns_list = self.database.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
 
         for texture_id in texture_ids:
@@ -193,11 +191,10 @@ class Composition:
 
         for texture_id in texture_ids:
             sql_commands.extend([
-                ### MAKE TEMPORARY TABLES TEMPORARY
-                ### CONSILIDATE COMMANDS WHERE POSSIBLE
                 self.database.generate_max_duration_command(texture_id),
                 self.database.generate_create_and_insert_end_data_commands(texture_id),
                 self.database.generate_add_pitch_column_command(texture_id),
+                self.database.generate_find_duplicate_rows_command(texture_id),
                 self.database.generate_filter_duplicate_rows_command(texture_id),
                 self.database.generate_midi_messages_table_command(texture_id),
             ])
@@ -207,15 +204,16 @@ class Composition:
         self.connection.commit()
 
 
-    def write_midi(self, table_name):
+    def write_midi(self, texture_id=1):
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
+        
 
         def bpm_to_tempo(bpm):
             return int(60_000_000 / bpm)
 
-        def fetch_midi_messages_from_sql():
-            query = f"SELECT * FROM {table_name}"
+        def fetch_midi_messages_from_sql(self, texture_id):
+            query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
             self.database.cursor.execute(query)
             return self.database.cursor.fetchall()
 
@@ -255,7 +253,7 @@ class Composition:
         midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
         # Fetch data and convert to MIDI messages
-        data = fetch_midi_messages_from_sql()
+        data = fetch_midi_messages_from_sql(self, texture_id)
         midi_messages, midi_data_list = data_to_midi_messages(data)
 
         # Save to CSV
@@ -286,9 +284,5 @@ if __name__ == '__main__':
         '''
     
     comp = Composition(sieve)
-    
-    comp.connection.commit()
 
-    # comp.write_midi('Monophonic_midi_messages')
-
-    comp.connection.close()
+    comp.write_midi(1)

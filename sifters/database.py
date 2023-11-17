@@ -63,7 +63,7 @@ class Database:
             Note INTEGER,
             Pitch INTEGER,
             Message TEXT,
-            time INTEGER,
+            Time INTEGER,
             FOREIGN KEY (note_id) REFERENCES notes(note_id),
             FOREIGN KEY (texture_id) REFERENCES textures(texture_id)
         )'''
@@ -139,7 +139,7 @@ class Database:
 
     def generate_max_duration_command(self, texture_id):
         return f'''
-        CREATE TABLE "texture_{texture_id}_max_duration" AS
+        CREATE TEMPORARY TABLE "texture_{texture_id}_max_duration" AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
             FROM "notes"
@@ -155,7 +155,7 @@ class Database:
 
     def generate_create_and_insert_end_data_commands(self, texture_id):
         create_table_command = f'''
-        CREATE TABLE "texture_{texture_id}_end_column" (
+        CREATE TEMPORARY TABLE "texture_{texture_id}_end_column" (
             note_id INTEGER,
             texture_id INTEGER,
             Start INTEGER, 
@@ -201,7 +201,7 @@ class Database:
 
     def generate_add_pitch_column_command(self, texture_id):
         return f'''
-        CREATE TABLE "texture_{texture_id}_pitch_column" AS 
+        CREATE TEMPORARY TABLE "texture_{texture_id}_pitch_column" AS 
         SELECT 
             note_id,
             texture_id,
@@ -214,9 +214,29 @@ class Database:
         '''
         
         
+    def generate_find_duplicate_rows_command(self, texture_id):
+        return f'''
+        CREATE TEMPORARY TABLE "texture_{texture_id}_duplicates" AS
+        SELECT
+            *
+        FROM texture_{texture_id}_pitch_column
+        WHERE (Start, End, Velocity, Note, Pitch) IN (
+            SELECT
+                Start,
+                End,
+                Velocity,
+                Note,
+                Pitch
+            FROM texture_{texture_id}_pitch_column
+            GROUP BY Start, End, Velocity, Note, Pitch
+            HAVING COUNT(*) > 1
+        );
+        '''
+        
+        
     def generate_filter_duplicate_rows_command(self, texture_id):
         return f'''
-        CREATE TABLE "texture_{texture_id}_pitch_column_no_duplicates" AS
+        CREATE TEMPORARY TABLE "texture_{texture_id}_no_duplicates" AS
         SELECT
             note_id,
             texture_id,
@@ -244,7 +264,7 @@ class Database:
     def generate_midi_messages_table_command(self, texture_id):
         return f'''
             -- [1] Create the initial MIDI messages table:
-            CREATE TABLE "texture_{texture_id}_midi_messages" AS
+            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages" AS
             SELECT 
                 *,
                 'note_on' AS Message,
@@ -252,7 +272,7 @@ class Database:
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "texture_{texture_id}_pitch_column_no_duplicates";
+            FROM "texture_{texture_id}_no_duplicates";
 
             -- [2] Update the Time column in the main table based on delta condition:
             UPDATE "texture_{texture_id}_midi_messages"
