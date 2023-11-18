@@ -182,7 +182,7 @@ class Composition:
 
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
-                self.cursor.execute(f'CREATE TEMP TABLE "{table_name}" AS {union_statements};')
+                self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
 
         self.cursor.execute('DELETE FROM notes;')
         self.cursor.executescript(self.database.insert_into_notes_command(table_names))
@@ -212,10 +212,46 @@ class Composition:
         def bpm_to_tempo(bpm):
             return int(60_000_000 / bpm)
 
+        # def fetch_midi_messages_from_sql(self, texture_id):
+        #     query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
+        #     self.database.cursor.execute(query)
+        #     return self.database.cursor.fetchall()
+        
         def fetch_midi_messages_from_sql(self, texture_id):
+            # Define the new table name
+            new_table_name = f'midi_messages_texture_{texture_id}'
+
+            # Create a new table
+            create_table_query = f'''
+                CREATE TABLE IF NOT EXISTS {new_table_name} (
+                    Message_ID INTEGER PRIMARY KEY,
+                    Note_ID INTEGER,
+                    Texture_ID INTEGER,
+                    Message TEXT,
+                    Note TEXT,
+                    Velocity TEXT,
+                    Time INT,
+                    Pitch TEXT
+                )
+            '''
+            self.database.cursor.execute(create_table_query)
+
+            # Fetch data
             query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
             self.database.cursor.execute(query)
-            return self.database.cursor.fetchall()
+            data = self.database.cursor.fetchall()
+
+            # Insert data into the new table
+            insert_query = f'''
+                INSERT INTO {new_table_name} (Note_ID, Texture_ID, Message, Note, Velocity, Time, Pitch)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            '''
+            self.database.cursor.executemany(insert_query, [(row['Note_ID'], row['Texture_ID'], row['Message'], row['Note'], row['Velocity'], int(row['Time'] / self.scaling_factor), row['Pitch']) for row in data])
+
+            # Commit the changes
+            self.database.connection.commit()
+
+            return data
 
         def data_to_midi_messages(data):
             messages = []
