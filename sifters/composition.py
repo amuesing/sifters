@@ -63,90 +63,95 @@ class Composition:
             
 
     def set_binary(self, sieve):
-        obj = music21.sieve.Sieve(sieve)  # Convert sieve to Sieve object.
-        self.period = obj.period()  # Store the period of the Sieve object.
-        obj.setZRange(0, self.period - 1)  # Set Z range of Sieve object to [0, LCM - 1].
-        binary = obj.segment(segmentFormat='binary')  # Convert to binary and store.
+        # Convert sieve to Sieve object.
+        obj = music21.sieve.Sieve(sieve)
+        
+        # Store the period of the Sieve object.
+        self.period = obj.period()
+        
+        # Set Z range of Sieve object to [0, LCM - 1].
+        obj.setZRange(0, self.period - 1)
+        
+        # Convert to binary and store.
+        binary = obj.segment(segmentFormat='binary')
 
         # Return the binary representation of sieve.
         return binary
 
 
     def get_consecutive_count(self):
-        # Using itertools.groupby, we group same, consecutive elements in the list.
-        # From each group, we capture the element (key) and the length of the group
-        # (indicating the count of consecutive occurrences of the element).
+        # Each tuple represents an element and its consecutive count.
         consecutive_counts = [(key, len(list(group))) for key, group in itertools.groupby(self.binary)]
 
-        # The function returns the result, which is a single list containing tuples.
-        # Each tuple represents an element and its consecutive count.
         return consecutive_counts
-
     
-    # Inner function to compute the proportion of the period that each number in the list represents.
-    def _get_percent_of_period(self, lst):
-        return [
-            (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
-            for num in lst
-        ]
-
-
-    # Inner function to transform a list of decimal numbers into fractions.
-    def _convert_decimal_to_fraction(self, decimal_list):
-        return [fractions.Fraction(decimal_num) for decimal_num in decimal_list]
-
-
-    # Inner function to eliminate duplicate fractions in each sublist while maintaining the original order.
-    def _get_unique_fractions(self, input_list):
-        return list(collections.OrderedDict.fromkeys(input_list))
-
-
+    
     # This function generates grids that illustrate the fractions of the period for each change in the self.changes list.
     def set_grids(self):
 
+        # Inner function to compute the proportion of the period that each number in the list represents.
+        def get_percent_of_period(lst):
+            return [
+                (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
+                for num in lst
+            ]
+
+
+        # Inner function to transform a list of decimal numbers into fractions.
+        def convert_decimal_to_fraction(decimal_list):
+            return [fractions.Fraction(decimal_num) for decimal_num in decimal_list]
+
+
+        # Inner function to eliminate duplicate fractions in each sublist while maintaining the original order.
+        def get_unique_fractions(input_list):
+            return list(collections.OrderedDict.fromkeys(input_list))
+        
+
         # Calculate the proportion of the period represented by each change.
-        percent = self._get_percent_of_period(self.changes)
+        percent = get_percent_of_period(self.changes)
 
         # Convert the calculated proportions to fractions.
-        grids = self._convert_decimal_to_fraction(percent)
+        grids = convert_decimal_to_fraction(percent)
 
         # Remove duplicates from each grid while keeping the original order.
-        grids = self._get_unique_fractions(grids)
+        grids = get_unique_fractions(grids)
         
         # Return the grids containing unique fractions representing the proportion of period.
         return grids
     
-
-    def _get_least_common_multiple(self, nums):
-
-        if isinstance(nums, list):
-            sub_lcm = [self._get_least_common_multiple(lst) for lst in nums]
-
-            return functools.reduce(math.lcm, sub_lcm)
-        
-        else:
-            return nums
     
     
-    # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
-    def _set_normalized_numerators(self, grids):
-        # Compute the least common multiple (LCM) of all denominators in the list.
-        lcm = self._get_least_common_multiple([fraction.denominator for fraction in grids])
-        
-        # Normalize each fraction in the list by adjusting the numerator to the LCM.
-        normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids]
-        
-        # Return the normalized numerators.
-        return normalized_numerators
-
-
     # This function computes the repetitions required for each fraction in the grids_set to equalize them.
     def set_repeats(self):
+                
+        def get_least_common_multiple(nums):
+
+            if isinstance(nums, list):
+                sub_lcm = [get_least_common_multiple(lst) for lst in nums]
+
+                return functools.reduce(math.lcm, sub_lcm)
+            
+            else:
+                return nums
+            
+        
+        # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
+        def set_normalized_numerators(grids):
+            # Compute the least common multiple (LCM) of all denominators in the list.
+            lcm = get_least_common_multiple([fraction.denominator for fraction in grids])
+            
+            # Normalize each fraction in the list by adjusting the numerator to the LCM.
+            normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids]
+            
+            # Return the normalized numerators.
+            return normalized_numerators
+        
+
         # Standardize the numerators in the grids_set.
-        normalized_numerators = self._set_normalized_numerators(self.grids_set)
+        normalized_numerators = set_normalized_numerators(self.grids_set)
         
         # Determine the least common multiple of the normalized numerators.
-        least_common_multiple = self._get_least_common_multiple(normalized_numerators)
+        least_common_multiple = get_least_common_multiple(normalized_numerators)
 
         # Calculate the repetition for each fraction by dividing the LCM by the normalized numerator.
         repeats = [least_common_multiple // num for num in normalized_numerators]
@@ -170,7 +175,6 @@ class Composition:
 
 
     def set_tables(self):
-
         table_names = []
 
         texture_ids = self.database.fetch_distinct_texture_ids()
@@ -191,12 +195,8 @@ class Composition:
 
         for texture_id in texture_ids:
             sql_commands.extend([
-                self.database.generate_max_duration_command(texture_id),
-                self.database.generate_create_and_insert_end_data_commands(texture_id),
-                self.database.generate_add_pitch_column_command(texture_id),
-                self.database.generate_find_duplicate_rows_command(texture_id),
-                self.database.generate_filter_duplicate_rows_command(texture_id),
-                self.database.generate_midi_messages_table_command(texture_id),
+                self.database.generate_notes_table_commands(texture_id),
+                self.database.generate_midi_messages_table_commands(texture_id),
             ])
 
         combined_sql = "\n".join(sql_commands)
@@ -207,51 +207,14 @@ class Composition:
     def write_midi(self, texture_id=1):
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
-        
 
         def bpm_to_tempo(bpm):
             return int(60_000_000 / bpm)
 
-        # def fetch_midi_messages_from_sql(self, texture_id):
-        #     query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
-        #     self.database.cursor.execute(query)
-        #     return self.database.cursor.fetchall()
-        
         def fetch_midi_messages_from_sql(self, texture_id):
-            # Define the new table name
-            new_table_name = f'midi_messages_texture_{texture_id}'
-
-            # Create a new table
-            create_table_query = f'''
-                CREATE TABLE IF NOT EXISTS {new_table_name} (
-                    Message_ID INTEGER PRIMARY KEY,
-                    Note_ID INTEGER,
-                    Texture_ID INTEGER,
-                    Message TEXT,
-                    Note TEXT,
-                    Velocity TEXT,
-                    Time INT,
-                    Pitch TEXT
-                )
-            '''
-            self.database.cursor.execute(create_table_query)
-
-            # Fetch data
             query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
             self.database.cursor.execute(query)
-            data = self.database.cursor.fetchall()
-
-            # Insert data into the new table
-            insert_query = f'''
-                INSERT INTO {new_table_name} (Note_ID, Texture_ID, Message, Note, Velocity, Time, Pitch)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            '''
-            self.database.cursor.executemany(insert_query, [(row['Note_ID'], row['Texture_ID'], row['Message'], row['Note'], row['Velocity'], int(row['Time'] / self.scaling_factor), row['Pitch']) for row in data])
-
-            # Commit the changes
-            self.database.connection.commit()
-
-            return data
+            return self.database.cursor.fetchall()
 
         def data_to_midi_messages(data):
             messages = []
@@ -282,7 +245,7 @@ class Composition:
         score.ticks_per_beat = self.ticks_per_beat
 
         # Setting BPM
-        bpm = 33  # You can change this value to set a different BPM
+        bpm = 20  # You can change this value to set a different BPM
         tempo = bpm_to_tempo(bpm)
         midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
         
@@ -314,10 +277,11 @@ if __name__ == '__main__':
     #         (8@4)|
     #         (8@1&5@2))
     #         '''
-
-    sieve = '''
-        ((8@0|8@1|8@7)&(5@1|5@3))
-        '''
+    
+    ### WHY DOES THE BELOW GIVE ME AN ERROR?
+    # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
+    
+    sieve = '(8@0|8@1|8@7)&(5@1|5@3)'
     
     comp = Composition(sieve)
 

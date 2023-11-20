@@ -259,12 +259,40 @@ class Database:
         ) AS numbered_rows
         WHERE row_num = 1;
         '''
+        
+        
+    def generate_notes_table_commands(self, texture_id):
+        commands = []
+
+        # Step 1: Generate max duration command
+        commands.append(self.generate_max_duration_command(texture_id))
+
+        # Step 2: Generate create and insert end data commands
+        commands.append(self.generate_create_and_insert_end_data_commands(texture_id))
+
+        # Step 3: Generate add pitch column command
+        commands.append(self.generate_add_pitch_column_command(texture_id))
+
+        # Step 4: Generate find duplicate rows command
+        commands.append(self.generate_find_duplicate_rows_command(texture_id))
+
+        # Step 5: Generate filter duplicate rows command
+        commands.append(self.generate_filter_duplicate_rows_command(texture_id))
+
+        return '\n'.join(commands)
+
     
-    
-    def generate_midi_messages_table_command(self, texture_id):
+    def create_temporary_midi_messages_table(self, texture_id):
+        # This SQL code generates a new table named "texture_{texture_id}_midi_messages" by selecting all columns (denoted by '*')
+        # from an existing table called "texture_{texture_id}_no_duplicates". Additionally, a new column 'Message' is added to the
+        # new table with a constant value 'note_on' for each row. The 'Time' column is calculated conditionally based on the 
+        # 'Start' column value. If the row is the first row when ordered by 'Start' in ascending order and 'Start' is not equal to
+        # 0, then the 'Time' is calculated as the rounded product of 'Start' and a constant value '{self.ticks_per_beat}'. 
+        # Otherwise, 'Time' is set to 0. This new table is essentially an extension of the original table with added columns 
+        # 'Message' and 'Time'.
+
         return f'''
-            -- [1] Create the initial MIDI messages table:
-            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages" AS
+            CREATE TABLE "texture_{texture_id}_midi_messages" AS
             SELECT 
                 *,
                 'note_on' AS Message,
@@ -273,8 +301,20 @@ class Database:
                     ELSE 0 
                 END AS Time
             FROM "texture_{texture_id}_no_duplicates";
+        '''
+        
 
-            -- [2] Update the Time column in the main table based on delta condition:
+    def update_time_column(self, texture_id):
+        # This SQL code updates the 'Time' column in the table "texture_{texture_id}_midi_messages" based on specific conditions.
+        # It uses a correlated subquery in the SET clause to calculate the 'Time' value for each row. The subquery selects the
+        # difference between the 'Start' column of the main table and the 'PreviousEnd' column calculated using the LAG function,
+        # which represents the end value of the previous row. The COALESCE function is used to handle cases where the subtraction
+        # result is NULL, replacing it with 0. This calculated 'Time' value is assigned to the 'Time' column in the main table.
+        # The UPDATE operation is performed only for rows that meet the conditions specified in the WHERE clause. The conditions
+        # involve checking the existence of rows in a nested subquery that ensures the uniqueness of the 'Start' value and its
+        # non-consecutive occurrence, indicating the rows that need to be updated.
+
+        return f'''
             UPDATE "texture_{texture_id}_midi_messages"
             SET Time = (
                 SELECT COALESCE("texture_{texture_id}_midi_messages".Start - t.PreviousEnd, 0)
@@ -301,8 +341,11 @@ class Database:
                     AND "texture_{texture_id}_midi_messages".Start != t_sub.PreviousEnd
                     AND "texture_{texture_id}_midi_messages".Start != t_sub.PreviousStart
             );
+        '''
 
-            -- [3] Append rows for 'pitchwheel' and 'note_off' events:
+    def append_pitchwheel_and_note_off(self, texture_id):
+
+        return f'''
             INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
                 note_id, texture_id, Start, End, Velocity, Note, Pitch,
@@ -318,10 +361,48 @@ class Database:
                 (End - Start) * {self.ticks_per_beat} AS Time
             FROM "texture_{texture_id}_midi_messages"
             WHERE Message = 'note_on';
-
-            -- [4] Insert rows into the existing "messages" table:
-            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
-            SELECT * FROM "texture_{texture_id}_midi_messages"
-            ORDER BY Start ASC;
-
         '''
+        
+    def order_texture_table_by_start(self, texture_id):
+        return f'''
+            CREATE TABLE "texture_{texture_id}_midi_messages_ordered" AS
+            SELECT
+                note_id,
+                texture_id,
+                Start,
+                End,
+                Velocity,
+                Note,
+                Pitch,
+                Message,
+                CASE
+                    WHEN Message = 'note_off' AND LAG(Message) OVER (ORDER BY Start) = 'note_off'
+                        THEN 0
+                    ELSE Time
+                END AS Time
+            FROM "texture_{texture_id}_midi_messages"
+            ORDER BY Start;
+        '''
+        
+    def insert_into_messages_table(self, texture_id):
+        return f'''
+            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
+            SELECT * FROM "texture_{texture_id}_midi_messages_ordered"
+            ORDER BY Start ASC;
+        '''
+
+
+    def generate_midi_messages_table_commands(self, texture_id):
+        command = []
+
+        command.append(self.create_temporary_midi_messages_table(texture_id))
+
+        command.append(self.update_time_column(texture_id))
+
+        command.append(self.append_pitchwheel_and_note_off(texture_id))
+        
+        command.append(self.order_texture_table_by_start(texture_id))
+
+        command.append(self.insert_into_messages_table(texture_id))
+
+        return '\n'.join(command)
