@@ -281,8 +281,12 @@ if __name__ == '__main__':
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
     
+    ### HOW DOES PITCHWHEEL KNOW WHICH NOTE WHEN IN A CHORD
+    ### YOU WILL NEED TO SET SEPERATE MIDI CHANNELS FOR EACH NOTE IN A SIMULTANEOUS PITCHBEND
+    ### THAT MEANS YOU WILL HAVE A MAXIMUM OF 16 SIMULTANEOUS PITCHWHEELED NOTES (16 NOTE CHORDS)
+    
     sieve = '(8@0|8@1|8@7)&(5@1|5@3)'
     
     comp = Composition(sieve)
 
-    comp.write_midi(1)
+    comp.write_midi()

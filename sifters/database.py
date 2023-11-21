@@ -26,19 +26,21 @@ class Database:
         self.create_messages_table()
 
     
-    def create_textures_table(self):
+    def create_table(self, table_name, columns):
         sql_command = f'''
-        CREATE TABLE IF NOT EXISTS textures (
-            texture_id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL
-        )'''
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                {columns}
+            )'''
         self.cursor.execute(sql_command)
         self.connection.commit()
 
 
+    def create_textures_table(self):
+        self.create_table("textures", "texture_id INTEGER PRIMARY KEY, name TEXT NOT NULL")
+
+
     def create_notes_table(self):
-        sql_command = '''
-        CREATE TABLE IF NOT EXISTS notes (
+        columns = '''
             note_id INTEGER PRIMARY KEY,
             texture_id INTEGER,
             Start INTEGER,
@@ -46,14 +48,12 @@ class Database:
             Note TEXT,
             Duration INTEGER,
             FOREIGN KEY (texture_id) REFERENCES textures(texture_id)
-        )'''
-        self.cursor.execute(sql_command)
-        self.connection.commit()
+        '''
+        self.create_table("notes", columns)
 
 
     def create_messages_table(self):
-        sql_command = '''
-        CREATE TABLE IF NOT EXISTS messages (
+        columns = '''
             message_id INTEGER PRIMARY KEY,
             note_id INTEGER,
             texture_id INTEGER,
@@ -64,11 +64,11 @@ class Database:
             Pitch INTEGER,
             Message TEXT,
             Time INTEGER,
+            Channel INTEGER,
             FOREIGN KEY (note_id) REFERENCES notes(note_id),
             FOREIGN KEY (texture_id) REFERENCES textures(texture_id)
-        )'''
-        self.cursor.execute(sql_command)
-        self.connection.commit()
+        '''
+        self.create_table("messages", columns)
 
 
     def find_first_texture_id(self, texture):
@@ -283,14 +283,6 @@ class Database:
 
     
     def create_temporary_midi_messages_table(self, texture_id):
-        # This SQL code generates a new table named "texture_{texture_id}_midi_messages" by selecting all columns (denoted by '*')
-        # from an existing table called "texture_{texture_id}_no_duplicates". Additionally, a new column 'Message' is added to the
-        # new table with a constant value 'note_on' for each row. The 'Time' column is calculated conditionally based on the 
-        # 'Start' column value. If the row is the first row when ordered by 'Start' in ascending order and 'Start' is not equal to
-        # 0, then the 'Time' is calculated as the rounded product of 'Start' and a constant value '{self.ticks_per_beat}'. 
-        # Otherwise, 'Time' is set to 0. This new table is essentially an extension of the original table with added columns 
-        # 'Message' and 'Time'.
-
         return f'''
             CREATE TABLE "texture_{texture_id}_midi_messages" AS
             SELECT 
@@ -299,21 +291,13 @@ class Database:
                 CASE 
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
-                END AS Time
+                END AS Time,
+                0 AS Channel
             FROM "texture_{texture_id}_no_duplicates";
         '''
-        
+
 
     def update_time_column(self, texture_id):
-        # This SQL code updates the 'Time' column in the table "texture_{texture_id}_midi_messages" based on specific conditions.
-        # It uses a correlated subquery in the SET clause to calculate the 'Time' value for each row. The subquery selects the
-        # difference between the 'Start' column of the main table and the 'PreviousEnd' column calculated using the LAG function,
-        # which represents the end value of the previous row. The COALESCE function is used to handle cases where the subtraction
-        # result is NULL, replacing it with 0. This calculated 'Time' value is assigned to the 'Time' column in the main table.
-        # The UPDATE operation is performed only for rows that meet the conditions specified in the WHERE clause. The conditions
-        # involve checking the existence of rows in a nested subquery that ensures the uniqueness of the 'Start' value and its
-        # non-consecutive occurrence, indicating the rows that need to be updated.
-
         return f'''
             UPDATE "texture_{texture_id}_midi_messages"
             SET Time = (
@@ -344,7 +328,6 @@ class Database:
         '''
 
     def append_pitchwheel_and_note_off(self, texture_id):
-
         return f'''
             INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
             SELECT 
@@ -365,7 +348,7 @@ class Database:
         
     def order_texture_table_by_start(self, texture_id):
         return f'''
-            CREATE TABLE "texture_{texture_id}_midi_messages_ordered" AS
+            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages_ordered" AS
             SELECT
                 note_id,
                 texture_id,
