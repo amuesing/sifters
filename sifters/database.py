@@ -295,16 +295,13 @@ class Database:
                 Pitch,
                 'note_on' AS Message,
                 CASE 
-                    WHEN ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Pitch DESC) = 1 AND Start != 0 THEN
-                        ROUND(Start * {self.ticks_per_beat})
-                    ELSE
-                        0 
+                    WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
+                    ELSE 0 
+                END AS Time,
                 END AS Time,
                 ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Pitch DESC) - 1 AS Channel
             FROM "texture_{texture_id}_no_duplicates";
         '''
-
-
 
 
     def update_time_column(self, texture_id):

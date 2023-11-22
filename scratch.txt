@@ -21,8 +21,8 @@ GOALS:
 1) Update commands to accommodate for a relational database strategy
 in which a texture has many midi messages (and a composition has many textures)
 
-Texture has many Notes
+LIMITATIONS:
 
-Note has many Midi Messages
-
-idle eyes
+1) In order to have simultaneous pitchwheel events it is necessary to isolate each
+within it's own midi channel. Since there are a maximum of 16 midi channels, it is 
+only possible to have 16 simultaneous pitchwheel events.
