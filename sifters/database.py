@@ -286,15 +286,25 @@ class Database:
         return f'''
             CREATE TABLE "texture_{texture_id}_midi_messages" AS
             SELECT 
-                *,
+                note_id,
+                texture_id,
+                Start,
+                End,
+                Velocity,
+                Note,
+                Pitch,
                 'note_on' AS Message,
                 CASE 
-                    WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
-                    ELSE 0 
+                    WHEN ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Pitch DESC) = 1 AND Start != 0 THEN
+                        ROUND(Start * {self.ticks_per_beat})
+                    ELSE
+                        0 
                 END AS Time,
-                0 AS Channel
+                ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Pitch DESC) - 1 AS Channel
             FROM "texture_{texture_id}_no_duplicates";
         '''
+
+
 
 
     def update_time_column(self, texture_id):
@@ -326,29 +336,33 @@ class Database:
                     AND "texture_{texture_id}_midi_messages".Start != t_sub.PreviousStart
             );
         '''
+        
 
     def append_pitchwheel_and_note_off(self, texture_id):
         return f'''
-            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
             SELECT 
                 note_id, texture_id, Start, End, Velocity, Note, Pitch,
                 'pitchwheel' AS Message,
-                0 AS Time
-            FROM "texture_{texture_id}_midi_messages"
+                0 AS Time,
+                COALESCE(t.Channel, 0) AS Channel
+            FROM "texture_{texture_id}_midi_messages" AS t
             WHERE Message = 'note_on' AND Pitch != 0.0;
 
-            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
+            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
             SELECT 
                 note_id, texture_id, Start, End, Velocity, Note, Pitch,
                 'note_off' AS Message,
-                (End - Start) * {self.ticks_per_beat} AS Time
-            FROM "texture_{texture_id}_midi_messages"
+                (End - Start) * {self.ticks_per_beat} AS Time,
+                COALESCE(t.Channel, 0) AS Channel
+            FROM "texture_{texture_id}_midi_messages" AS t
             WHERE Message = 'note_on';
         '''
+
         
     def order_texture_table_by_start(self, texture_id):
         return f'''
-            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages_ordered" AS
+            CREATE TABLE "texture_{texture_id}_midi_messages_ordered" AS
             SELECT
                 note_id,
                 texture_id,
@@ -362,17 +376,20 @@ class Database:
                     WHEN Message = 'note_off' AND LAG(Message) OVER (ORDER BY Start) = 'note_off'
                         THEN 0
                     ELSE Time
-                END AS Time
+                END AS Time,
+                Channel  -- Include the Channel column in the SELECT statement
             FROM "texture_{texture_id}_midi_messages"
             ORDER BY Start;
         '''
-        
+
     def insert_into_messages_table(self, texture_id):
         return f'''
-            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time)
-            SELECT * FROM "texture_{texture_id}_midi_messages_ordered"
+            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
+            SELECT note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel
+            FROM "texture_{texture_id}_midi_messages_ordered"
             ORDER BY Start ASC;
         '''
+
 
 
     def generate_midi_messages_table_commands(self, texture_id):
