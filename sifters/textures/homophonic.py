@@ -2,17 +2,16 @@ from textures.texture import Texture
 
 class Homophonic(Texture):
 
-    part_id = 1
+    # part_id = 1
     
     def __init__(self, mediator):
         
         # Call superclass constructor.
         super().__init__(mediator)
 
+        # self.part_id = Homophonic.part_id
 
-        self.part_id = Homophonic.part_id
-
-        Homophonic.part_id += 1
+        # Homophonic.part_id += 1
         
         # self.notes_data = self.group_by_start(self.notes_data)
         

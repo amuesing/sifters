@@ -59,7 +59,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.initialize_texture_objects()
 
-        self.set_tables()
+        # self.set_tables()
             
 
     def set_binary(self, sieve):
@@ -118,7 +118,6 @@ class Composition:
         
         # Return the grids containing unique fractions representing the proportion of period.
         return grids
-    
     
     
     # This function computes the repetitions required for each fraction in the grids_set to equalize them.

@@ -264,19 +264,14 @@ class Database:
     def generate_notes_table_commands(self, texture_id):
         commands = []
 
-        # Step 1: Generate max duration command
         commands.append(self.generate_max_duration_command(texture_id))
 
-        # Step 2: Generate create and insert end data commands
         commands.append(self.generate_create_and_insert_end_data_commands(texture_id))
 
-        # Step 3: Generate add pitch column command
         commands.append(self.generate_add_pitch_column_command(texture_id))
 
-        # Step 4: Generate find duplicate rows command
         commands.append(self.generate_find_duplicate_rows_command(texture_id))
 
-        # Step 5: Generate filter duplicate rows command
         commands.append(self.generate_filter_duplicate_rows_command(texture_id))
 
         return '\n'.join(commands)
@@ -284,7 +279,7 @@ class Database:
     
     def create_temporary_midi_messages_table(self, texture_id):
         return f'''
-            CREATE TABLE "texture_{texture_id}_midi_messages" AS
+            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages" AS
             SELECT 
                 note_id,
                 texture_id,
@@ -359,7 +354,7 @@ class Database:
         
     def order_texture_table_by_start(self, texture_id):
         return f'''
-            CREATE TABLE "texture_{texture_id}_midi_messages_ordered" AS
+            CREATE TEMPORARY TABLE "texture_{texture_id}_midi_messages_ordered" AS
             SELECT
                 note_id,
                 texture_id,
@@ -379,6 +374,7 @@ class Database:
             ORDER BY Start;
         '''
 
+
     def insert_into_messages_table(self, texture_id):
         return f'''
             INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
@@ -386,7 +382,6 @@ class Database:
             FROM "texture_{texture_id}_midi_messages_ordered"
             ORDER BY Start ASC;
         '''
-
 
 
     def generate_midi_messages_table_commands(self, texture_id):
