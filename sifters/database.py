@@ -2,7 +2,7 @@ import math
 
 
 class Database:
-
+    
     def __init__(self, mediator):
 
         self.connection = mediator.connection

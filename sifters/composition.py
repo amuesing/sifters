@@ -12,7 +12,7 @@ import mido
 import music21
 import pandas
 import texture
-from textures import *
+import wavetable
 
 
 class Composition:
@@ -56,10 +56,13 @@ class Composition:
 
         # Initialize an instance of the Utility class to call helper methods from.
         self.database = database.Database(self)
-
-        # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
-        self.initialize_texture_objects()
-
+        
+        self.texture = texture.Texture(self)
+        
+        # self.wavetable = wavetable.Wavetable(self)
+        
+        self.set_notes_data()
+        
         self.set_tables()
             
 
@@ -158,21 +161,30 @@ class Composition:
 
         # Return the repetition counts for each fraction.
         return repeats
+    
+    
+    def create_dataframe(self, notes_data):
+        columns = ['texture_id', 'Start', 'Velocity', 'Note', 'Duration']
+        dataframe = pandas.DataFrame(notes_data, columns=columns)
+        dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+        return dataframe
 
 
-    def initialize_texture_objects(self):
-        # List of texture classes.
-        texture_classes = [
-            texture.Texture,
-            # heterophonic.Heterophonic,
-            # homophonic.Homophonic,
-            # monophonic.Monophonic,
-            # nonpitched.NonPitched,
-            # polyphonic.Polyphonic,
-        ]
-        # Instantiate an instance of each texture class
-        for TextureClass in texture_classes:
-            TextureClass(self)
+    def insert_texture_into_database(self):
+        cursor = self.cursor
+        cursor.execute("INSERT INTO textures (name) VALUES (?)", (self.__class__.__name__,))
+
+
+    def insert_notes_into_database(self, dataframe):
+        dataframe.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
+        dataframe.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
+    
+    
+    def set_notes_data(self):
+        dataframe = self.create_dataframe(self.texture.notes_data)
+        self.insert_texture_into_database()
+        self.insert_notes_into_database(dataframe)
 
 
     def set_tables(self):
