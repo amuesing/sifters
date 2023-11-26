@@ -16,13 +16,22 @@ Interlude IV
 _______________________________________________________________________________
 isort sifters/composition.py
 
-GOALS:
+FUNCTIONALITY:
 
-1) Update commands to accommodate for a relational database strategy
-in which a texture has many midi messages (and a composition has many textures)
+1) Utilize logical sieves to generate a sequence of MIDI 'note_on', 'note_off', and 'pitchwheel'
+messages.
+
+2) Utilize 
 
 LIMITATIONS:
 
 1) In order to have simultaneous pitchwheel events it is necessary to isolate each
 within it's own midi channel. Since there are a maximum of 16 midi channels, it is 
 only possible to have 16 simultaneous pitchwheel events.
+
+GOALS:
+
+1) Create distict classes which emulate the behavior of contrapuntal textures. Create
+Heterophonic, Homophonic, Monophonic, NonPitched, and Polyphonic classes. These classes
+are sub-classes of the Texture class but alter the resulting data so that it mimics
+the behaviors of each contrapuntal texture.

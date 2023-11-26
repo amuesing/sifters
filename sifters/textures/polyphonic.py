@@ -1,4 +1,4 @@
-from textures.texture import Texture
+from texture import Texture
 
 class Polyphonic(Texture):
 

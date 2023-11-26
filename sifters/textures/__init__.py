@@ -1,5 +1,4 @@
 __all__ = [
-    'texture',
     'monophonic',
     'homophonic',
     'heterophonic',

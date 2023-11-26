@@ -11,7 +11,8 @@ import database
 import mido
 import music21
 import pandas
-from textures import (heterophonic, homophonic, monophonic, nonpitched, polyphonic)
+import texture
+from textures import *
 
 
 class Composition:
@@ -59,7 +60,7 @@ class Composition:
         # Generate contrapuntal textures derived from the binary, grids_set, and repeats attributes.
         self.initialize_texture_objects()
 
-        # self.set_tables()
+        self.set_tables()
             
 
     def set_binary(self, sieve):
@@ -162,11 +163,12 @@ class Composition:
     def initialize_texture_objects(self):
         # List of texture classes.
         texture_classes = [
-            heterophonic.Heterophonic,
-            homophonic.Homophonic,
-            monophonic.Monophonic,
-            nonpitched.NonPitched,
-            polyphonic.Polyphonic,
+            texture.Texture,
+            # heterophonic.Heterophonic,
+            # homophonic.Homophonic,
+            # monophonic.Monophonic,
+            # nonpitched.NonPitched,
+            # polyphonic.Polyphonic,
         ]
         # Instantiate an instance of each texture class
         for TextureClass in texture_classes:

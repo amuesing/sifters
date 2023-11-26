@@ -27,7 +27,7 @@ class Texture:
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
-        # self.set_notes_data()
+        self.set_notes_data()
 
         Texture.texture_id += 1
 
@@ -148,7 +148,7 @@ class Texture:
     def set_notes_data(self):
         notes_data = self.generate_notes_data()
         dataframe = self.create_dataframe(notes_data)
-        self.insert_texture_into_database(dataframe)
+        self.insert_texture_into_database()
         self.insert_notes_into_database(dataframe)
 
     ########################################################################################################
@@ -261,7 +261,6 @@ class Texture:
     
     @staticmethod
     def convert_lists_to_scalars(dataframe):
-        
         # Iterate over each column in the dataframe
         for col in dataframe.columns:
             # Check if the column contains objects (lists or tuples)
