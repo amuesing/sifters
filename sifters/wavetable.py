@@ -8,14 +8,11 @@ class Wavetable:
         self.wavetable_size = 2048  # Number of samples in the wavetable
         self.sample_rate = 44100  # Sample rate in Hz
 
-        # Generate and save the carrier signal
-        self.carrier_signal = self.generate_fm_carrier_wavetable()
-
         # Apply FM synthesis in the constructor
         self.modulated_signal = self.apply_fm_synthesis()
-        
 
-    def generate_fm_carrier_wavetable(self):
+
+    def generate_carrier_signal(self):
         # Extract floating-point frequencies from Fraction objects
         float_frequencies = [float(fraction) for fraction in self.grids_set]
 
@@ -29,18 +26,32 @@ class Wavetable:
         # Scale the values to 16-bit PCM format
         carrier_signal = np.int16(carrier_signal / len(float_frequencies) * 32767)
 
-        # Save the custom wavetable as a WAV file (optional)
-        write('data/wav/wavetable.wav', self.sample_rate, carrier_signal)
-
         return carrier_signal
-    
-    
-    def apply_fm_synthesis(self, modulation_index=1.333):
+
+
+    def generate_modulator_signals(self):
         # Extract floating-point frequencies from Fraction objects for modulators
         modulator_frequencies = [float(fraction) for fraction in self.grids_set]
 
-        # Create modulator signals
-        modulator_signals = [np.sin(2 * np.pi * freq * np.arange(self.wavetable_size) / self.sample_rate) for freq in modulator_frequencies]
+        # Create modulator signals with variations
+        modulator_signals = []
+        for freq in modulator_frequencies:
+            amplitude = np.random.uniform(0.5, 1.0)  # Vary the amplitude
+            phase_offset = np.random.uniform(0, 2 * np.pi)  # Vary the phase
+            frequency_offset = np.random.uniform(-0.5, 0.5)  # Vary the frequency
+
+            modulator_signal = amplitude * np.sin(2 * np.pi * (freq + frequency_offset) * np.arange(self.wavetable_size) / self.sample_rate + phase_offset)
+            modulator_signals.append(modulator_signal)
+
+        return modulator_signals
+
+
+    def apply_fm_synthesis(self, modulation_index=2.5):
+        # Generate the carrier signal
+        self.carrier_signal = self.generate_carrier_signal()
+
+        # Generate modulator signals
+        modulator_signals = self.generate_modulator_signals()
 
         # Combine modulator signals to create modulation waveform
         modulation_waveform = sum(modulator_signals)
@@ -51,7 +62,7 @@ class Wavetable:
         # Scale the values to 16-bit PCM format
         modulated_signal = np.int16(modulated_signal / np.max(np.abs(modulated_signal)) * 32767)
 
-        # Save the modulated signal as a WAV file (optional)
-        write('data/wav/modulated_signal.wav', self.sample_rate, modulated_signal)
+        # Save the modulated signal as a WAV file
+        write('data/wav/.wavetable.wav', self.sample_rate, modulated_signal)
 
         return modulated_signal

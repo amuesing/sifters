@@ -40,3 +40,4 @@ TO-DO:
 
 1) Remove calling methods from the constructor (__init__) methods in a class and
 call explicity from the if __name__ = '__main__'
+
