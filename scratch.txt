@@ -35,3 +35,8 @@ GOALS:
 Heterophonic, Homophonic, Monophonic, NonPitched, and Polyphonic classes. These classes
 are sub-classes of the Texture class but alter the resulting data so that it mimics
 the behaviors of each contrapuntal texture.
+
+TO-DO:
+
+1) Remove calling methods from the constructor (__init__) methods in a class and
+call explicity from the if __name__ = '__main__'

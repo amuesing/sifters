@@ -10,6 +10,7 @@ class Texture:
     texture_id = 1
         
     def __init__(self, mediator):
+        
         self.texture_id = Texture.texture_id
 
         self.mediator = mediator

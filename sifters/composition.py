@@ -27,26 +27,19 @@ class Composition:
         
         # Connect to SQLite database
         self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
-
         self.connection.row_factory = sqlite3.Row
-
         self.cursor = self.connection.cursor()
 
-        # Initialize a period variable which will be assigned to an integer within the set_binary method.
+        # Initialize attributes
         self.period = None
-
         self.ticks_per_beat = 480
-
         self.scaling_factor = 100000
 
         # Derive normalized binary list(s) from the given sieve.
         self.binary = self.set_binary(sieve)
 
-        # Interpolate a dictionary which tracks the indicies of pattern changes within self.binary.
+        # Interpolate a dictionary which tracks the indices of pattern changes within self.binary.
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
-
-        # Derive self-similar lists of integers based on the self.changes attribute.
-        self.form = [[num] * len(self.changes) for num in self.changes]
 
         # Derive a list of metric grids based on the percent of change that each integer with self.changes represents.
         self.grids_set = self.set_grids()
@@ -54,15 +47,13 @@ class Composition:
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
 
-        # Initialize an instance of the Utility class to call helper methods from.
+        # Initialize instances of Database, Texture, and Wavetable classes for mediation.
         self.database = database.Database(self)
-        
         self.texture = texture.Texture(self)
+        self.wavetable = wavetable.Wavetable(self)
         
-        # self.wavetable = wavetable.Wavetable(self)
-        
+        # Set up notes data and tables in the database
         self.set_notes_data()
-        
         self.set_tables()
             
 
