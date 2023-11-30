@@ -52,9 +52,9 @@ class Composition:
         self.texture = texture.Texture(self)
         # self.wavetable = wavetable.Wavetable(self)
         
-        # Set up notes data and tables in the database
-        self.set_notes_data()
-        self.set_tables()
+        # # Set up notes data and tables in the database
+        # self.set_notes_data()
+        # self.set_tables()
             
 
     def set_binary(self, sieve):
