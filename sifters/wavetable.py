@@ -46,6 +46,7 @@ class Wavetable:
         return modulator_signals
 
 
+
     def apply_fm_synthesis(self, modulation_index=2.5):
         # Generate the carrier signal
         self.carrier_signal = self.generate_carrier_signal()
@@ -63,6 +64,6 @@ class Wavetable:
         modulated_signal = np.int16(modulated_signal / np.max(np.abs(modulated_signal)) * 32767)
 
         # Save the modulated signal as a WAV file
-        write('data/wav/.wavetable.wav', self.sample_rate, modulated_signal)
+        write('data/wav/wavetable.wav', self.sample_rate, modulated_signal)
 
         return modulated_signal

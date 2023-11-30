@@ -37,7 +37,8 @@ class Texture:
     def get_successive_diff(self, lst):
         return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
     
-    
+    ### UPDATE THIS METHOD SO THAT MOD 12 IS NOT HARDCODEDf
+    ### THINK OF RELATIONSHIP TO MICROTUNER IN ABLETON
     def segment_octave_by_period(self, period):
         interval = decimal.Decimal('12') / decimal.Decimal(str(period))
         return [interval * decimal.Decimal(str(i)) for i in range(period)]
@@ -66,7 +67,7 @@ class Texture:
         matrix = pandas.DataFrame(matrix,
                                 index=[f'P{m[0]}' for m in matrix], 
                                 columns=[f'I{i}' for i in matrix[0]])
-
+        
         return matrix
 
 
@@ -116,11 +117,12 @@ class Texture:
             pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
             flattened_pool = [num for list in pool for num in list]
 
+
             note_pool = itertools.cycle(flattened_pool)
             pattern = numpy.tile(self.binary, self.factors[factor_index])
             indices = numpy.nonzero(pattern)[0]
             duration = self.period // self.factors[factor_index]
-
+            
             for index in indices:
                 velocity = 64
                 start = index * duration
