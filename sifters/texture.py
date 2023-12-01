@@ -20,9 +20,10 @@ class Texture:
         self.period = mediator.period
 
         # Find all occurences of 1 and derive an intervalic structure based on their indices.
-        self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
+        # self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
         
         self.indices = numpy.nonzero(self.binary)[0]
+    
         
         # # Derive modular-12 values from self.intervals. 
         # mod12 = list(range(12))
@@ -47,31 +48,30 @@ class Texture:
     
     
     def generate_pitchclass_matrix(self, intervals):
-        print(intervals)
-        # Calculate the interval between each pair of consecutive pitches.
         next_interval = intervals[1:]
-        row = [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
+        row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
 
-        # Normalize the tone row so that it starts with 0 and has no negative values.
-        # row = [note % self.period for note in row]
+        matrix = [
+            [
+                (intervals[0] - row[i]) % (self.period - 1)
+            ] 
+            for i in range(len(intervals) - 1)
+        ]
+
+        row.insert(0, 0)
+        matrix.insert(0, [intervals[0]])
+
+        matrix = [
+            [
+                (matrix[i][0] + row[j]) % (self.period - 1)
+                for j in range(len(matrix))
+            ]
+            for i in range(len(matrix))
+        ]
         
-        print(row)
-
-        # Generate the rows of the pitch class matrix.
-        matrix = [[(abs(note - self.period) % self.period)] for note in row]
-
-        # Generate the columns of the pitch class matrix.
-        matrix = [row * len(intervals) for row in matrix]
-
-        # Update the matrix with the correct pitch class values.
-        matrix = [[(matrix[i][j] + row[j]) % self.period
-                for j, _ in enumerate(range(len(row)))]
-                for i in range(len(row))]
-
-        # Label the rows and columns of the matrix.
         matrix = pandas.DataFrame(matrix,
-                              index=[f'P{m[0]}' for m in matrix], 
-                              columns=[f'I{i}' for i in matrix[0]])
+                                index=[f'P{m[0]}' for m in matrix], 
+                                columns=[f'I{i}' for i in matrix[0]])
 
         return matrix
 
@@ -83,8 +83,8 @@ class Texture:
 
         for _ in range(num_of_positions):
             step = next(steps_cycle)
-            wrapped_index = (current_index + abs(step)) % len(self.intervals)
-            wrap_count = (abs(step) + current_index) // len(self.intervals)
+            wrapped_index = (current_index + abs(step)) % len(self.indices)
+            wrap_count = (abs(step) + current_index) // len(self.indices)
 
             if wrap_count % 2 == 1:
                 retrograde = not retrograde
@@ -112,7 +112,7 @@ class Texture:
             tonality = decimal.Decimal(40.0)
             steps = self.get_successive_diff(self.indices)
             steps_cycle = itertools.cycle(steps)
-            first_pitch = tonality + self.intervals[0]
+            first_pitch = tonality + self.indices[0]
 
             segment = self.segment_octave_by_period(self.period)
             intervals = [segment[i] for i in self.indices]
