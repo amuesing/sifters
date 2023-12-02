@@ -18,16 +18,8 @@ class Texture:
         self.binary = mediator.binary
 
         self.period = mediator.period
-
-        # Find all occurences of 1 and derive an intervalic structure based on their indices.
-        # self.intervals = [i for i in range(len(self.binary)) if self.binary[i] == 1]
         
         self.indices = numpy.nonzero(self.binary)[0]
-    
-        
-        # # Derive modular-12 values from self.intervals. 
-        # mod12 = list(range(12))
-        # self.intervals = [mod12[i % len(mod12)] for i in self.intervals]
         
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
@@ -40,40 +32,21 @@ class Texture:
     def get_successive_diff(self, lst):
         return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
     
-    ### UPDATE THIS METHOD SO THAT MOD 12 IS NOT HARDCODEDf
-    ### THINK OF RELATIONSHIP TO MICROTUNER IN ABLETON
-    def segment_octave_by_period(self, period):
-        interval = decimal.Decimal('12') / decimal.Decimal(str(period))
-        return [interval * decimal.Decimal(str(i)) for i in range(period)]
+
+    def segment_octave_by_equal_temperament(self, base_frequency=1.0, steps=40):
+        frequencies = []
+
+        # Calculate frequencies based on equal temperament
+        for i in range(steps):
+            frequencies.append(base_frequency * (2 ** (i / steps)))
+
+        # Find the index of the base frequency and reorder the list
+        base_index = frequencies.index(base_frequency)
+        frequencies = frequencies[base_index:] + frequencies[:base_index]
+
+        return frequencies
     
-    
-    # def generate_pitchclass_matrix(self, intervals):
-    #     # Calculate the interval between each pair of consecutive pitches.
-    #     next_interval = intervals[1:]
-    #     row = [decimal.Decimal('0.0')] + [next_interval[i] - intervals[0] for i, _ in enumerate(intervals[:-1])]
 
-    #     # Normalize the tone row so that it starts with 0 and has no negative values.
-    #     row = [note % 12 for note in row]
-
-    #     # Generate the rows of the pitch class matrix.
-    #     matrix = [[(abs(note - 12) % 12)] for note in row]
-
-    #     # Generate the columns of the pitch class matrix.
-    #     matrix = [row * len(intervals) for row in matrix]
-
-    #     # Update the matrix with the correct pitch class values.
-    #     matrix = [[(matrix[i][j] + row[j]) % 12
-    #             for j, _ in enumerate(range(len(row)))]
-    #             for i in range(len(row))]
-
-    #     # Label the rows and columns of the matrix.
-    #     matrix = pandas.DataFrame(matrix,
-    #                             index=[f'P{m[0]}' for m in matrix], 
-    #                             columns=[f'I{i}' for i in matrix[0]])
-        
-    #     return matrix
-    
-    
     def generate_pitchclass_matrix(self, intervals):
         next_interval = intervals[1:]
         row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
@@ -136,27 +109,27 @@ class Texture:
         notes_data = []
 
         for factor_index in range(len(self.factors)):
-            tonality = 40
             steps = self.get_successive_diff(self.indices)
             steps_cycle = itertools.cycle(steps)
-            first_pitch = tonality + self.indices[0]
 
-            segment = self.segment_octave_by_period(self.period)
-            intervals = [segment[i] for i in self.indices]
-            matrix = self.generate_pitchclass_matrix(self.indices)
-            print(matrix)
-            # num_of_events = (len(self.intervals) * self.factors[factor_index])
-            # num_of_positions = num_of_events // len(steps)
-            # pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
-            # flattened_pool = [num for list in pool for num in list]
-
-        #     note_pool = itertools.cycle(flattened_pool)
-        #     pattern = numpy.tile(self.binary, self.factors[factor_index])
-        #     indices = numpy.nonzero(pattern)[0]
-        #     duration = self.period // self.factors[factor_index]
+            segment = self.segment_octave_by_equal_temperament()
+            matrix = self.indices[0] + self.generate_pitchclass_matrix(self.indices)
             
-        #     for index in indices:
-        #         velocity = 64
-        #         start = index * duration
-        #         notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
-        # return notes_data
+            print(segment)
+
+            num_of_events = (len(self.indices) * self.factors[factor_index])
+            num_of_positions = num_of_events // len(steps)
+            pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
+            flattened_pool = [num for list in pool for num in list]
+
+
+            note_pool = itertools.cycle(flattened_pool)
+            pattern = numpy.tile(self.binary, self.factors[factor_index])
+            indices = numpy.nonzero(pattern)[0]
+            duration = self.period // self.factors[factor_index]
+            
+            for index in indices:
+                velocity = 64
+                start = index * duration
+                notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
+        return notes_data

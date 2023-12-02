@@ -61,10 +61,8 @@ class Database:
             End INTEGER,
             Velocity INTEGER,
             Note INTEGER,
-            Pitch INTEGER,
             Message TEXT,
             Time INTEGER,
-            Channel INTEGER,
             FOREIGN KEY (note_id) REFERENCES notes(note_id),
             FOREIGN KEY (texture_id) REFERENCES textures(texture_id)
         '''
@@ -197,21 +195,6 @@ class Database:
         '''
 
         return create_table_command + '\n' + insert_data_command
-
-
-    def generate_add_pitch_column_command(self, texture_id):
-        return f'''
-        CREATE TEMPORARY TABLE "texture_{texture_id}_pitch_column" AS 
-        SELECT 
-            note_id,
-            texture_id,
-            Start,
-            End,
-            Velocity,
-            CAST(Note AS INTEGER) AS Note,
-            CAST((Note - CAST(Note AS INTEGER)) * 4095 AS INTEGER) AS Pitch
-        FROM "texture_{texture_id}_end_column";
-        '''
         
         
     def generate_find_duplicate_rows_command(self, texture_id):
@@ -219,16 +202,15 @@ class Database:
         CREATE TEMPORARY TABLE "texture_{texture_id}_duplicates" AS
         SELECT
             *
-        FROM texture_{texture_id}_pitch_column
-        WHERE (Start, End, Velocity, Note, Pitch) IN (
+        FROM texture_{texture_id}_end_column
+        WHERE (Start, End, Velocity, Note) IN (
             SELECT
                 Start,
                 End,
                 Velocity,
-                Note,
-                Pitch
-            FROM texture_{texture_id}_pitch_column
-            GROUP BY Start, End, Velocity, Note, Pitch
+                Note
+            FROM texture_{texture_id}_end_column
+            GROUP BY Start, End, Velocity, Note
             HAVING COUNT(*) > 1
         );
         '''
@@ -243,8 +225,7 @@ class Database:
             Start,
             End,
             Velocity,
-            Note,
-            Pitch
+            Note
         FROM (
             SELECT
                 note_id,
@@ -253,10 +234,9 @@ class Database:
                 End,
                 Velocity,
                 Note,
-                Pitch,
-                ROW_NUMBER() OVER (PARTITION BY Start, End, Velocity, Note, Pitch ORDER BY (SELECT NULL)) AS row_num
-            FROM texture_{texture_id}_pitch_column
-        ) AS numbered_rows
+                ROW_NUMBER() OVER (PARTITION BY Start, End, Velocity, Note ORDER BY (SELECT NULL)) AS row_num
+            FROM texture_{texture_id}_end_column
+        )
         WHERE row_num = 1;
         '''
         
@@ -267,8 +247,6 @@ class Database:
         commands.append(self.generate_max_duration_command(texture_id))
 
         commands.append(self.generate_create_and_insert_end_data_commands(texture_id))
-
-        commands.append(self.generate_add_pitch_column_command(texture_id))
 
         commands.append(self.generate_find_duplicate_rows_command(texture_id))
 
@@ -287,16 +265,14 @@ class Database:
                 End,
                 Velocity,
                 Note,
-                Pitch,
                 'note_on' AS Message,
                 CASE 
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
-                END AS Time,
-                END AS Time,
-                ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Pitch DESC) - 1 AS Channel
+                END AS Time
             FROM "texture_{texture_id}_no_duplicates";
         '''
+
 
 
     def update_time_column(self, texture_id):
@@ -329,28 +305,17 @@ class Database:
             );
         '''
         
-
-    def append_pitchwheel_and_note_off(self, texture_id):
+    def append_note_off_message(self, texture_id):
         return f'''
-            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
+            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Message, Time)
             SELECT 
-                note_id, texture_id, Start, End, Velocity, Note, Pitch,
-                'pitchwheel' AS Message,
-                0 AS Time,
-                COALESCE(t.Channel, 0) AS Channel
-            FROM "texture_{texture_id}_midi_messages" AS t
-            WHERE Message = 'note_on' AND Pitch != 0.0;
-
-            INSERT INTO "texture_{texture_id}_midi_messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
-            SELECT 
-                note_id, texture_id, Start, End, Velocity, Note, Pitch,
+                note_id, texture_id, Start, End, Velocity, Note,
                 'note_off' AS Message,
-                (End - Start) * {self.ticks_per_beat} AS Time,
-                COALESCE(t.Channel, 0) AS Channel
+                (End - Start) * {self.ticks_per_beat} AS Time
             FROM "texture_{texture_id}_midi_messages" AS t
             WHERE Message = 'note_on';
         '''
-
+        
         
     def order_texture_table_by_start(self, texture_id):
         return f'''
@@ -362,26 +327,26 @@ class Database:
                 End,
                 Velocity,
                 Note,
-                Pitch,
                 Message,
                 CASE
                     WHEN Message = 'note_off' AND LAG(Message) OVER (ORDER BY Start) = 'note_off'
                         THEN 0
                     ELSE Time
-                END AS Time,
-                Channel  -- Include the Channel column in the SELECT statement
+                END AS Time
             FROM "texture_{texture_id}_midi_messages"
             ORDER BY Start;
         '''
 
 
+
     def insert_into_messages_table(self, texture_id):
         return f'''
-            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel)
-            SELECT note_id, texture_id, Start, End, Velocity, Note, Pitch, Message, Time, Channel
+            INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Message, Time)
+            SELECT note_id, texture_id, Start, End, Velocity, Note, Message, Time
             FROM "texture_{texture_id}_midi_messages_ordered"
             ORDER BY Start ASC;
         '''
+
 
 
     def generate_midi_messages_table_commands(self, texture_id):
@@ -391,7 +356,7 @@ class Database:
 
         command.append(self.update_time_column(texture_id))
 
-        command.append(self.append_pitchwheel_and_note_off(texture_id))
+        command.append(self.append_note_off_message(texture_id))
         
         command.append(self.order_texture_table_by_start(texture_id))
 
