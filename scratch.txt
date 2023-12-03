@@ -16,6 +16,8 @@ Interlude IV
 _______________________________________________________________________________
 isort sifters/composition.py
 
+crisis team
+
 FUNCTIONALITY:
 
 1) Utilize logical sieves to generate a sequence of MIDI 'note_on', 'note_off', and 'pitchwheel'

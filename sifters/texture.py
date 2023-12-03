@@ -1,6 +1,7 @@
 import decimal
 import itertools
 
+import math
 import numpy
 import pandas
 
@@ -24,6 +25,8 @@ class Texture:
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
+        self.scale = self.segment_octave_by_period_in_cents()
+        
         self.notes_data = self.generate_notes_data()
         
         Texture.texture_id += 1
@@ -31,21 +34,38 @@ class Texture:
 
     def get_successive_diff(self, lst):
         return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
+
     
+    def segment_octave_by_period_in_cents(self):
+        cents = []
 
-    def segment_octave_by_equal_temperament(self, base_frequency=1.0, steps=40):
-        frequencies = []
+        # Calculate cents based on equal temperament
+        for i in range(1, self.period + 1):
+            cent_value = (1200 / self.period) * i
+            cent_value = round(cent_value, 6)
+            cents.append(cent_value)
 
-        # Calculate frequencies based on equal temperament
-        for i in range(steps):
-            frequencies.append(base_frequency * (2 ** (i / steps)))
 
-        # Find the index of the base frequency and reorder the list
-        base_index = frequencies.index(base_frequency)
-        frequencies = frequencies[base_index:] + frequencies[:base_index]
-
-        return frequencies
+        return cents
     
+    
+    def create_tuning_file(title, description, floats_list, file_name):
+        # Construct the file_content
+        file_content = f"""! {title}
+                        !
+                        {description}
+                        {len(floats_list)}
+                        !
+                        """
+
+        # Add floats to the content
+        file_content += "\n".join(map(str, floats_list))
+
+        # Open the file in write mode ('w')
+        with open(file_name, 'w') as file:
+            # Write content to the file
+            file.write(file_content)
+
 
     def generate_pitchclass_matrix(self, intervals):
         next_interval = intervals[1:]
@@ -112,16 +132,12 @@ class Texture:
             steps = self.get_successive_diff(self.indices)
             steps_cycle = itertools.cycle(steps)
 
-            segment = self.segment_octave_by_equal_temperament()
             matrix = self.indices[0] + self.generate_pitchclass_matrix(self.indices)
-            
-            print(segment)
 
             num_of_events = (len(self.indices) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
             pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
             flattened_pool = [num for list in pool for num in list]
-
 
             note_pool = itertools.cycle(flattened_pool)
             pattern = numpy.tile(self.binary, self.factors[factor_index])
@@ -132,4 +148,5 @@ class Texture:
                 velocity = 64
                 start = index * duration
                 notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
+                
         return notes_data
