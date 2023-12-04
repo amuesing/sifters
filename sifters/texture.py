@@ -25,9 +25,69 @@ class Texture:
 
         self.notes_data = self.generate_notes_data()
         
-        self.scale = self.segment_octave_by_period_in_cents()
-        
         Texture.texture_id += 1
+    
+    
+    def get_successive_diff(self, lst):
+        return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
+    
+    
+    def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps_cycle):
+        pool = []
+        current_index = 0
+        retrograde = False
+
+        for _ in range(num_of_positions):
+            step = next(steps_cycle)
+            wrapped_index = (current_index + abs(step)) % len(self.indices)
+            wrap_count = (abs(step) + current_index) // len(self.indices)
+
+            if wrap_count % 2 == 1:
+                retrograde = not retrograde
+
+            if step >= 0:
+                if retrograde:
+                    pool.append(matrix.iloc[wrapped_index][::-1].tolist())
+                else:
+                    pool.append(matrix.iloc[wrapped_index].tolist())
+            if step < 0:
+                if retrograde:
+                    pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
+                else:
+                    pool.append(matrix.iloc[:, wrapped_index].tolist())
+
+            current_index = wrapped_index
+
+        return pool
+    
+    
+    def generate_pitchclass_matrix(self, intervals):
+        next_interval = intervals[1:]
+        row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
+        
+        matrix = [
+            [
+                (0 - row[i]) % (self.period - 1)
+            ] 
+            for i in range(len(intervals) - 1)
+        ]
+
+        row.insert(0, 0)
+        matrix.insert(0, [0])
+
+        matrix = [
+            [
+                (matrix[i][0] + row[j]) % (self.period - 1)
+                for j in range(len(matrix))
+            ]
+            for i in range(len(matrix))
+        ]
+        
+        matrix = pandas.DataFrame(matrix,
+                                index=[f'P{m[0]}' for m in matrix], 
+                                columns=[f'I{i}' for i in matrix[0]])
+
+        return matrix
     
     
     def create_tuning_file(self, floats_list):
@@ -54,7 +114,7 @@ class Texture:
             file.write(file_content)
         
     
-    def segment_octave_by_period_in_cents(self):
+    def select_scalar_segments(self, indice_list):
         cents = []
 
         # Calculate cents based on equal temperament or custom approach
@@ -65,7 +125,7 @@ class Texture:
             cents.append(cent_value)
 
         # Select cents at specific indices
-        selected_cents = [cents[index] for index in self.indices]
+        selected_cents = [cents[index] for index in indice_list]
 
         # Create tuning file using the selected cents
         self.create_tuning_file(selected_cents)
@@ -76,79 +136,27 @@ class Texture:
     
     def generate_notes_data(self):
         notes_data = []
+        indice_list = []
         
-        def get_successive_diff(lst):
-            return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
-        
-        
-        def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps_cycle):
-            pool = []
-            current_index = 0
-            retrograde = False
-
-            for _ in range(num_of_positions):
-                step = next(steps_cycle)
-                wrapped_index = (current_index + abs(step)) % len(self.indices)
-                wrap_count = (abs(step) + current_index) // len(self.indices)
-
-                if wrap_count % 2 == 1:
-                    retrograde = not retrograde
-
-                if step >= 0:
-                    if retrograde:
-                        pool.append(matrix.iloc[wrapped_index][::-1].tolist())
-                    else:
-                        pool.append(matrix.iloc[wrapped_index].tolist())
-                if step < 0:
-                    if retrograde:
-                        pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
-                    else:
-                        pool.append(matrix.iloc[:, wrapped_index].tolist())
-
-                current_index = wrapped_index
-
-            return pool
-        
-        
-        def generate_pitchclass_matrix(self, intervals):
-            next_interval = intervals[1:]
-            row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
-            
-            matrix = [
-                [
-                    (0 - row[i]) % (self.period - 1)
-                ] 
-                for i in range(len(intervals) - 1)
-            ]
-
-            row.insert(0, 0)
-            matrix.insert(0, [0])
-
-            matrix = [
-                [
-                    (matrix[i][0] + row[j]) % (self.period - 1)
-                    for j in range(len(matrix))
-                ]
-                for i in range(len(matrix))
-            ]
-            
-            matrix = pandas.DataFrame(matrix,
-                                    index=[f'P{m[0]}' for m in matrix], 
-                                    columns=[f'I{i}' for i in matrix[0]])
-
-            return matrix
-        
-        
+        # For each factor, create exactly the number of notes required for each texture to achieve parity
         for factor_index in range(len(self.factors)):
-            steps = get_successive_diff(self.indices)
+            steps = self.get_successive_diff(self.indices)
             steps_cycle = itertools.cycle(steps)
 
-            matrix = self.indices[0] + generate_pitchclass_matrix(self, self.indices)
+            matrix = self.indices[0] + self.generate_pitchclass_matrix(self.indices)
 
             num_of_events = (len(self.indices) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
-            pool = generate_note_pool_from_matrix(self, matrix, num_of_positions, steps_cycle)
+            pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
             flattened_pool = [num for list in pool for num in list]
+            indice_list = flattened_pool
+            
+            # # Create a new list of indices based on the sorted order of the original list
+            # flattened_pool = sorted(range(len(flattened_pool)), key=lambda k: flattened_pool[k])
+
+            # # Create a new list where each element represents the order of the corresponding integer
+            # flattened_pool = [flattened_pool[i] + 1 for i in range(len(flattened_pool))]
+            
             print(flattened_pool)
 
             note_pool = itertools.cycle(flattened_pool)
@@ -162,4 +170,7 @@ class Texture:
                 start = index * duration
                 notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
                 
+        self.select_scalar_segments(list(set(indice_list)))
+        ### CREATE MATRIX, ORDER ALL MATRIX ELEMENTS, CREATE A PARALLEL MATRIX WHICH REFLECTS THE ORDERING
+        ### WHAT ABOUT CREATING A DICTIONARY WHERE THE ORDER IS DEFINED AND THEN USED TO CONVERT THE NOTE POOL
         return notes_data

@@ -224,16 +224,11 @@ class Composition:
             messages = []
             midi_data_list = []
             for row in data:
-                message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / self.scaling_factor), 'Pitch': '', 'Channel': ''}
+                message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / self.scaling_factor)}
                 if row['Message'] == 'note_on' or row['Message'] == 'note_off':
-                    msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], channel=row['Channel'], time=message_dict['Time'])
+                    msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=message_dict['Time'])
                     message_dict['Note'] = row['Note']
                     message_dict['Velocity'] = row['Velocity']
-                    message_dict['Channel'] = row['Channel']
-                elif row['Message'] == 'pitchwheel':
-                    msg = mido.Message(row['Message'], pitch=row['Pitch'], channel=row['Channel'], time=message_dict['Time'])
-                    message_dict['Pitch'] = row['Pitch']
-                    message_dict['Channel'] = row['Channel']
 
                 messages.append(msg)
                 midi_data_list.append(message_dict)
@@ -291,4 +286,4 @@ if __name__ == '__main__':
     
     comp = Composition(sieve)
 
-    # comp.write_midi()
+    comp.write_midi()
