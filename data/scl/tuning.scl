@@ -1,0 +1,12 @@
+! Base 40 Tuning
+!
+Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.
+7
+!
+30.0
+240.0
+480.0
+690.0
+930.0
+990.0
+2/1
