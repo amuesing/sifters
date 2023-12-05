@@ -28,8 +28,8 @@ class Texture:
         Texture.texture_id += 1
     
     
-    def get_successive_diff(self, lst):
-        return [0] + [lst[i+1] - lst[i] for i in range(len(lst)-1)]
+    def get_successive_diff(self, integers):
+        return [0] + [integers[i+1] - integers[i] for i in range(len(integers)-1)]
     
     
     def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps_cycle):
@@ -88,6 +88,19 @@ class Texture:
                                 columns=[f'I{i}' for i in matrix[0]])
 
         return matrix
+    
+    
+    def represent_by_size(self, steps):
+        sorted_list = sorted(steps)
+        sorted_set = set(sorted_list)
+
+        # Create a dictionary to store the index + 1 for each value
+        index_mapping = {value: rank + 1 for rank, value in enumerate(sorted_set)}
+
+        # Map each element in the original list to its index in the sorted set
+        steps = [index_mapping[value] for value in steps]
+        
+        return steps
     
     
     def create_tuning_file(self, floats_list):
@@ -151,13 +164,15 @@ class Texture:
             flattened_pool = [num for list in pool for num in list]
             indice_list = flattened_pool
             
-            # # Create a new list of indices based on the sorted order of the original list
-            # flattened_pool = sorted(range(len(flattened_pool)), key=lambda k: flattened_pool[k])
-
-            # # Create a new list where each element represents the order of the corresponding integer
-            # flattened_pool = [flattened_pool[i] + 1 for i in range(len(flattened_pool))]
-            
             print(flattened_pool)
+            
+            ### THE ISSUE IS THAT I NEED TO ORDER EACH LIST BASED ON THE ALL VALUES IN THE MATRIX BEFORE
+            ### CALCULATING NOTE DATA BECAUSE THEIR RELATIVE SIZE WILL CHANGE BASED ON WHICH MATRIX ELEMENTS ARE INCLUDED
+            
+            ### HOW DO THE SCALE DEGREES REPRESENTED IN THE POOL LINE UP WITH THE TUNING FILE?
+            flattened_pool = self.represent_by_size(flattened_pool)
+            
+
 
             note_pool = itertools.cycle(flattened_pool)
             pattern = numpy.tile(self.binary, self.factors[factor_index])
@@ -171,6 +186,4 @@ class Texture:
                 notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
                 
         self.select_scalar_segments(list(set(indice_list)))
-        ### CREATE MATRIX, ORDER ALL MATRIX ELEMENTS, CREATE A PARALLEL MATRIX WHICH REFLECTS THE ORDERING
-        ### WHAT ABOUT CREATING A DICTIONARY WHERE THE ORDER IS DEFINED AND THEN USED TO CONVERT THE NOTE POOL
         return notes_data
