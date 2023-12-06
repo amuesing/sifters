@@ -32,6 +32,76 @@ class Texture:
         return [0] + [integers[i+1] - integers[i] for i in range(len(integers)-1)]
     
     
+    def represent_by_size(self, steps):
+        sorted_list = sorted(steps)
+        sorted_set = set(sorted_list)
+
+        # Create a dictionary to store the index for each value
+        index_mapping = {value: rank for rank, value in enumerate(sorted_set)}
+
+        # Map each element in the original list to its index in the sorted set
+        steps = [index_mapping[value] for value in steps]
+        
+        return steps
+
+    
+    def unflatten_list(self, flat_list, original_matrix):
+        # Assuming original_matrix is a list of lists
+        rows, cols = len(original_matrix), len(original_matrix[0])
+
+        # Reshape the flat_list back to the original matrix shape
+        reshaped_matrix = [flat_list[i * cols:(i + 1) * cols] for i in range(rows)]
+
+        return reshaped_matrix
+    
+    
+    def generate_pitchclass_matrix(self, intervals):
+        next_interval = intervals[1:]
+        row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
+        
+        matrix = [
+            [
+                (0 - row[i]) % (self.period - 1)
+            ] 
+            for i in range(len(intervals) - 1)
+        ]
+
+        row.insert(0, 0)
+        matrix.insert(0, [0])
+        
+        matrix = [
+            [
+                (matrix[i][0] + row[j]) % (self.period - 1)
+                for j in range(len(matrix))
+            ]
+            for i in range(len(matrix))
+        ]
+
+
+
+        return matrix
+    
+    
+    def represent_matrix_by_size(self, matrix):
+        flattened_matrix = [value for lst in matrix for value in lst]
+        
+        sized_matrix = self.represent_by_size(flattened_matrix)
+
+        # Unflatten the sized list back to the original matrix structure
+        matrix = self.unflatten_list(sized_matrix, matrix)
+        
+        return matrix
+    
+    
+    def convert_matrix_to_dataframe(self, matrix):
+        # Convert the unflattened matrix to a DataFrame
+        matrix = pandas.DataFrame(matrix,
+                                    index=[f'P{m[0]}' for m in matrix], 
+                                    columns=[f'I{i}' for i in matrix[0]])
+        
+        return matrix
+    
+    
     def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps_cycle):
         pool = []
         current_index = 0
@@ -61,48 +131,6 @@ class Texture:
         return pool
     
     
-    def generate_pitchclass_matrix(self, intervals):
-        next_interval = intervals[1:]
-        row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
-        
-        matrix = [
-            [
-                (0 - row[i]) % (self.period - 1)
-            ] 
-            for i in range(len(intervals) - 1)
-        ]
-
-        row.insert(0, 0)
-        matrix.insert(0, [0])
-
-        matrix = [
-            [
-                (matrix[i][0] + row[j]) % (self.period - 1)
-                for j in range(len(matrix))
-            ]
-            for i in range(len(matrix))
-        ]
-        
-        matrix = pandas.DataFrame(matrix,
-                                index=[f'P{m[0]}' for m in matrix], 
-                                columns=[f'I{i}' for i in matrix[0]])
-
-        return matrix
-    
-    
-    def represent_by_size(self, steps):
-        sorted_list = sorted(steps)
-        sorted_set = set(sorted_list)
-
-        # Create a dictionary to store the index + 1 for each value
-        index_mapping = {value: rank + 1 for rank, value in enumerate(sorted_set)}
-
-        # Map each element in the original list to its index in the sorted set
-        steps = [index_mapping[value] for value in steps]
-        
-        return steps
-    
-    
     def create_tuning_file(self, floats_list):
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
@@ -127,7 +155,7 @@ class Texture:
             file.write(file_content)
         
     
-    def select_scalar_segments(self, indice_list):
+    def select_scalar_segments(self, indice_list, index_delta):
         cents = []
 
         # Calculate cents based on equal temperament or custom approach
@@ -138,7 +166,7 @@ class Texture:
             cents.append(cent_value)
 
         # Select cents at specific indices
-        selected_cents = [cents[index] for index in indice_list]
+        selected_cents = [cents[index - index_delta] for index in indice_list]
 
         # Create tuning file using the selected cents
         self.create_tuning_file(selected_cents)
@@ -156,23 +184,24 @@ class Texture:
             steps = self.get_successive_diff(self.indices)
             steps_cycle = itertools.cycle(steps)
 
-            matrix = self.indices[0] + self.generate_pitchclass_matrix(self.indices)
+            pitch_matrix = self.generate_pitchclass_matrix(self.indices)
+            adjusted_matrix = self.indices[0] + self.generate_pitchclass_matrix(self.indices)
+            matrix = self.represent_matrix_by_size(pitch_matrix)
+            matrix = self.convert_matrix_to_dataframe(matrix)
+            adjusted_matrix = self.convert_matrix_to_dataframe(adjusted_matrix)
+            print(adjusted_matrix)
 
             num_of_events = (len(self.indices) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
             pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
+            adjusted_pool = self.generate_note_pool_from_matrix(adjusted_matrix, num_of_positions, steps_cycle)
             flattened_pool = [num for list in pool for num in list]
-            indice_list = flattened_pool
+            adjusted_flattened_pool = [num for list in adjusted_pool for num in list]
+            indice_list = adjusted_flattened_pool
             
-            print(flattened_pool)
-            
-            ### THE ISSUE IS THAT I NEED TO ORDER EACH LIST BASED ON THE ALL VALUES IN THE MATRIX BEFORE
-            ### CALCULATING NOTE DATA BECAUSE THEIR RELATIVE SIZE WILL CHANGE BASED ON WHICH MATRIX ELEMENTS ARE INCLUDED
-            
+            ### THE INDICES BEING PASSED TO THE SELECT SCALAR SEGMENTS ARE NO LONGER BEING PASSED TO THE METHOD
             ### HOW DO THE SCALE DEGREES REPRESENTED IN THE POOL LINE UP WITH THE TUNING FILE?
-            flattened_pool = self.represent_by_size(flattened_pool)
-            
-
+            # flattened_pool = self.represent_by_size(flattened_pool)
 
             note_pool = itertools.cycle(flattened_pool)
             pattern = numpy.tile(self.binary, self.factors[factor_index])
@@ -185,5 +214,5 @@ class Texture:
                 start = index * duration
                 notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
                 
-        self.select_scalar_segments(list(set(indice_list)))
+        self.select_scalar_segments(list(set(indice_list)), self.indices[0])
         return notes_data
