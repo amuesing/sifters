@@ -128,7 +128,7 @@ class Composition:
             else:
                 return nums
             
-        
+            
         # Inner function to standardize the numerators in the list of grids by transforming them to a shared denominator.
         def set_normalized_numerators(grids):
             # Compute the least common multiple (LCM) of all denominators in the list.
@@ -212,13 +212,16 @@ class Composition:
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
 
+
         def bpm_to_tempo(bpm):
             return int(60_000_000 / bpm)
+
 
         def fetch_midi_messages_from_sql(self, texture_id):
             query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
             self.database.cursor.execute(query)
             return self.database.cursor.fetchall()
+        
         
         def data_to_midi_messages(data):
             messages = []
@@ -234,6 +237,7 @@ class Composition:
                 midi_data_list.append(message_dict)
 
             return messages, midi_data_list
+
 
         def save_messages_to_csv(midi_data_list, filename):
             dataframe = pandas.DataFrame(midi_data_list)

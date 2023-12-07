@@ -155,7 +155,7 @@ class Texture:
             file.write(file_content)
         
     
-    def select_scalar_segments(self, indice_list, index_delta):
+    def select_scalar_segments(self, indice_list):
         cents = []
 
         # Calculate cents based on equal temperament or custom approach
@@ -166,7 +166,9 @@ class Texture:
             cents.append(cent_value)
 
         # Select cents at specific indices
-        selected_cents = [cents[index - index_delta] for index in indice_list]
+        selected_cents = [cents[index - indice_list[0]] for index in indice_list][1:]
+        
+        # print(selected_cents[1:])
 
         # Create tuning file using the selected cents
         self.create_tuning_file(selected_cents)
@@ -189,7 +191,6 @@ class Texture:
             matrix = self.represent_matrix_by_size(pitch_matrix)
             matrix = self.convert_matrix_to_dataframe(matrix)
             adjusted_matrix = self.convert_matrix_to_dataframe(adjusted_matrix)
-            print(adjusted_matrix)
 
             num_of_events = (len(self.indices) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
@@ -214,5 +215,5 @@ class Texture:
                 start = index * duration
                 notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
                 
-        self.select_scalar_segments(list(set(indice_list)), self.indices[0])
+        self.select_scalar_segments(list(set(indice_list)))
         return notes_data
