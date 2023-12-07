@@ -50,7 +50,7 @@ class Composition:
         # Initialize instances of Database, Texture, and Wavetable classes for mediation.
         self.database = database.Database(self)
         self.texture = texture.Texture(self)
-        # self.wavetable = wavetable.Wavetable(self)
+        self.wavetable = wavetable.Wavetable(self)
         
         # # Set up notes data and tables in the database
         self.set_notes_data()

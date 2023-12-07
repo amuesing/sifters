@@ -77,8 +77,6 @@ class Texture:
             for i in range(len(matrix))
         ]
 
-
-
         return matrix
     
     
@@ -181,28 +179,24 @@ class Texture:
         notes_data = []
         indice_list = []
         
+        steps = self.get_successive_diff(self.indices)
+        normalized_matrix = self.generate_pitchclass_matrix(self.indices)
+        matrix_represented_by_size = self.represent_matrix_by_size(normalized_matrix)
+        matrix_represented_by_size = self.convert_matrix_to_dataframe(matrix_represented_by_size)
+        matrix_adjusted_by_step = self.indices[0] + normalized_matrix
+        matrix_adjusted_by_step = self.convert_matrix_to_dataframe(matrix_adjusted_by_step)
+        
         # For each factor, create exactly the number of notes required for each texture to achieve parity
         for factor_index in range(len(self.factors)):
-            steps = self.get_successive_diff(self.indices)
             steps_cycle = itertools.cycle(steps)
-
-            pitch_matrix = self.generate_pitchclass_matrix(self.indices)
-            adjusted_matrix = self.indices[0] + self.generate_pitchclass_matrix(self.indices)
-            matrix = self.represent_matrix_by_size(pitch_matrix)
-            matrix = self.convert_matrix_to_dataframe(matrix)
-            adjusted_matrix = self.convert_matrix_to_dataframe(adjusted_matrix)
 
             num_of_events = (len(self.indices) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
-            pool = self.generate_note_pool_from_matrix(matrix, num_of_positions, steps_cycle)
-            adjusted_pool = self.generate_note_pool_from_matrix(adjusted_matrix, num_of_positions, steps_cycle)
+            pool = self.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps_cycle)
+            adjusted_pool = self.generate_note_pool_from_matrix(matrix_adjusted_by_step, num_of_positions, steps_cycle)
             flattened_pool = [num for list in pool for num in list]
-            adjusted_flattened_pool = [num for list in adjusted_pool for num in list]
-            indice_list = adjusted_flattened_pool
-            
-            ### THE INDICES BEING PASSED TO THE SELECT SCALAR SEGMENTS ARE NO LONGER BEING PASSED TO THE METHOD
-            ### HOW DO THE SCALE DEGREES REPRESENTED IN THE POOL LINE UP WITH THE TUNING FILE?
-            # flattened_pool = self.represent_by_size(flattened_pool)
+            indice_list = [num for list in adjusted_pool for num in list]
+            # indice_list = adjusted_flattened_pool
 
             note_pool = itertools.cycle(flattened_pool)
             pattern = numpy.tile(self.binary, self.factors[factor_index])
