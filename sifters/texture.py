@@ -1,11 +1,9 @@
-import decimal
 import itertools
 
 import numpy
 import pandas
 
 class Texture:
-    
     texture_id = 1
         
     def __init__(self, mediator):
@@ -15,10 +13,10 @@ class Texture:
         self.mediator = mediator
         
         self.binary = mediator.binary
-
-        self.period = mediator.period
         
         self.indices = numpy.nonzero(self.binary)[0]
+
+        self.period = mediator.period
         
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
@@ -100,13 +98,15 @@ class Texture:
         return matrix
     
     
-    def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps_cycle):
+    def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps):
         pool = []
         current_index = 0
         retrograde = False
+        steps_cycle = itertools.cycle(steps)
 
         for _ in range(num_of_positions):
             step = next(steps_cycle)
+
             wrapped_index = (current_index + abs(step)) % len(self.indices)
             wrap_count = (abs(step) + current_index) // len(self.indices)
 
@@ -125,6 +125,7 @@ class Texture:
                     pool.append(matrix.iloc[:, wrapped_index].tolist())
 
             current_index = wrapped_index
+        
 
         return pool
     
@@ -156,8 +157,6 @@ class Texture:
     def select_scalar_segments(self, indice_list):
         cents = []
 
-        # Calculate cents based on equal temperament or custom approach
-        # for i in range(1, self.period + 1):
         for i in range(self.period):
             cent_value = (1200 / self.period) * i
             cent_value = round(cent_value, 6)
@@ -165,8 +164,6 @@ class Texture:
 
         # Select cents at specific indices
         selected_cents = [cents[index - indice_list[0]] for index in indice_list][1:]
-        
-        # print(selected_cents[1:])
 
         # Create tuning file using the selected cents
         self.create_tuning_file(selected_cents)
@@ -188,26 +185,23 @@ class Texture:
         
         # For each factor, create exactly the number of notes required for each texture to achieve parity
         for factor_index in range(len(self.factors)):
-            steps_cycle = itertools.cycle(steps)
-
             num_of_events = (len(self.indices) * self.factors[factor_index])
             num_of_positions = num_of_events // len(steps)
-            pool = self.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps_cycle)
-            adjusted_pool = self.generate_note_pool_from_matrix(matrix_adjusted_by_step, num_of_positions, steps_cycle)
+            pool = self.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
+            adjusted_pool = self.generate_note_pool_from_matrix(matrix_adjusted_by_step, num_of_positions, steps)
             flattened_pool = [num for list in pool for num in list]
             indice_list = [num for list in adjusted_pool for num in list]
-            # indice_list = adjusted_flattened_pool
 
             note_pool = itertools.cycle(flattened_pool)
-            pattern = numpy.tile(self.binary, self.factors[factor_index])
-            indices = numpy.nonzero(pattern)[0]
+            tiled_pattern = numpy.tile(self.binary, self.factors[factor_index])
+            tiled_indices = numpy.nonzero(tiled_pattern)[0]
 
             duration = self.period // self.factors[factor_index]
             
-            for index in indices:
+            for index in tiled_indices:
                 velocity = 64
                 start = index * duration
                 notes_data.append((self.texture_id, start, velocity, next(note_pool), duration))
-                
+        
         self.select_scalar_segments(list(set(indice_list)))
         return notes_data

@@ -16,7 +16,6 @@ import wavetable
 
 
 class Composition:
-    
     def __init__(self, sieve):
 
         # Assign sieves argument to self.
@@ -83,7 +82,7 @@ class Composition:
     
     # This function generates grids that illustrate the fractions of the period for each change in the self.changes list.
     def set_grids(self):
-
+        
         # Inner function to compute the proportion of the period that each number in the list represents.
         def get_percent_of_period(lst):
             return [

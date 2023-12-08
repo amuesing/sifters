@@ -274,7 +274,6 @@ class Database:
         '''
 
 
-
     def update_time_column(self, texture_id):
         return f'''
             UPDATE "texture_{texture_id}_midi_messages"
@@ -304,6 +303,7 @@ class Database:
                     AND "texture_{texture_id}_midi_messages".Start != t_sub.PreviousStart
             );
         '''
+        
         
     def append_note_off_message(self, texture_id):
         return f'''
@@ -338,7 +338,6 @@ class Database:
         '''
 
 
-
     def insert_into_messages_table(self, texture_id):
         return f'''
             INSERT INTO "messages" (note_id, texture_id, Start, End, Velocity, Note, Message, Time)
@@ -346,7 +345,6 @@ class Database:
             FROM "texture_{texture_id}_midi_messages_ordered"
             ORDER BY Start ASC;
         '''
-
 
 
     def generate_midi_messages_table_commands(self, texture_id):
