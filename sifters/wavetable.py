@@ -5,11 +5,21 @@ class Wavetable:
 
     def __init__(self, mediator):
         self.grids_set = mediator.grids_set
+        self.selected_cents_implied_zero = mediator.texture.selected_cents_implied_zero
         self.wavetable_size = 2048  # Number of samples in the wavetable
         self.sample_rate = 44100  # Sample rate in Hz
-
+        # 261.63 is c4
+        self.reference_frequency = 261.63
+        self.frequency_list = self.cents_to_frequency(self.reference_frequency, self.selected_cents_implied_zero)
+        print(self.frequency_list)
+        # print(self.selected_cents_implied_zero)
         # Apply FM synthesis in the constructor
         self.modulated_signal = self.apply_fm_synthesis()
+        
+    def cents_to_frequency(self, reference_frequency, cents_list):
+        # Convert each cent value to frequency using the formula
+        frequency_list = [reference_frequency * 2**(cents / 1200) for cents in cents_list]
+        return frequency_list
 
 
     def generate_carrier_signal(self):

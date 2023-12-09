@@ -163,10 +163,10 @@ class Texture:
             cents.append(cent_value)
 
         # Select cents at specific indices
-        selected_cents = [cents[index - indice_list[0]] for index in indice_list][1:]
+        self.selected_cents_implied_zero = [cents[index - indice_list[0]] for index in indice_list][1:]
 
         # Create tuning file using the selected cents
-        self.create_tuning_file(selected_cents)
+        self.create_tuning_file(self.selected_cents_implied_zero)
 
         # Return the original list of cents
         return cents
