@@ -16,8 +16,8 @@ import wavetable
 
 
 class Composition:
+    
     def __init__(self, sieve):
-
         # Assign sieves argument to self.
         self.sieve = sieve
 
