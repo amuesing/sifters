@@ -9,18 +9,12 @@ class Texture:
     def __init__(self, mediator):
         
         self.texture_id = Texture.texture_id
-
         self.mediator = mediator
-        
         self.binary = mediator.binary
-        
         self.indices = numpy.nonzero(self.binary)[0]
-
         self.period = mediator.period
-        
         # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
-
         self.notes_data = self.generate_notes_data()
         
         Texture.texture_id += 1

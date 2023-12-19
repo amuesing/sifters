@@ -4,25 +4,15 @@ import math
 class Database:
     
     def __init__(self, mediator):
-
         self.connection = mediator.connection
-
         self.cursor = mediator.cursor
-
         self.grids_set = mediator.grids_set
-
         self.repeats = mediator.repeats
-
         self.period = mediator.period
-
         self.ticks_per_beat = mediator.ticks_per_beat
-
         self.scaling_factor = mediator.scaling_factor
-
         self.create_textures_table()
-
         self.create_notes_table()
-
         self.create_messages_table()
 
     
