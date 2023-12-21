@@ -15,6 +15,7 @@ class Wavetable:
         self.num_samples = 2048
         self.sample_rate = 96000
         self.reference_frequency = 46.875
+        duration = 1.0
         self.time = numpy.arange(0, self.num_samples) / self.sample_rate
         
         self.sine_wave = self.generate_sine_wave
@@ -52,8 +53,17 @@ class Wavetable:
         return normalized_waveform
     
     
-    def generate_sine_wave(self):
-        sine_wave = numpy.sin(2 * numpy.pi * self.reference_frequency * self.time)
+    # def generate_sine_wave(self):
+    #     sine_wave = numpy.sin(2 * numpy.pi * self.reference_frequency * self.time)
+    #     return self.normalize_waveform(sine_wave)
+    
+    def generate_sine_wave_equal_parts(self, num_parts=1):
+        phase_offsets = 2 * numpy.pi * numpy.arange(num_parts) / num_parts
+        sine_wave = numpy.sin(2 * numpy.pi * self.reference_frequency * self.time + phase_offsets[:, numpy.newaxis])
+        return self.normalize_waveform(numpy.sum(sine_wave, axis=0))
+    
+    def generate_sine_wave(self, phase_offset=0):
+        sine_wave = numpy.sin(2 * numpy.pi * self.reference_frequency * self.time + phase_offset)
         return self.normalize_waveform(sine_wave)
 
 
@@ -72,84 +82,31 @@ class Wavetable:
         return self.normalize_waveform(triangle_wave)
 
 
-    def perform_linear_sine_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=0.1):
+    def perform_linear_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=0.1):
         modulated_signal = carrier_signal * numpy.sin(2 * numpy.pi * modulation_index * modulating_signal * self.time)
         return self.normalize_waveform(modulated_signal)
-
-
-    def perform_linear_square_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=0.1):
-        modulated_signal = carrier_signal * numpy.sign(numpy.sin(2 * numpy.pi * modulating_signal * self.time + modulation_index * numpy.sin(2 * numpy.pi * modulating_signal * self.time)))
-        return self.normalize_waveform(modulated_signal)
     
     
-    def perform_exponential_sine_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=0.01):
+    def perform_exponential_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=0.01):
         modulated_signal = carrier_signal * numpy.sin(2 * numpy.pi * numpy.exp(modulation_index * modulating_signal * self.time))
         return self.normalize_waveform(modulated_signal)
-    
-    
-    def perform_pwm_on_sine_wave(self, duty_cycle=0.5, modulation_frequency=5.0):
-        """
-        Perform Pulse Width Modulation (PWM) on a sine wave.
 
-        Parameters:
-        - duty_cycle (float): The duty cycle of the PWM signal (default is 0.5).
-        - modulation_frequency (float): The frequency of the modulating signal (default is 5.0).
-
-        Returns:
-        - numpy.ndarray: The PWM-modulated sine wave.
-        """
-        # Generate a modulating signal (square wave) with the specified duty cycle and frequency
-        modulating_signal = numpy.mod(self.time * modulation_frequency, 1) < duty_cycle
-
-        # Generate a sine wave
-        sine_wave = self.generate_sine_wave()
-
-        # Apply PWM by multiplying the sine wave with the modulating signal
-        pwm_wave = sine_wave * modulating_signal
-
-        return self.normalize_waveform(pwm_wave)
-    
 
 if __name__ == '__main__':
     # Write methods for various modulation methods that combine multiple modulation frequencies such as Cascading and Parallel techniques
     wave = Wavetable(mediator=None)
     
-    sine_wave = wave.generate_sine_wave()
+    # sine_wave = wave.generate_sine_wave()
+    # write("data/wav/sine_wave.wav", wave.sample_rate, sine_wave)
+    # wave.visualize_waveforms([sine_wave])
+    
+    # # Example binary sequence
+    # binary_sequence = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0]
+    # changes = [1, 1, 6, 1, 7, 1, 6, 1, 7, 1, 1, 1, 6]
+    
+    # sine_wave = wave.generate_sine_wave(phase_offset=numpy.pi/2)
+    sine_wave = wave.generate_sine_wave_equal_parts(2)
+
     write("data/wav/sine_wave.wav", wave.sample_rate, sine_wave)
-    # wave.visualize_waveform(sine_wave)
-    
-    # sawtooth_wave = wave.generate_sawtooth_wave()
-    # write("data/wav/sawtooth_wave.wav", wave.sample_rate, sawtooth_wave)
-    # # wave.visualize_waveform(sawtooth_wave)
-    
-    # linear_synthesis = wave.perform_linear_sine_fm_synthesis(sine_wave, sawtooth_wave)
-    # write("data/wav/linear_synthesis.wav", wave.sample_rate, linear_synthesis)
-    
-        
-    # exponential_synthesis = wave.perform_exponential_sine_fm_synthesis(sine_wave, sawtooth_wave)
-    # write("data/wav/exponential_synthesis.wav", wave.sample_rate, exponential_synthesis)
+    wave.visualize_waveforms([sine_wave])
 
-    # wave.visualize_waveforms([sine_wave, sawtooth_wave, exponential_synthesis],
-    #                          titles=['Sine Wave', 'Sawtooth Wave', 'Exponential Synthesis'],
-    #                          combined_title='Combined Waveforms')
-    
-    # # Additional waveform examples
-    # square_wave = wave.generate_square_wave(wave.reference_frequency)
-    # write("data/wav/square_wave.wav", wave.sample_rate, square_wave)
-    
-    # triangle_wave = wave.generate_triangle_wave(wave.reference_frequency)
-    # write("data/wav/triangle_wave.wav", wave.sample_rate, triangle_wave)
-    
-    # Example usage of the PWM method
-    pwm_sine_wave = wave.perform_pwm_on_sine_wave(duty_cycle=0.3, modulation_frequency=2.0)
-    write("data/wav/pwm_sine_wave.wav", wave.sample_rate, pwm_sine_wave)
-
-    wave.visualize_waveforms([sine_wave, pwm_sine_wave],
-                         titles=['Sine Wave', 'PWM Sine Wave'],
-                         combined_title='Combined Waveforms')
-    
-
-    
-    # Example binary sequence
-    binary_sequence = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0]
-    changes = [1, 1, 6, 1, 7, 1, 6, 1, 7, 1, 1, 1, 6]
