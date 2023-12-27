@@ -12,6 +12,7 @@ import mido
 import music21
 import pandas
 import wavetable
+import matrix
 from textures import *
 
 
@@ -46,16 +47,15 @@ class Composition:
 
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
-        self.textures = self.set_textures()
 
         # Initialize instances of Database, Texture, and Wavetable classes for mediation.
+        self.texture = matrix.Matrix(self)
         self.database = database.Database(self)
-        # self.texture = texture.Texture(self)
         # self.wavetable = wavetable.Wavetable(self)
         
-        # # # Set up notes data and tables in the database
-        self.set_notes_data()
-        self.set_tables()
+        # Set up notes data and tables in the database
+        self.insert_data_into_database(self.texture)
+        self.set_database_tables(self.database)
             
 
     def set_binary(self, sieve):
@@ -98,18 +98,21 @@ class Composition:
 
 
     def set_grids(self):
-        grids = self.convert_decimal_to_fraction(self.percent_of_period) # Convert the calculated proportions to fractions.
-        grids = self.get_unique_fractions(grids) # Remove duplicates from each grid while keeping the original order.
+        # Convert the calculated proportions to fractions.
+        grids = self.convert_decimal_to_fraction(self.percent_of_period)
         
-        return grids # Return the grids containing unique fractions representing the proportion of the period.
+        # Remove duplicates from each grid while keeping the original order.
+        grids = self.get_unique_fractions(grids) 
+        
+        # Return the grids containing unique fractions representing the proportion of the period.
+        return grids 
     
     
-    # Update the set_textures method
     def set_textures(self):
         # Establish a dictionary mapping texture types to their associated classes.
         texture_classes = {
             # 'heterophonic': heterophonic.Heterophonic,
-            'homophonic': homophonic.Homophonic,
+            # 'homophonic': homophonic.Homophonic,
             'monophonic': monophonic.Monophonic,
             # 'nonpitched': nonpitched.NonPitched,
             # 'polyphonic': polyphonic.Polyphonic,
@@ -124,12 +127,16 @@ class Composition:
 
         return textures_dict
         
-    
-    def set_normalized_numerators(self, grids): # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
-        lcm = self.get_least_common_multiple([fraction.denominator for fraction in grids]) # Compute the least common multiple (LCM) of all denominators in the list.
-        normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids] # Normalize each fraction in the list by adjusting the numerator to the LCM.
+    # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
+    def set_normalized_numerators(self, grids):
+        # Compute the least common multiple (LCM) of all denominators in the list.
+        lcm = self.get_least_common_multiple([fraction.denominator for fraction in grids])
         
-        return normalized_numerators # Return the normalized numerators.
+        # Normalize each fraction in the list by adjusting the numerator to the LCM.
+        normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids]
+        
+        # Return the normalized numerators.
+        return normalized_numerators
 
 
     def get_least_common_multiple(self, nums):
@@ -140,76 +147,68 @@ class Composition:
         else:
             return nums
 
-    
-    def set_repeats(self): # This function computes the repetitions required for each fraction in the grids_set to equalize them.
-        normalized_numerators = self.set_normalized_numerators(self.grids_set) # Standardize the numerators in the grids_set.
-        least_common_multiple = self.get_least_common_multiple(normalized_numerators) # Determine the least common multiple of the normalized numerators.
-        repeats = [least_common_multiple // num for num in normalized_numerators] # Calculate the repetition for each fraction by dividing the LCM by the normalized numerator.
 
-        return repeats # Return the repetition counts for each fraction.
-    
-    
-    def create_dataframe(self, notes_data):
-        columns = ['texture_id', 'Start', 'Velocity', 'Note', 'Duration']
-        dataframe = pandas.DataFrame(notes_data, columns=columns)
-        dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
-        dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
-        return dataframe
+    # This function computes the repetitions required for each fraction in the grids_set to equalize them.
+    def set_repeats(self):
+        # Standardize the numerators in the grids_set.
+        normalized_numerators = self.set_normalized_numerators(self.grids_set)
+        
+        # Determine the least common multiple of the normalized numerators.
+        least_common_multiple = self.get_least_common_multiple(normalized_numerators)
+        
+        # Calculate the repetition for each fraction by dividing the LCM by the normalized numerator.
+        repeats = [least_common_multiple // num for num in normalized_numerators]
+
+        # Return the repetition counts for each fraction.
+        return repeats 
 
 
-    def insert_texture_into_database(self, name):
+    def insert_data_into_database(self, texture):
         cursor = self.cursor
-        cursor.execute("INSERT INTO textures (name) VALUES (?)", (name,))
+
+        # Insert texture name into textures table
+        cursor.execute("INSERT INTO textures (name) VALUES (?)", (texture.__class__.__name__,))
+
+        # Insert notes data into notes table
+        texture.notes_data.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
+
+        # Save notes data to a CSV file
+        csv_filename = f'data/csv/{texture.__class__.__name__}.csv'
+        texture.notes_data.to_csv(csv_filename)
 
 
-    def insert_notes_into_database(self, dataframe, name):
-        dataframe.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
-        dataframe.to_csv(f'data/csv/.{name}.csv')
-    
-    
-    def set_notes_data(self):
-        for texture in self.textures.values():
-            dataframe = self.create_dataframe(texture.notes_data)
-            self.insert_texture_into_database(texture.__class__.__name__)
-            self.insert_notes_into_database(dataframe, texture.__class__.__name__)
-
-
-    def set_tables(self):
+    def set_database_tables(self, database):
         table_names = []
 
-        texture_ids = self.database.fetch_distinct_texture_ids()
-        columns_list = self.database.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
+        matrix_ids = database.fetch_distinct_matrix_ids()
+        columns_list = database.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
 
-        for texture_id in texture_ids:
+        for matrix_id in matrix_ids:
 
-            table_commands = self.database.generate_sql_for_duration_values(texture_id, columns_list)
+            table_commands = database.generate_sql_for_duration_values(matrix_id, columns_list)
 
             for table_name, union_statements in table_commands.items():
                 table_names.append(table_name)
                 self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
 
         self.cursor.execute('DELETE FROM notes;')
-        self.cursor.executescript(self.database.insert_into_notes_command(table_names))
+        self.cursor.executescript(database.insert_into_notes_command(table_names))
 
         sql_commands = []
 
-        for texture_id in texture_ids:
+        for matrix_id in matrix_ids:
             sql_commands.extend([
-                self.database.generate_notes_table_commands(texture_id),
-                self.database.generate_midi_messages_table_commands(texture_id),
+                database.generate_notes_table_commands(matrix_id),
+                database.generate_midi_messages_table_commands(matrix_id),
             ])
 
         combined_sql = "\n".join(sql_commands)
         self.cursor.executescript(combined_sql)
         self.connection.commit()
         
-        
-    def bpm_to_tempo(self, bpm):
-        return int(60_000_000 / bpm)
 
-
-    def fetch_midi_messages_from_sql(self, texture_id):
-        query = f"SELECT * FROM messages WHERE texture_id = {texture_id}"
+    def fetch_midi_messages_from_sql(self, matrix_id):
+        query = f"SELECT * FROM messages WHERE matrix_id = {matrix_id}"
         self.database.cursor.execute(query)
         return self.database.cursor.fetchall()
     
@@ -230,12 +229,7 @@ class Composition:
         return messages, midi_data_list
 
 
-    def save_messages_to_csv(self, midi_data_list, filename):
-        dataframe = pandas.DataFrame(midi_data_list)
-        dataframe.to_csv(filename, index=False)
-
-
-    def write_midi(self, texture_id=1):
+    def write_midi(self, matrix_id=1):
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
 
@@ -247,17 +241,17 @@ class Composition:
 
         # Setting BPM
         bpm = 20  # You can change this value to set a different BPM
-        tempo = self.bpm_to_tempo(bpm)
+        tempo = int(60_000_000 / bpm)
         midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
         
         midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
         # Fetch data and convert to MIDI messages
-        data = self.fetch_midi_messages_from_sql(texture_id)
+        data = self.fetch_midi_messages_from_sql(matrix_id)
         midi_messages, midi_data_list = self.data_to_midi_messages(data)
-
-        # Save to CSV
-        self.save_messages_to_csv(midi_data_list, 'data/csv/.MIDI_Messages.csv')
+        
+        dataframe = pandas.DataFrame(midi_data_list)
+        dataframe.to_csv('data/csv/.MIDI_Messages.csv', index=False)
 
         # Append messages to MIDI track and save MIDI file
         for message in midi_messages:
@@ -289,4 +283,4 @@ if __name__ == '__main__':
     
     comp = Composition(sieve)
 
-    comp.write_midi()
+    # comp.write_midi()

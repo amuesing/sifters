@@ -2,16 +2,10 @@ from texture import Texture
 
 class Monophonic(Texture):
 
-    # part_id = 1
-
     def __init__(self, mediator):
         
         # Call superclass constructor.
         super().__init__(mediator)
-
-        # self.part_id = Monophonic.part_id
-
-        # Monophonic.part_id += 1
         
         # # Group notes with the same start time into a single row.
         # self.notes_data = self.utility.group_by_start(self.notes_data)
