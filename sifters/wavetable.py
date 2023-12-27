@@ -108,24 +108,45 @@ class Wavetable:
             harmonic_wave = self.generate_sine_wave(amplitude, frequency)
             additive_wave += harmonic_wave
         return additive_wave
+    
+    def generate_adsr_envelope(length, attack_time, decay_time, sustain_level, release_time):
+        envelope = numpy.zeros(length)
+        
+        # Attack
+        attack_samples = int(attack_time * length)
+        envelope[:attack_samples] = numpy.linspace(0, 1, attack_samples)
+        
+        # Decay
+        decay_samples = int(decay_time * length)
+        envelope[attack_samples:attack_samples + decay_samples] = numpy.linspace(1, sustain_level, decay_samples)
+        
+        # Sustain
+        sustain_samples = length - attack_samples - decay_samples
+        envelope[attack_samples + decay_samples:attack_samples + decay_samples + sustain_samples] = sustain_level
+        
+        # Release
+        release_samples = int(release_time * length)
+        envelope[-release_samples:] = numpy.linspace(sustain_level, 0, release_samples)
+        
+        return envelope
 
 
-if __name__ == '__main__':
-    wave = Wavetable(mediator=None)
+# if __name__ == '__main__':
+#     wave = Wavetable(mediator=None)
 
-    frequencies = [46.875, 55.74, 59.75, 60.79, 71.05, 72.29, 77.48]
-    amplitudes = [1, .1, .1, .1, .1, .1, .1]
+#     frequencies = [46.875, 55.74, 59.75, 60.79, 71.05, 72.29, 77.48]
+#     amplitudes = [1, .1, .1, .1, .1, .1, .1]
 
-    # Generate individual sine waves
-    individual_waves = [wave.generate_sine_wave(amplitude, frequency) for amplitude, frequency in zip(amplitudes, frequencies)]
+#     # Generate individual sine waves
+#     individual_waves = [wave.generate_sine_wave(amplitude, frequency) for amplitude, frequency in zip(amplitudes, frequencies)]
 
-    # Perform and save additive synthesis step by step
-    for i in range(len(frequencies)):
-        partial_sum_waveform = wave.perform_additive_synthesis(frequencies[:i+1], amplitudes[:i+1])
-        normalized_partial_sum_waveform = wave.normalize_waveform(partial_sum_waveform)
+#     # Perform and save additive synthesis step by step
+#     for i in range(len(frequencies)):
+#         partial_sum_waveform = wave.perform_additive_synthesis(frequencies[:i+1], amplitudes[:i+1])
+#         normalized_partial_sum_waveform = wave.normalize_waveform(partial_sum_waveform)
 
-        # Save the partial sum waveform as a WAV file
-        write(f'data/wav/partial_sum_step_{i+1}.wav', wave.sample_rate, normalized_partial_sum_waveform)
+#         # Save the partial sum waveform as a WAV file
+#         write(f'data/wav/partial_sum_step_{i+1}.wav', wave.sample_rate, normalized_partial_sum_waveform)
 
     # # Visualize the final additive synthesis waveform
     # additive_waveform = wave.perform_additive_synthesis(frequencies, amplitudes)
@@ -135,3 +156,18 @@ if __name__ == '__main__':
     # wave_titles = [f'Sine Wave {i+1}' for i in range(len(individual_waves))]
 
     # wave.visualize_waveforms(individual_waves, titles=wave_titles, combined_title='Individual Sine Waves')
+    
+if __name__ == '__main__':
+    wave = Wavetable(mediator=None)
+
+    # Generate a sine wave
+    sine_wave = wave.generate_sine_wave(amplitude=1, frequency=440)  # Adjust frequency as needed
+
+    # Generate an ADSR envelope
+    adsr_envelope = wave.adsr_envelope(attack_time=0.2, decay_time=0.1, sustain_level=0.5, release_time=0.2)
+
+    # Apply the ADSR envelope to the sine wave
+    adsr_waveform = wave.apply_adsr(sine_wave, adsr_envelope)
+
+    # Visualize the results
+    wave.visualize_waveforms([sine_wave, adsr_waveform], titles=['Sine Wave', 'Sine Wave with ADSR'])
