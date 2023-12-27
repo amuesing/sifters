@@ -11,8 +11,8 @@ import database
 import mido
 import music21
 import pandas
-import texture
 import wavetable
+from textures import *
 
 
 class Composition:
@@ -46,13 +46,14 @@ class Composition:
 
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
+        self.textures = self.set_textures()
 
         # Initialize instances of Database, Texture, and Wavetable classes for mediation.
         self.database = database.Database(self)
-        self.texture = texture.Texture(self)
-        self.wavetable = wavetable.Wavetable(self)
+        # self.texture = texture.Texture(self)
+        # self.wavetable = wavetable.Wavetable(self)
         
-        # # Set up notes data and tables in the database
+        # # # Set up notes data and tables in the database
         self.set_notes_data()
         self.set_tables()
             
@@ -103,6 +104,27 @@ class Composition:
         return grids # Return the grids containing unique fractions representing the proportion of the period.
     
     
+    # Update the set_textures method
+    def set_textures(self):
+        # Establish a dictionary mapping texture types to their associated classes.
+        texture_classes = {
+            # 'heterophonic': heterophonic.Heterophonic,
+            'homophonic': homophonic.Homophonic,
+            'monophonic': monophonic.Monophonic,
+            # 'nonpitched': nonpitched.NonPitched,
+            # 'polyphonic': polyphonic.Polyphonic,
+        }
+
+        # Generate instances of each texture type using the source data, and store them in a dictionary.
+        textures_dict = {}
+
+        for texture_type, texture_class in texture_classes.items():
+            texture_instance = texture_class(self)
+            textures_dict[texture_type] = texture_instance
+
+        return textures_dict
+        
+    
     def set_normalized_numerators(self, grids): # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
         lcm = self.get_least_common_multiple([fraction.denominator for fraction in grids]) # Compute the least common multiple (LCM) of all denominators in the list.
         normalized_numerators = [(lcm // fraction.denominator) * fraction.numerator for fraction in grids] # Normalize each fraction in the list by adjusting the numerator to the LCM.
@@ -135,20 +157,21 @@ class Composition:
         return dataframe
 
 
-    def insert_texture_into_database(self):
+    def insert_texture_into_database(self, name):
         cursor = self.cursor
-        cursor.execute("INSERT INTO textures (name) VALUES (?)", (self.__class__.__name__,))
+        cursor.execute("INSERT INTO textures (name) VALUES (?)", (name,))
 
 
-    def insert_notes_into_database(self, dataframe):
+    def insert_notes_into_database(self, dataframe, name):
         dataframe.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
-        dataframe.to_csv(f'data/csv/.{self.__class__.__name__}.csv')
+        dataframe.to_csv(f'data/csv/.{name}.csv')
     
     
     def set_notes_data(self):
-        dataframe = self.create_dataframe(self.texture.notes_data)
-        self.insert_texture_into_database()
-        self.insert_notes_into_database(dataframe)
+        for texture in self.textures.values():
+            dataframe = self.create_dataframe(texture.notes_data)
+            self.insert_texture_into_database(texture.__class__.__name__)
+            self.insert_notes_into_database(dataframe, texture.__class__.__name__)
 
 
     def set_tables(self):
@@ -230,7 +253,7 @@ class Composition:
         midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
         # Fetch data and convert to MIDI messages
-        data = self.fetch_midi_messages_from_sql(self, texture_id)
+        data = self.fetch_midi_messages_from_sql(texture_id)
         midi_messages, midi_data_list = self.data_to_midi_messages(data)
 
         # Save to CSV
@@ -241,7 +264,7 @@ class Composition:
             midi_track.append(message)
 
         score.tracks.append(midi_track)
-        score.save('data/mid/score.mid')
+        score.save('data/mid/.score.mid')
         
         
 if __name__ == '__main__':
@@ -266,4 +289,4 @@ if __name__ == '__main__':
     
     comp = Composition(sieve)
 
-    # comp_with_custom_grids.write_midi()
+    comp.write_midi()

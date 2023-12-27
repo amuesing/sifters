@@ -127,7 +127,7 @@ class Texture:
     def create_tuning_file(self, floats_list):
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
-        file_name = 'data/scl/tuning.scl'
+        file_name = 'data/scl/.tuning.scl'
         # Construct the file_content
         file_content = f'''! {title}
 !

@@ -107,7 +107,7 @@ class Wavetable:
         for frequency, amplitude in zip(frequencies, amplitudes):
             harmonic_wave = self.generate_sine_wave(amplitude, frequency)
             additive_wave += harmonic_wave
-        return self.normalize_waveform(additive_wave)
+        return additive_wave
 
 
 if __name__ == '__main__':
@@ -125,17 +125,13 @@ if __name__ == '__main__':
         normalized_partial_sum_waveform = wave.normalize_waveform(partial_sum_waveform)
 
         # Save the partial sum waveform as a WAV file
-        write(f'partial_sum_step_{i+1}.wav', wave.sample_rate, normalized_partial_sum_waveform)
+        write(f'data/wav/partial_sum_step_{i+1}.wav', wave.sample_rate, normalized_partial_sum_waveform)
 
-    # Visualize the final additive synthesis waveform
-    additive_waveform = wave.perform_additive_synthesis(frequencies, amplitudes)
-    normalized_additive_waveform = wave.normalize_waveform(additive_waveform)
+    # # Visualize the final additive synthesis waveform
+    # additive_waveform = wave.perform_additive_synthesis(frequencies, amplitudes)
+    # normalized_additive_waveform = wave.normalize_waveform(additive_waveform)
 
-    # Save the final additive synthesis waveform as a WAV file
-    write('final_additive_synthesis.wav', wave.sample_rate, normalized_additive_waveform)
+    # # Visualize individual sine waves and the final additive synthesis waveform on the same graph
+    # wave_titles = [f'Sine Wave {i+1}' for i in range(len(individual_waves))]
 
-    # Visualize individual sine waves and the final additive synthesis waveform on the same graph
-    all_waves = individual_waves + [normalized_additive_waveform]
-    wave_titles = [f'Sine Wave {i+1}' for i in range(len(individual_waves))] + ['Final Additive Synthesis']
-
-    wave.visualize_waveforms(all_waves, titles=wave_titles, combined_title='Individual Sine Waves and Final Additive Synthesis')
+    # wave.visualize_waveforms(individual_waves, titles=wave_titles, combined_title='Individual Sine Waves')
