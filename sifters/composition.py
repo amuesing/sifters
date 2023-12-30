@@ -11,9 +11,8 @@ import database
 import mido
 import music21
 import pandas
-import wavetable
-import matrix
 from textures import *
+from generators import *
 
 
 class Composition:
@@ -24,6 +23,7 @@ class Composition:
         # Get the current timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         
+        ### I WANT TO MOVE THIS TO THE CONNECTION TO THE DATABASE CLASS
         # Connect to SQLite database
         self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
         self.connection.row_factory = sqlite3.Row
@@ -47,14 +47,14 @@ class Composition:
 
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
-
-        # Initialize instances of Database, Texture, and Wavetable classes for mediation.
-        self.texture = matrix.Matrix(self)
+        
+        self.matrix = matrix.Matrix(self)
         self.database = database.Database(self)
-        # self.wavetable = wavetable.Wavetable(self)
+        self.waveform = waveform.Waveform()
+        self.envelope = envelope.Envelope()
         
         # Set up notes data and tables in the database
-        self.insert_data_into_database(self.texture)
+        self.insert_data_into_database(self.matrix.notes_data)
         self.set_database_tables(self.database)
             
 
@@ -170,11 +170,11 @@ class Composition:
         cursor.execute("INSERT INTO textures (name) VALUES (?)", (texture.__class__.__name__,))
 
         # Insert notes data into notes table
-        texture.notes_data.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
+        texture.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
 
         # Save notes data to a CSV file
         csv_filename = f'data/csv/{texture.__class__.__name__}.csv'
-        texture.notes_data.to_csv(csv_filename)
+        texture.to_csv(csv_filename)
 
 
     def set_database_tables(self, database):
@@ -282,5 +282,10 @@ if __name__ == '__main__':
     # comp_with_custom_grids = Composition(sieve, grids_set=custom_grids_set)
     
     comp = Composition(sieve)
-
-    # comp.write_midi()
+    
+    sine = comp.waveform.generate_sine_wave()
+    env = comp.envelope.generate_adsr_envelope()
+    print(sine * env)
+    # print(env)
+    
+    

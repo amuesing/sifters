@@ -17,6 +17,8 @@ Interlude IV
 _______________________________________________________________________________
 isort sifters/composition.py
 
+# Derive self-similar lists of integers based on the self.changes attribute.
+self.form = [[num] * len(self.changes) for num in self.changes]
 
 FUNCTIONALITY:
 

@@ -1,6 +1,6 @@
-from texture import Texture
+from generators.matrix import Matrix
 
-class Homophonic(Texture):
+class Homophonic(Matrix):
 
     # part_id = 1
     

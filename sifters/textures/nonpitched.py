@@ -1,8 +1,7 @@
-from texture import Texture
+from generators.matrix import Matrix
 
-import pandas
 
-class NonPitched(Texture):
+class NonPitched(Matrix):
 
     part_id = 1
     

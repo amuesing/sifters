@@ -1,6 +1,6 @@
-from texture import Texture
+from generators.matrix import Matrix
 
-class Polyphonic(Texture):
+class Polyphonic(Matrix):
 
     part_id = 1
 

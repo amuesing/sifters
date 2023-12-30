@@ -1,11 +1,11 @@
-from texture import Texture
+from generators.matrix import Matrix
 
-class Monophonic(Texture):
+class Monophonic(Matrix):
 
-    def __init__(self, mediator):
+    def __init__(self):
         
         # Call superclass constructor.
-        super().__init__(mediator)
+        super().__init__()
         
         # # Group notes with the same start time into a single row.
         # self.notes_data = self.utility.group_by_start(self.notes_data)
