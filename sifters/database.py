@@ -1,19 +1,25 @@
+import datetime
 import math
+import sqlite3
 
 
 class Database:
     
     def __init__(self, mediator):
-        self.connection = mediator.connection
-        self.cursor = mediator.cursor
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
+        self.connection.row_factory = sqlite3.Row
+        self.cursor = self.connection.cursor()
+
         self.grids_set = mediator.grids_set
         self.repeats = mediator.repeats
         self.period = mediator.period
         self.ticks_per_beat = mediator.ticks_per_beat
         self.scaling_factor = mediator.scaling_factor
-        self.create_textures_table()
         self.create_notes_table()
         self.create_messages_table()
+        self.insert_dataframe_into_database(mediator.notes_data)
+        self.set_database_tables()
 
     
     def create_table(self, table_name, columns):
@@ -25,53 +31,35 @@ class Database:
         self.connection.commit()
 
 
-    def create_textures_table(self):
-        self.create_table("textures", "matrix_id INTEGER PRIMARY KEY, name TEXT NOT NULL")
-
-
     def create_notes_table(self):
         columns = '''
-            note_id INTEGER PRIMARY KEY,
-            matrix_id INTEGER,
             Start INTEGER,
             Velocity INTEGER,
             Note TEXT,
             Duration INTEGER,
-            FOREIGN KEY (matrix_id) REFERENCES textures(matrix_id)
+            note_id INTEGER PRIMARY KEY
         '''
         self.create_table("notes", columns)
 
 
     def create_messages_table(self):
         columns = '''
-            message_id INTEGER PRIMARY KEY,
-            note_id INTEGER,
-            matrix_id INTEGER,
             Start INTEGER,
             End INTEGER,
             Velocity INTEGER,
             Note INTEGER,
             Message TEXT,
             Time INTEGER,
-            FOREIGN KEY (note_id) REFERENCES notes(note_id),
-            FOREIGN KEY (matrix_id) REFERENCES textures(matrix_id)
+            message_id INTEGER PRIMARY KEY,
+            note_id INTEGER
         '''
         self.create_table("messages", columns)
 
-
-    def find_first_matrix_id(self, texture):
-        sql_query = f'SELECT matrix_id FROM "{texture}" LIMIT 1' # Define the SQL query to retrieve the first matrix_id value.
-        self.cursor.execute(sql_query) # Execute the SQL query.
-        result = self.cursor.fetchone() # Fetch the result (should be a single row with the first matrix_id).
-
-        return result[0]  # Extract the first matrix_id value from the result
-    
-
-    def fetch_distinct_matrix_ids(self):
-        self.cursor.execute("SELECT DISTINCT matrix_id FROM notes")
-
-        return [row[0] for row in self.cursor.fetchall()]
         
+    def insert_dataframe_into_database(self, dataframe):
+        # Insert notes data into notes table
+        dataframe.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
+
 
     def fetch_columns_by_table_name(self, table_name, exclude_columns={}):
         # Get the first row for the given table_name
@@ -83,7 +71,7 @@ class Database:
         return columns
     
 
-    def generate_union_all_statements(self, matrix_id, columns_string, duration_value, length_of_one_rep, repeat):
+    def generate_union_all_statements(self, columns_string, duration_value, length_of_one_rep, repeat):
         accumulative_value = 0
         select_statements = []
 
@@ -92,21 +80,21 @@ class Database:
             SELECT {columns_string}, 
             "Start" * {duration_value} + {accumulative_value} AS "Start",
             "Duration" * {duration_value} AS "Duration"
-            FROM notes WHERE matrix_id = {matrix_id}''')
+            FROM notes''')
             accumulative_value += length_of_one_rep
 
         return " UNION ALL ".join(select_statements)
     
 
-    def generate_sql_for_duration_values(self, matrix_id, columns_list):
+    def generate_sql_for_duration_values(self, columns_list):
         columns_string = ', '.join(columns_list)
         duration_values = [grid * self.scaling_factor for grid in self.grids_set]
         length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
 
         table_commands = {}
         for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"texture_{matrix_id}_{duration_value}"
-            table_commands[table_name] = self.generate_union_all_statements(matrix_id, columns_string, duration_value, length_of_one_rep, repeat)
+            table_name = f"matrix_{duration_value}"
+            table_commands[table_name] = self.generate_union_all_statements(columns_string, duration_value, length_of_one_rep, repeat)
 
         return table_commands
 
@@ -125,27 +113,24 @@ class Database:
         return "\n".join(commands)
 
 
-    def generate_max_duration_command(self, matrix_id):
-        return f'''
-        CREATE TEMPORARY TABLE "texture_{matrix_id}_max_duration" AS
+    def generate_max_duration_command(self):
+        return '''
+        CREATE TEMPORARY TABLE "max_duration" AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
             FROM "notes"
-            WHERE matrix_id = {matrix_id}
             GROUP BY Start
         )
-        SELECT c.note_id, c.matrix_id, c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
+        SELECT c.note_id, c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
         FROM "notes" c
-        LEFT JOIN max_durations m ON c.Start = m.Start
-        WHERE c.matrix_id = {matrix_id};
+        LEFT JOIN max_durations m ON c.Start = m.Start;
         '''
-    
 
-    def generate_create_and_insert_end_data_commands(self, matrix_id):
-        create_table_command = f'''
-        CREATE TEMPORARY TABLE "texture_{matrix_id}_end_column" (
+    
+    def generate_create_and_insert_end_data_commands(self):
+        create_table_command = '''
+        CREATE TEMPORARY TABLE "end_column" (
             note_id INTEGER,
-            matrix_id INTEGER,
             Start INTEGER, 
             End INTEGER, 
             Duration INTEGER,
@@ -154,16 +139,15 @@ class Database:
         );
         '''
 
-        insert_data_command = f'''
+        insert_data_command = '''
         WITH ModifiedDurations AS (
             SELECT 
                 note_id,
-                matrix_id,
                 Start,
                 Velocity,
                 Note,
                 Duration as ModifiedDuration
-            FROM "texture_{matrix_id}_max_duration"
+            FROM "max_duration"
         ),
         DistinctEnds AS (
             SELECT
@@ -171,10 +155,9 @@ class Database:
                 COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
             FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
         )
-        INSERT INTO "texture_{matrix_id}_end_column"
+        INSERT INTO "end_column"
         SELECT
             m.note_id,
-            m.matrix_id, 
             m.Start,
             d.End,
             m.ModifiedDuration,
@@ -185,33 +168,32 @@ class Database:
         '''
 
         return create_table_command + '\n' + insert_data_command
+
         
-        
-    def generate_find_duplicate_rows_command(self, matrix_id):
-        return f'''
-        CREATE TEMPORARY TABLE "texture_{matrix_id}_duplicates" AS
+    def generate_find_duplicate_rows_command(self):
+        return '''
+        CREATE TEMPORARY TABLE "duplicates" AS
         SELECT
             *
-        FROM texture_{matrix_id}_end_column
+        FROM end_column
         WHERE (Start, End, Velocity, Note) IN (
             SELECT
                 Start,
                 End,
                 Velocity,
                 Note
-            FROM texture_{matrix_id}_end_column
+            FROM end_column
             GROUP BY Start, End, Velocity, Note
             HAVING COUNT(*) > 1
         );
         '''
+
         
-        
-    def generate_filter_duplicate_rows_command(self, matrix_id):
-        return f'''
-        CREATE TEMPORARY TABLE "texture_{matrix_id}_no_duplicates" AS
+    def generate_filter_duplicate_rows_command(self):
+        return '''
+        CREATE TEMPORARY TABLE "no_duplicates" AS
         SELECT
             note_id,
-            matrix_id,
             Start,
             End,
             Velocity,
@@ -219,38 +201,33 @@ class Database:
         FROM (
             SELECT
                 note_id,
-                matrix_id,
                 Start,
                 End,
                 Velocity,
                 Note,
                 ROW_NUMBER() OVER (PARTITION BY Start, End, Velocity, Note ORDER BY (SELECT NULL)) AS row_num
-            FROM texture_{matrix_id}_end_column
+            FROM end_column
         )
         WHERE row_num = 1;
         '''
+
         
         
-    def generate_notes_table_commands(self, matrix_id):
+    def generate_notes_table_commands(self):
         commands = []
-
-        commands.append(self.generate_max_duration_command(matrix_id))
-
-        commands.append(self.generate_create_and_insert_end_data_commands(matrix_id))
-
-        commands.append(self.generate_find_duplicate_rows_command(matrix_id))
-
-        commands.append(self.generate_filter_duplicate_rows_command(matrix_id))
+        commands.append(self.generate_max_duration_command())
+        commands.append(self.generate_create_and_insert_end_data_commands())
+        commands.append(self.generate_find_duplicate_rows_command())
+        commands.append(self.generate_filter_duplicate_rows_command())
 
         return '\n'.join(commands)
 
     
-    def create_temporary_midi_messages_table(self, matrix_id):
+    def create_temporary_midi_messages_table(self):
         return f'''
-            CREATE TEMPORARY TABLE "texture_{matrix_id}_midi_messages" AS
+            CREATE TEMPORARY TABLE "midi_messages" AS
             SELECT 
                 note_id,
-                matrix_id,
                 Start,
                 End,
                 Velocity,
@@ -260,23 +237,23 @@ class Database:
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "texture_{matrix_id}_no_duplicates";
+            FROM "no_duplicates";
         '''
 
 
-    def update_time_column(self, matrix_id):
-        return f'''
-            UPDATE "texture_{matrix_id}_midi_messages"
+    def update_time_column(self):
+        return '''
+            UPDATE "midi_messages"
             SET Time = (
-                SELECT COALESCE("texture_{matrix_id}_midi_messages".Start - t.PreviousEnd, 0)
+                SELECT COALESCE("midi_messages".Start - t.PreviousEnd, 0)
                 FROM (
                     SELECT 
                         Start,
                         LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
-                    FROM "texture_{matrix_id}_midi_messages"
+                    FROM "midi_messages"
                 ) AS t
                 WHERE 
-                    "texture_{matrix_id}_midi_messages".Start = t.Start
+                    "midi_messages".Start = t.Start
             )
             WHERE EXISTS (
                 SELECT 1
@@ -285,34 +262,33 @@ class Database:
                         Start,
                         LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
                         LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                    FROM "texture_{matrix_id}_midi_messages"
+                    FROM "midi_messages"
                 ) AS t_sub
                 WHERE 
-                    "texture_{matrix_id}_midi_messages".Start = t_sub.Start 
-                    AND "texture_{matrix_id}_midi_messages".Start != t_sub.PreviousEnd
-                    AND "texture_{matrix_id}_midi_messages".Start != t_sub.PreviousStart
+                    "midi_messages".Start = t_sub.Start 
+                    AND "midi_messages".Start != t_sub.PreviousEnd
+                    AND "midi_messages".Start != t_sub.PreviousStart
             );
         '''
+
         
-        
-    def append_note_off_message(self, matrix_id):
+    def append_note_off_message(self):
         return f'''
-            INSERT INTO "texture_{matrix_id}_midi_messages" (note_id, matrix_id, Start, End, Velocity, Note, Message, Time)
+            INSERT INTO "midi_messages" (note_id, Start, End, Velocity, Note, Message, Time)
             SELECT 
-                note_id, matrix_id, Start, End, Velocity, Note,
+                note_id, Start, End, Velocity, Note,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time
-            FROM "texture_{matrix_id}_midi_messages" AS t
+            FROM "midi_messages" AS t
             WHERE Message = 'note_on';
         '''
-        
-        
-    def order_texture_table_by_start(self, matrix_id):
-        return f'''
-            CREATE TEMPORARY TABLE "texture_{matrix_id}_midi_messages_ordered" AS
+
+
+    def order_matrix_table_by_start(self):
+        return '''
+            CREATE TEMPORARY TABLE "midi_messages_ordered" AS
             SELECT
                 note_id,
-                matrix_id,
                 Start,
                 End,
                 Velocity,
@@ -323,31 +299,51 @@ class Database:
                         THEN 0
                     ELSE Time
                 END AS Time
-            FROM "texture_{matrix_id}_midi_messages"
+            FROM "midi_messages"
             ORDER BY Start;
         '''
 
 
-    def insert_into_messages_table(self, matrix_id):
-        return f'''
-            INSERT INTO "messages" (note_id, matrix_id, Start, End, Velocity, Note, Message, Time)
-            SELECT note_id, matrix_id, Start, End, Velocity, Note, Message, Time
-            FROM "texture_{matrix_id}_midi_messages_ordered"
+    def insert_into_messages_table(self):
+        return '''
+            INSERT INTO "messages" (note_id, Start, End, Velocity, Note, Message, Time)
+            SELECT note_id, Start, End, Velocity, Note, Message, Time
+            FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
 
 
-    def generate_midi_messages_table_commands(self, matrix_id):
+
+    def generate_midi_messages_table_commands(self):
         command = []
-
-        command.append(self.create_temporary_midi_messages_table(matrix_id))
-
-        command.append(self.update_time_column(matrix_id))
-
-        command.append(self.append_note_off_message(matrix_id))
-        
-        command.append(self.order_texture_table_by_start(matrix_id))
-
-        command.append(self.insert_into_messages_table(matrix_id))
+        command.append(self.create_temporary_midi_messages_table())
+        command.append(self.update_time_column())
+        command.append(self.append_note_off_message())
+        command.append(self.order_matrix_table_by_start())
+        command.append(self.insert_into_messages_table())
 
         return '\n'.join(command)
+
+    
+    def set_database_tables(self):
+        table_names = []
+
+        columns_list = self.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
+
+        table_commands = self.generate_sql_for_duration_values(columns_list)
+
+        for table_name, union_statements in table_commands.items():
+            table_names.append(table_name)
+            self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
+
+        self.cursor.execute('DELETE FROM notes;')
+        self.cursor.executescript(self.insert_into_notes_command(table_names))
+
+        sql_commands = [
+                self.generate_notes_table_commands(),
+                self.generate_midi_messages_table_commands(),
+                ]
+        
+        combined_sql = "\n".join(sql_commands)
+        self.cursor.executescript(combined_sql)
+        self.connection.commit()

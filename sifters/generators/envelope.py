@@ -17,6 +17,7 @@ class Envelope:
         sustain_samples = length - attack_samples - decay_samples
         envelope[attack_samples + decay_samples:attack_samples + decay_samples + sustain_samples] = sustain_level
         
+        ### HOW TO CURVE THE RELEASE STAGE
         # Release
         release_samples = int(release_time * length)
         envelope[-release_samples:] = numpy.linspace(sustain_level, 0, release_samples)

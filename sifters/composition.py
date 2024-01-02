@@ -1,42 +1,27 @@
 import collections
-import datetime
 import decimal
 import fractions
 import functools
 import itertools
 import math
-import sqlite3
 
 import database
 import mido
 import music21
+import numpy
 import pandas
-from textures import *
 from generators import *
 
 
 class Composition:
-    
     def __init__(self, sieve, grids_set=None):
-        self.sieve = sieve
-
-        # Get the current timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        
-        ### I WANT TO MOVE THIS TO THE CONNECTION TO THE DATABASE CLASS
-        # Connect to SQLite database
-        self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
-        self.connection.row_factory = sqlite3.Row
-        self.cursor = self.connection.cursor()
-
-        # Initialize attributes
-        self.period = None
+ 
         self.ticks_per_beat = 480
         self.scaling_factor = 100000
-
-        # Derive normalized binary list(s) from the given sieve.
+        
+        self.sieve = sieve
+        self.period = None
         self.binary = self.set_binary(sieve)
-
         # Interpolate a dictionary which tracks the indices of pattern changes within self.binary.
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
         
@@ -47,17 +32,16 @@ class Composition:
 
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
+        self.indices = numpy.nonzero(self.binary)[0]
+        # Set the factors attribute of the Texture object
+        self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
+        self.notes_data = self.generate_notes_data()
+        self.notes_data.to_csv(f'data/csv/.notes_data.csv')
+        # self.database = database.Database(self)
+        # self.waveform = waveform.Waveform()
+        # self.envelope = envelope.Envelope()
         
-        self.matrix = matrix.Matrix(self)
-        self.database = database.Database(self)
-        self.waveform = waveform.Waveform()
-        self.envelope = envelope.Envelope()
         
-        # Set up notes data and tables in the database
-        self.insert_data_into_database(self.matrix.notes_data)
-        self.set_database_tables(self.database)
-            
-
     def set_binary(self, sieve):
         # Convert sieve to Sieve object.
         obj = music21.sieve.Sieve(sieve)
@@ -73,8 +57,13 @@ class Composition:
 
         # Return the binary representation of sieve.
         return binary
-
-
+    
+    
+    def get_successive_diff(self, integers):
+        return [0] + [integers[i+1] - integers[i] for i in range(len(integers)-1)]
+    
+        
+    
     def get_consecutive_count(self):
         # Each tuple represents an element and its consecutive count.
         consecutive_counts = [(key, len(list(group))) for key, group in itertools.groupby(self.binary)]
@@ -107,25 +96,6 @@ class Composition:
         # Return the grids containing unique fractions representing the proportion of the period.
         return grids 
     
-    
-    def set_textures(self):
-        # Establish a dictionary mapping texture types to their associated classes.
-        texture_classes = {
-            # 'heterophonic': heterophonic.Heterophonic,
-            # 'homophonic': homophonic.Homophonic,
-            'monophonic': monophonic.Monophonic,
-            # 'nonpitched': nonpitched.NonPitched,
-            # 'polyphonic': polyphonic.Polyphonic,
-        }
-
-        # Generate instances of each texture type using the source data, and store them in a dictionary.
-        textures_dict = {}
-
-        for texture_type, texture_class in texture_classes.items():
-            texture_instance = texture_class(self)
-            textures_dict[texture_type] = texture_instance
-
-        return textures_dict
         
     # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
     def set_normalized_numerators(self, grids):
@@ -161,57 +131,199 @@ class Composition:
 
         # Return the repetition counts for each fraction.
         return repeats 
+    
+    
+    def represent_by_size(self, steps):
+        sorted_list = sorted(steps)
+        sorted_set = set(sorted_list)
 
+        # Create a dictionary to store the index for each value
+        index_mapping = {value: rank for rank, value in enumerate(sorted_set)}
 
-    def insert_data_into_database(self, texture):
-        cursor = self.cursor
+        # Map each element in the original list to its index in the sorted set
+        steps = [index_mapping[value] for value in steps]
+        
+        return steps
 
-        # Insert texture name into textures table
-        cursor.execute("INSERT INTO textures (name) VALUES (?)", (texture.__class__.__name__,))
+    
+    def unflatten_list(self, flat_list, original_matrix):
+        # Assuming original_matrix is a list of lists
+        rows, cols = len(original_matrix), len(original_matrix[0])
 
-        # Insert notes data into notes table
-        texture.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
+        # Reshape the flat_list back to the original Sieve shape
+        reshaped_matrix = [flat_list[i * cols:(i + 1) * cols] for i in range(rows)]
 
-        # Save notes data to a CSV file
-        csv_filename = f'data/csv/{texture.__class__.__name__}.csv'
-        texture.to_csv(csv_filename)
+        return reshaped_matrix
+    
+    
+    def generate_pitchclass_matrix(self, intervals):
+        next_interval = intervals[1:]
+        row = [next_interval[i] - intervals[0] for i in range(len(intervals) - 1)]
+        
+        matrix = [
+            [
+                (0 - row[i]) % (self.period - 1)
+            ] 
+            for i in range(len(intervals) - 1)
+        ]
 
+        row.insert(0, 0)
+        matrix.insert(0, [0])
+        
+        matrix = [
+            [
+                (matrix[i][0] + row[j]) % (self.period - 1)
+                for j in range(len(matrix))
+            ]
+            for i in range(len(matrix))
+        ]
 
-    def set_database_tables(self, database):
-        table_names = []
+        return matrix
+    
+    
+    def represent_matrix_by_size(self, matrix):
+        flattened_matrix = [value for lst in matrix for value in lst]
+        
+        sized_matrix = self.represent_by_size(flattened_matrix)
 
-        matrix_ids = database.fetch_distinct_matrix_ids()
-        columns_list = database.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
+        # Unflatten the sized list back to the original Sieve structure
+        matrix = self.unflatten_list(sized_matrix, matrix)
+        
+        return matrix
+    
+    
+    def convert_matrix_to_dataframe(self, matrix):
+        # Convert the unflattened Sieve to a DataFrame
+        matrix = pandas.DataFrame(matrix,
+                                    index=[f'P{m[0]}' for m in matrix], 
+                                    columns=[f'I{i}' for i in matrix[0]])
+        
+        return matrix
+    
+    
+    def generate_note_pool_from_matrix(self, matrix, num_of_positions, steps):
+        pool = []
+        current_index = 0
+        retrograde = False
+        steps_cycle = itertools.cycle(steps)
 
-        for matrix_id in matrix_ids:
+        for _ in range(num_of_positions):
+            step = next(steps_cycle)
 
-            table_commands = database.generate_sql_for_duration_values(matrix_id, columns_list)
+            wrapped_index = (current_index + abs(step)) % len(self.indices)
+            wrap_count = (abs(step) + current_index) // len(self.indices)
 
-            for table_name, union_statements in table_commands.items():
-                table_names.append(table_name)
-                self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
+            if wrap_count % 2 == 1:
+                retrograde = not retrograde
 
-        self.cursor.execute('DELETE FROM notes;')
-        self.cursor.executescript(database.insert_into_notes_command(table_names))
+            if step >= 0:
+                if retrograde:
+                    pool.append(matrix.iloc[wrapped_index][::-1].tolist())
+                else:
+                    pool.append(matrix.iloc[wrapped_index].tolist())
+            if step < 0:
+                if retrograde:
+                    pool.append(matrix.iloc[:, wrapped_index][::-1].tolist())
+                else:
+                    pool.append(matrix.iloc[:, wrapped_index].tolist())
 
-        sql_commands = []
-
-        for matrix_id in matrix_ids:
-            sql_commands.extend([
-                database.generate_notes_table_commands(matrix_id),
-                database.generate_midi_messages_table_commands(matrix_id),
-            ])
-
-        combined_sql = "\n".join(sql_commands)
-        self.cursor.executescript(combined_sql)
-        self.connection.commit()
+            current_index = wrapped_index
         
 
-    def fetch_midi_messages_from_sql(self, matrix_id):
-        query = f"SELECT * FROM messages WHERE matrix_id = {matrix_id}"
+        return pool
+    
+    
+    def create_tuning_file(self, floats_list):
+        title = f'Base {self.period} Tuning'
+        description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
+        file_name = 'data/scl/tuning.scl'
+        # Construct the file_content
+        file_content = f'''! {title}
+!
+{description}
+{len(floats_list) + 1}
+!
+'''
+
+        # Add floats to the content
+        file_content += '\n'.join(map(str, floats_list))
+        
+        # Add '2/1' on its own line
+        file_content += '\n2/1'
+
+        # Open the file in write mode ('w')
+        with open(file_name, 'w') as file:
+            # Write content to the file
+            file.write(file_content)
+        
+    
+    def select_scalar_segments(self, indice_list):
+        cents = []
+
+        for i in range(self.period):
+            cent_value = (1200 / self.period) * i
+            cent_value = round(cent_value, 6)
+            cents.append(cent_value)
+
+        # Select cents at specific indices
+        self.selected_cents_implied_zero = [cents[index - indice_list[0]] for index in indice_list][1:]
+
+        # Create tuning file using the selected cents
+        self.create_tuning_file(self.selected_cents_implied_zero)
+
+        # Return the original list of cents
+        return cents
+    
+    
+    def create_dataframe(self, notes_data):
+        columns = ['Start', 'Velocity', 'Note', 'Duration']
+        dataframe = pandas.DataFrame(notes_data, columns=columns)
+        dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
+        dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+        return dataframe
+
+    
+    def generate_notes_data(self):
+        notes_data = []
+        indice_list = []
+        
+        steps = self.get_successive_diff(self.indices)
+        normalized_Sieve = self.generate_pitchclass_matrix(self.indices)
+        matrix_represented_by_size = self.represent_matrix_by_size(normalized_Sieve)
+        matrix_represented_by_size = self.convert_matrix_to_dataframe(matrix_represented_by_size)
+        sieve_adjusted_by_step = self.indices[0] + normalized_Sieve
+        sieve_adjusted_by_step = self.convert_matrix_to_dataframe(sieve_adjusted_by_step)
+        
+        # For each factor, create exactly the number of notes required for each texture to achieve parity
+        for factor_index in range(len(self.factors)):
+            num_of_events = (len(self.indices) * self.factors[factor_index])
+            num_of_positions = num_of_events // len(steps)
+            pool = self.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
+            adjusted_pool = self.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
+            flattened_pool = [num for list in pool for num in list]
+            indice_list = [num for list in adjusted_pool for num in list]
+
+            note_pool = itertools.cycle(flattened_pool)
+            tiled_pattern = numpy.tile(self.binary, self.factors[factor_index])
+            tiled_indices = numpy.nonzero(tiled_pattern)[0]
+
+            duration = self.period // self.factors[factor_index]
+            
+            for index in tiled_indices:
+                velocity = 64
+                start = index * duration
+                notes_data.append((start, velocity, next(note_pool), duration))
+        
+        self.select_scalar_segments(list(set(indice_list)))
+        notes_data = self.create_dataframe(notes_data)
+        return notes_data
+    
+    
+    def fetch_midi_messages_from_sql(self):
+        query = "SELECT * FROM messages"
         self.database.cursor.execute(query)
         return self.database.cursor.fetchall()
-    
+
     
     def data_to_midi_messages(self, data):
         messages = []
@@ -247,7 +359,7 @@ class Composition:
         midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
         # Fetch data and convert to MIDI messages
-        data = self.fetch_midi_messages_from_sql(matrix_id)
+        data = self.fetch_midi_messages_from_sql()
         midi_messages, midi_data_list = self.data_to_midi_messages(data)
         
         dataframe = pandas.DataFrame(midi_data_list)
@@ -258,11 +370,11 @@ class Composition:
             midi_track.append(message)
 
         score.tracks.append(midi_track)
-        score.save('data/mid/.score.mid')
+        score.save('data/mid/score.mid')
         
         
 if __name__ == '__main__':
-
+    
     # sieve = '''
     #         (((8@0|8@1|8@7)&(5@1|5@3))|
     #         ((8@0|8@1|8@2)&5@0)|
@@ -276,16 +388,13 @@ if __name__ == '__main__':
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
     
-    sieve = '(8@0|8@1|8@2)&5@0'
+    siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
     
-    # custom_grids_set = [fractions.Fraction(1, 4), fractions.Fraction(1, 2), fractions.Fraction(3, 4)]
-    # comp_with_custom_grids = Composition(sieve, grids_set=custom_grids_set)
+    comp = Composition(siv)
     
-    comp = Composition(sieve)
+    # sine = comp.waveform.generate_sine_wave()
+    # env = comp.envelope.generate_adsr_envelope()
     
-    sine = comp.waveform.generate_sine_wave()
-    env = comp.envelope.generate_adsr_envelope()
-    print(sine * env)
-    # print(env)
+    db = database.Database(comp)
     
-    
+    # comp.write_midi()

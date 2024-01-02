@@ -46,3 +46,5 @@ TO-DO:
 call explicity from the if __name__ = '__main__'
 
 2) Consider using phase offset as a modulation source
+
+3) Monophonic, Polyphonic, Nonpitched, Homophonic, and Heterophonic textures
