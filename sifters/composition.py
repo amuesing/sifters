@@ -14,6 +14,8 @@ from generators import *
 
 
 class Composition:
+    
+    
     def __init__(self, sieve, grids_set=None):
  
         self.ticks_per_beat = 480
@@ -33,13 +35,7 @@ class Composition:
         # Calculate the number of repeats needed to achieve parity between grids.
         self.repeats = self.set_repeats()
         self.indices = numpy.nonzero(self.binary)[0]
-        # Set the factors attribute of the Texture object
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
-        self.notes_data = self.generate_notes_data()
-        self.notes_data.to_csv(f'data/csv/.notes_data.csv')
-        # self.database = database.Database(self)
-        # self.waveform = waveform.Waveform()
-        # self.envelope = envelope.Envelope()
         
         
     def set_binary(self, sieve):
@@ -283,46 +279,10 @@ class Composition:
         return dataframe
 
     
-    def generate_notes_data(self):
-        notes_data = []
-        indice_list = []
-        
-        steps = self.get_successive_diff(self.indices)
-        normalized_Sieve = self.generate_pitchclass_matrix(self.indices)
-        matrix_represented_by_size = self.represent_matrix_by_size(normalized_Sieve)
-        matrix_represented_by_size = self.convert_matrix_to_dataframe(matrix_represented_by_size)
-        sieve_adjusted_by_step = self.indices[0] + normalized_Sieve
-        sieve_adjusted_by_step = self.convert_matrix_to_dataframe(sieve_adjusted_by_step)
-        
-        # For each factor, create exactly the number of notes required for each texture to achieve parity
-        for factor_index in range(len(self.factors)):
-            num_of_events = (len(self.indices) * self.factors[factor_index])
-            num_of_positions = num_of_events // len(steps)
-            pool = self.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
-            adjusted_pool = self.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
-            flattened_pool = [num for list in pool for num in list]
-            indice_list = [num for list in adjusted_pool for num in list]
-
-            note_pool = itertools.cycle(flattened_pool)
-            tiled_pattern = numpy.tile(self.binary, self.factors[factor_index])
-            tiled_indices = numpy.nonzero(tiled_pattern)[0]
-
-            duration = self.period // self.factors[factor_index]
-            
-            for index in tiled_indices:
-                velocity = 64
-                start = index * duration
-                notes_data.append((start, velocity, next(note_pool), duration))
-        
-        self.select_scalar_segments(list(set(indice_list)))
-        notes_data = self.create_dataframe(notes_data)
-        return notes_data
-    
-    
     def fetch_midi_messages_from_sql(self):
         query = "SELECT * FROM messages"
-        self.database.cursor.execute(query)
-        return self.database.cursor.fetchall()
+        db.cursor.execute(query)
+        return db.cursor.fetchall()
 
     
     def data_to_midi_messages(self, data):
@@ -341,7 +301,7 @@ class Composition:
         return messages, midi_data_list
 
 
-    def write_midi(self, matrix_id=1):
+    def write_midi(self):
         midi_track = mido.MidiTrack()
         midi_track.name = 'mono'
 
@@ -375,26 +335,109 @@ class Composition:
         
 if __name__ == '__main__':
     
-    # sieve = '''
-    #         (((8@0|8@1|8@7)&(5@1|5@3))|
-    #         ((8@0|8@1|8@2)&5@0)|
-    #         ((8@5|8@6)&(5@2|5@3|5@4))|
-    #         (8@6&5@1)|
-    #         (8@3)|
-    #         (8@4)|
-    #         (8@1&5@2))
-    #         '''
+    
+    def generate_notes_data(comp):
+        notes_data = []
+        indice_list = []
+        
+        steps = comp.get_successive_diff(comp.indices)
+        normalized_Sieve = comp.generate_pitchclass_matrix(comp.indices)
+        matrix_represented_by_size = comp.represent_matrix_by_size(normalized_Sieve)
+        matrix_represented_by_size = comp.convert_matrix_to_dataframe(matrix_represented_by_size)
+        sieve_adjusted_by_step = comp.indices[0] + normalized_Sieve
+        sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
+        
+        # For each factor, create exactly the number of notes required for each texture to achieve parity
+        for factor_index in range(len(comp.factors)):
+            num_of_events = (len(comp.indices) * comp.factors[factor_index])
+            num_of_positions = num_of_events // len(steps)
+            pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
+            adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
+            flattened_pool = [num for list in pool for num in list]
+            indice_list = [num for list in adjusted_pool for num in list]
+
+            note_pool = itertools.cycle(flattened_pool)
+            tiled_pattern = numpy.tile(comp.binary, comp.factors[factor_index])
+            tiled_indices = numpy.nonzero(tiled_pattern)[0]
+
+            duration = comp.period // comp.factors[factor_index]
+            
+            for index in tiled_indices:
+                velocity = 64
+                start = index * duration
+                notes_data.append((start, velocity, next(note_pool), duration))
+        
+        comp.select_scalar_segments(list(set(indice_list)))
+        notes_data = comp.create_dataframe(notes_data)
+        return notes_data
+    
+    
+    def generate_notes_table_commands(db):
+        commands = []
+        commands.append(db.generate_max_duration_command())
+        commands.append(db.generate_create_and_insert_end_data_commands())
+        commands.append(db.generate_find_duplicate_rows_command())
+        commands.append(db.generate_filter_duplicate_rows_command())
+
+        return '\n'.join(commands)
+    
+    
+    def generate_midi_messages_table_commands(db):
+        command = []
+        command.append(db.create_temporary_midi_messages_table())
+        command.append(db.update_time_column())
+        command.append(db.append_note_off_message())
+        command.append(db.order_matrix_table_by_start())
+        command.append(db.insert_into_messages_table())
+
+        return '\n'.join(command)
+    
+    
+    def set_database_tables(db, notes_data):
+        table_names = []
+        
+        db.create_notes_table()
+        db.create_messages_table()
+        db.insert_dataframe_into_database(notes_data)
+
+        columns_list = db.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
+
+        table_commands = db.generate_sql_for_duration_values(columns_list)
+
+        for table_name, union_statements in table_commands.items():
+            table_names.append(table_name)
+            db.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
+
+        db.cursor.execute('DELETE FROM notes;')
+        db.cursor.executescript(db.insert_into_notes_command(table_names))
+
+        sql_commands = [
+                generate_notes_table_commands(db),
+                generate_midi_messages_table_commands(db),
+                ]
+        
+        combined_sql = "\n".join(sql_commands)
+        db.cursor.executescript(combined_sql)
+        db.connection.commit()
+
+
+    sieve = '''
+            (((8@0|8@1|8@7)&(5@1|5@3))|
+            ((8@0|8@1|8@2)&5@0)|
+            ((8@5|8@6)&(5@2|5@3|5@4))|
+            (8@6&5@1)|
+            (8@3)|
+            (8@4)|
+            (8@1&5@2))
+            '''
     
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
     
-    siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
+    ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
+    # siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
     
-    comp = Composition(siv)
-    
-    # sine = comp.waveform.generate_sine_wave()
-    # env = comp.envelope.generate_adsr_envelope()
-    
+    comp = Composition(sieve)
+    notes_data = generate_notes_data(comp)
     db = database.Database(comp)
-    
-    # comp.write_midi()
+    set_database_tables(db, notes_data)

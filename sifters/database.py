@@ -16,10 +16,6 @@ class Database:
         self.period = mediator.period
         self.ticks_per_beat = mediator.ticks_per_beat
         self.scaling_factor = mediator.scaling_factor
-        self.create_notes_table()
-        self.create_messages_table()
-        self.insert_dataframe_into_database(mediator.notes_data)
-        self.set_database_tables()
 
     
     def create_table(self, table_name, columns):
@@ -211,17 +207,6 @@ class Database:
         WHERE row_num = 1;
         '''
 
-        
-        
-    def generate_notes_table_commands(self):
-        commands = []
-        commands.append(self.generate_max_duration_command())
-        commands.append(self.generate_create_and_insert_end_data_commands())
-        commands.append(self.generate_find_duplicate_rows_command())
-        commands.append(self.generate_filter_duplicate_rows_command())
-
-        return '\n'.join(commands)
-
     
     def create_temporary_midi_messages_table(self):
         return f'''
@@ -311,39 +296,3 @@ class Database:
             FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
-
-
-
-    def generate_midi_messages_table_commands(self):
-        command = []
-        command.append(self.create_temporary_midi_messages_table())
-        command.append(self.update_time_column())
-        command.append(self.append_note_off_message())
-        command.append(self.order_matrix_table_by_start())
-        command.append(self.insert_into_messages_table())
-
-        return '\n'.join(command)
-
-    
-    def set_database_tables(self):
-        table_names = []
-
-        columns_list = self.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
-
-        table_commands = self.generate_sql_for_duration_values(columns_list)
-
-        for table_name, union_statements in table_commands.items():
-            table_names.append(table_name)
-            self.cursor.execute(f'CREATE TEMPORARY TABLE "{table_name}" AS {union_statements};')
-
-        self.cursor.execute('DELETE FROM notes;')
-        self.cursor.executescript(self.insert_into_notes_command(table_names))
-
-        sql_commands = [
-                self.generate_notes_table_commands(),
-                self.generate_midi_messages_table_commands(),
-                ]
-        
-        combined_sql = "\n".join(sql_commands)
-        self.cursor.executescript(combined_sql)
-        self.connection.commit()
