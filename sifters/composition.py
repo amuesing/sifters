@@ -17,13 +17,13 @@ class Composition:
     
     
     def __init__(self, sieve, grids_set=None):
- 
         self.ticks_per_beat = 480
         self.scaling_factor = 100000
         
         self.sieve = sieve
         self.period = None
         self.binary = self.set_binary(sieve)
+        
         # Interpolate a dictionary which tracks the indices of pattern changes within self.binary.
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
         
@@ -272,7 +272,7 @@ class Composition:
     
     
     def create_dataframe(self, notes_data):
-        columns = ['Start', 'Velocity', 'Note', 'Duration']
+        columns = ['Start', 'Velocity', 'Note', 'Duration', 'TextureID']
         dataframe = pandas.DataFrame(notes_data, columns=columns)
         dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
         dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
@@ -365,7 +365,7 @@ if __name__ == '__main__':
             for index in tiled_indices:
                 velocity = 64
                 start = index * duration
-                notes_data.append((start, velocity, next(note_pool), duration))
+                notes_data.append((start, velocity, next(note_pool), duration, 1))
         
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = comp.create_dataframe(notes_data)
@@ -375,9 +375,8 @@ if __name__ == '__main__':
     def generate_notes_table_commands(db):
         commands = []
         commands.append(db.generate_max_duration_command())
+        commands.append(db.preprocess_max_duration())
         commands.append(db.generate_create_and_insert_end_data_commands())
-        commands.append(db.generate_find_duplicate_rows_command())
-        commands.append(db.generate_filter_duplicate_rows_command())
 
         return '\n'.join(commands)
     
@@ -393,14 +392,16 @@ if __name__ == '__main__':
         return '\n'.join(command)
     
     
-    def set_database_tables(db, notes_data):
+    def set_database_tables(db, texture_data, notes_data):
         table_names = []
         
+        db.create_textures_table()
         db.create_notes_table()
         db.create_messages_table()
-        db.insert_dataframe_into_database(notes_data)
+        db.insert_dataframe_into_database('textures', texture_data)
+        db.insert_dataframe_into_database('notes', notes_data)
 
-        columns_list = db.fetch_columns_by_table_name('notes', exclude_columns={'note_id', 'Start', 'Duration'})
+        columns_list = db.fetch_columns_by_table_name('notes', exclude_columns={'Start', 'Duration', 'NoteID'})
 
         table_commands = db.generate_sql_for_duration_values(columns_list)
 
@@ -421,15 +422,24 @@ if __name__ == '__main__':
         db.connection.commit()
 
 
+    # sieve = '''
+    #         (((8@0|8@1|8@7)&(5@1|5@3))|
+    #         ((8@0|8@1|8@2)&5@0)|
+    #         ((8@5|8@6)&(5@2|5@3|5@4))|
+    #         (8@6&5@1)|
+    #         (8@3)|
+    #         (8@4)|
+    #         (8@1&5@2))
+    #         '''
+    
     sieve = '''
-            (((8@0|8@1|8@7)&(5@1|5@3))|
-            ((8@0|8@1|8@2)&5@0)|
-            ((8@5|8@6)&(5@2|5@3|5@4))|
-            (8@6&5@1)|
-            (8@3)|
-            (8@4)|
-            (8@1&5@2))
+            (8@1&5@2)
             '''
+            
+    texture_data = pandas.DataFrame({
+            'Name': ['Base', 'Monophonic', 'Homophonic'],
+            'TextureID': [1, 2, 3]
+        })
     
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
@@ -440,4 +450,5 @@ if __name__ == '__main__':
     comp = Composition(sieve)
     notes_data = generate_notes_data(comp)
     db = database.Database(comp)
-    set_database_tables(db, notes_data)
+    set_database_tables(db, texture_data, notes_data)
+    comp.write_midi()

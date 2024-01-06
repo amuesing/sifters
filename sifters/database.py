@@ -5,6 +5,7 @@ import sqlite3
 
 class Database:
     
+    
     def __init__(self, mediator):
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
@@ -25,6 +26,14 @@ class Database:
             )'''
         self.cursor.execute(sql_command)
         self.connection.commit()
+        
+        
+    def create_textures_table(self):
+        columns = '''
+            Name TEXT,
+            TextureID INTEGER PRIMARY KEY
+        '''
+        self.create_table('textures', columns)
 
 
     def create_notes_table(self):
@@ -33,9 +42,10 @@ class Database:
             Velocity INTEGER,
             Note TEXT,
             Duration INTEGER,
-            note_id INTEGER PRIMARY KEY
+            NoteID INTEGER PRIMARY KEY,
+            TextureID INTEGER
         '''
-        self.create_table("notes", columns)
+        self.create_table('notes', columns)
 
 
     def create_messages_table(self):
@@ -46,22 +56,21 @@ class Database:
             Note INTEGER,
             Message TEXT,
             Time INTEGER,
-            message_id INTEGER PRIMARY KEY,
-            note_id INTEGER
+            MessageID INTEGER PRIMARY KEY,
+            NoteID INTEGER,
+            TextureID INTEGER
         '''
-        self.create_table("messages", columns)
+        
+        self.create_table('messages', columns)
 
         
-    def insert_dataframe_into_database(self, dataframe):
-        # Insert notes data into notes table
-        dataframe.to_sql(name='notes', con=self.connection, if_exists='append', index=False)
+    def insert_dataframe_into_database(self, table_name, dataframe):
+        dataframe.to_sql(name=f'{table_name}', con=self.connection, if_exists='append', index=False)
 
 
     def fetch_columns_by_table_name(self, table_name, exclude_columns={}):
-        # Get the first row for the given table_name
         self.cursor.execute(f'SELECT * FROM "{table_name}"')
         row = self.cursor.fetchone()
-        # Use the keys of the row (which are column names) and filter out the ones in the exclude set
         columns = [col for col in row.keys() if col not in exclude_columns]
 
         return columns
@@ -89,7 +98,7 @@ class Database:
 
         table_commands = {}
         for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"matrix_{duration_value}"
+            table_name = f"duration_{duration_value}"
             table_commands[table_name] = self.generate_union_all_statements(columns_string, duration_value, length_of_one_rep, repeat)
 
         return table_commands
@@ -111,118 +120,82 @@ class Database:
 
     def generate_max_duration_command(self):
         return '''
-        CREATE TEMPORARY TABLE "max_duration" AS
+        CREATE TEMPORARY TABLE max_duration AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
-            FROM "notes"
+            FROM notes
             GROUP BY Start
         )
-        SELECT c.note_id, c.Start, c.Velocity, c.Note, m.MaxDuration as Duration
-        FROM "notes" c
+        SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.TextureID
+        FROM notes c
         LEFT JOIN max_durations m ON c.Start = m.Start;
         '''
 
-    
+
+    def preprocess_max_duration(self):
+        preprocess_command = '''
+            CREATE TEMPORARY TABLE preprocess_max_duration AS
+            WITH OrderedMaxDuration AS (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Duration DESC) AS row_num
+                FROM max_duration
+            )
+            SELECT Start, Velocity, Note, Duration, NoteID, TextureID
+            FROM OrderedMaxDuration
+            WHERE row_num = 1;
+
+            DELETE FROM max_duration;
+
+            INSERT INTO max_duration SELECT * FROM preprocess_max_duration;
+        '''
+        return preprocess_command
+
+
     def generate_create_and_insert_end_data_commands(self):
         create_table_command = '''
-        CREATE TEMPORARY TABLE "end_column" (
-            note_id INTEGER,
-            Start INTEGER, 
-            End INTEGER, 
-            Duration INTEGER,
-            Velocity INTEGER, 
-            Note TEXT
-        );
+            CREATE TEMPORARY TABLE end_column (
+                Start INTEGER, 
+                End INTEGER, 
+                Duration INTEGER,
+                Velocity INTEGER, 
+                Note INTEGER,
+                NoteID INTEGER,
+                TextureID INTEGER
+            );
         '''
 
         insert_data_command = '''
-        WITH ModifiedDurations AS (
-            SELECT 
-                note_id,
-                Start,
-                Velocity,
-                Note,
-                Duration as ModifiedDuration
-            FROM "max_duration"
-        ),
-        DistinctEnds AS (
+            INSERT INTO end_column
             SELECT
-                Start,
-                COALESCE(LEAD(Start, 1) OVER(ORDER BY Start), Start + ModifiedDuration) AS End
-            FROM (SELECT DISTINCT Start, ModifiedDuration FROM ModifiedDurations) as distinct_starts
-        )
-        INSERT INTO "end_column"
-        SELECT
-            m.note_id,
-            m.Start,
-            d.End,
-            m.ModifiedDuration,
-            m.Velocity,
-            m.Note
-        FROM ModifiedDurations m
-        JOIN DistinctEnds d ON m.Start = d.Start;
+                m.Start,
+                MIN(m.Start + m.Duration, LEAD(m.Start, 1, m.Start + m.Duration) OVER (ORDER BY m.Start)) AS End,
+                m.Duration,
+                m.Velocity,
+                m.Note,
+                m.NoteID,
+                m.TextureID
+            FROM max_duration m;
         '''
 
         return create_table_command + '\n' + insert_data_command
 
-        
-    def generate_find_duplicate_rows_command(self):
-        return '''
-        CREATE TEMPORARY TABLE "duplicates" AS
-        SELECT
-            *
-        FROM end_column
-        WHERE (Start, End, Velocity, Note) IN (
-            SELECT
-                Start,
-                End,
-                Velocity,
-                Note
-            FROM end_column
-            GROUP BY Start, End, Velocity, Note
-            HAVING COUNT(*) > 1
-        );
-        '''
-
-        
-    def generate_filter_duplicate_rows_command(self):
-        return '''
-        CREATE TEMPORARY TABLE "no_duplicates" AS
-        SELECT
-            note_id,
-            Start,
-            End,
-            Velocity,
-            Note
-        FROM (
-            SELECT
-                note_id,
-                Start,
-                End,
-                Velocity,
-                Note,
-                ROW_NUMBER() OVER (PARTITION BY Start, End, Velocity, Note ORDER BY (SELECT NULL)) AS row_num
-            FROM end_column
-        )
-        WHERE row_num = 1;
-        '''
 
     
     def create_temporary_midi_messages_table(self):
         return f'''
             CREATE TEMPORARY TABLE "midi_messages" AS
             SELECT 
-                note_id,
                 Start,
                 End,
                 Velocity,
                 Note,
+                NoteID,
+                TextureID,
                 'note_on' AS Message,
                 CASE 
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "no_duplicates";
+            FROM "end_column";
         '''
 
 
@@ -259,9 +232,9 @@ class Database:
         
     def append_note_off_message(self):
         return f'''
-            INSERT INTO "midi_messages" (note_id, Start, End, Velocity, Note, Message, Time)
+            INSERT INTO "midi_messages" (NoteID, Start, End, Velocity, Note, Message, Time)
             SELECT 
-                note_id, Start, End, Velocity, Note,
+                NoteID, Start, End, Velocity, Note,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time
             FROM "midi_messages" AS t
@@ -273,7 +246,7 @@ class Database:
         return '''
             CREATE TEMPORARY TABLE "midi_messages_ordered" AS
             SELECT
-                note_id,
+                NoteID,
                 Start,
                 End,
                 Velocity,
@@ -291,8 +264,8 @@ class Database:
 
     def insert_into_messages_table(self):
         return '''
-            INSERT INTO "messages" (note_id, Start, End, Velocity, Note, Message, Time)
-            SELECT note_id, Start, End, Velocity, Note, Message, Time
+            INSERT INTO "messages" (NoteID, Start, End, Velocity, Note, Message, Time)
+            SELECT NoteID, Start, End, Velocity, Note, Message, Time
             FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
