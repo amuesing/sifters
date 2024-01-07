@@ -91,7 +91,7 @@ class Database:
         return " UNION ALL ".join(select_statements)
     
 
-    def generate_sql_for_duration_values(self, columns_list):
+    def generate_duration_commands(self, columns_list):
         columns_string = ', '.join(columns_list)
         duration_values = [grid * self.scaling_factor for grid in self.grids_set]
         length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
@@ -119,7 +119,7 @@ class Database:
 
 
     def generate_max_duration_command(self):
-        return '''
+        max_duration_command =  '''
         CREATE TEMPORARY TABLE max_duration AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
@@ -130,6 +130,8 @@ class Database:
         FROM notes c
         LEFT JOIN max_durations m ON c.Start = m.Start;
         '''
+        
+        return max_duration_command
 
 
     def preprocess_max_duration(self):
@@ -147,12 +149,13 @@ class Database:
 
             INSERT INTO max_duration SELECT * FROM preprocess_max_duration;
         '''
+        
         return preprocess_command
 
 
-    def generate_create_and_insert_end_data_commands(self):
+    def generate_end_column_command(self):
         create_table_command = '''
-            CREATE TEMPORARY TABLE end_column (
+            CREATE TABLE end_column (
                 Start INTEGER, 
                 End INTEGER, 
                 Duration INTEGER,
@@ -162,7 +165,11 @@ class Database:
                 TextureID INTEGER
             );
         '''
-
+        
+        return create_table_command
+    
+    
+    def insert_end_column_data(self):
         insert_data_command = '''
             INSERT INTO end_column
             SELECT
@@ -176,7 +183,88 @@ class Database:
             FROM max_duration m;
         '''
 
-        return create_table_command + '\n' + insert_data_command
+        return insert_data_command
+    
+    
+    def generate_type_column_command(self):
+        create_table_command = '''
+            CREATE TABLE type_column (
+                Start INTEGER, 
+                End INTEGER, 
+                Duration INTEGER,
+                Velocity INTEGER, 
+                Note INTEGER,
+                Type TEXT,
+                NoteID INTEGER,
+                TextureID INTEGER
+            );
+        '''
+        
+        return create_table_command
+
+
+    def insert_type_column_data(self):
+        insert_data_command = '''
+            WITH RestRows AS (
+                SELECT
+                    m.Start AS Start,
+                    m.End AS End,
+                    m.Duration,
+                    m.Velocity,
+                    m.Note,
+                    'note' AS Type,
+                    m.NoteID,
+                    m.TextureID
+                FROM (
+                    SELECT
+                        m.Start,
+                        LEAD(m.Start) OVER (ORDER BY m.Start) AS lead_start,
+                        m.End,
+                        m.Duration,
+                        m.Velocity,
+                        m.Note,
+                        m.NoteID,
+                        m.TextureID
+                    FROM end_column m
+                ) m
+                WHERE m.lead_start > m.End
+            )
+            INSERT INTO type_column
+            SELECT
+                CASE
+                    WHEN lead_start > m.End THEN m.End
+                    ELSE m.Start
+                END AS Start,
+                COALESCE(lead_start, m.End) AS End,
+                COALESCE(lead_start, m.End) - CASE
+                    WHEN lead_start > m.End THEN m.End
+                    ELSE m.Start
+                END AS Duration,
+                m.Velocity,
+                m.Note,
+                CASE
+                    WHEN lead_start > m.End THEN 'rest'
+                    ELSE 'note'
+                END AS Type,
+                m.NoteID,
+                m.TextureID
+            FROM (
+                SELECT
+                    m.Start,
+                    LEAD(m.Start) OVER (ORDER BY m.Start) AS lead_start,
+                    m.End,
+                    m.Velocity,
+                    m.Note,
+                    m.NoteID,
+                    m.TextureID
+                FROM end_column m
+            ) m
+            UNION ALL
+            SELECT * FROM RestRows;
+        '''
+
+        return insert_data_command  
+
 
 
     
@@ -184,18 +272,17 @@ class Database:
         return f'''
             CREATE TEMPORARY TABLE "midi_messages" AS
             SELECT 
+                note_id,
                 Start,
                 End,
                 Velocity,
                 Note,
-                NoteID,
-                TextureID,
                 'note_on' AS Message,
                 CASE 
                     WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
                     ELSE 0 
                 END AS Time
-            FROM "end_column";
+            FROM "no_duplicates";
         '''
 
 
@@ -232,11 +319,13 @@ class Database:
         
     def append_note_off_message(self):
         return f'''
-            INSERT INTO "midi_messages" (NoteID, Start, End, Velocity, Note, Message, Time)
+            INSERT INTO "midi_messages" (Start, End, Velocity, Note, Message, Time, NoteID, TextureID)
             SELECT 
-                NoteID, Start, End, Velocity, Note,
+                Start, End, Velocity, Note,
                 'note_off' AS Message,
-                (End - Start) * {self.ticks_per_beat} AS Time
+                (End - Start) * {self.ticks_per_beat} AS Time,
+                NoteID,
+                TextureID
             FROM "midi_messages" AS t
             WHERE Message = 'note_on';
         '''
@@ -246,7 +335,6 @@ class Database:
         return '''
             CREATE TEMPORARY TABLE "midi_messages_ordered" AS
             SELECT
-                NoteID,
                 Start,
                 End,
                 Velocity,
@@ -256,7 +344,9 @@ class Database:
                     WHEN Message = 'note_off' AND LAG(Message) OVER (ORDER BY Start) = 'note_off'
                         THEN 0
                     ELSE Time
-                END AS Time
+                END AS Time,
+                NoteID,
+                TextureID
             FROM "midi_messages"
             ORDER BY Start;
         '''
@@ -264,8 +354,9 @@ class Database:
 
     def insert_into_messages_table(self):
         return '''
-            INSERT INTO "messages" (NoteID, Start, End, Velocity, Note, Message, Time)
-            SELECT NoteID, Start, End, Velocity, Note, Message, Time
+            INSERT INTO "messages" (Start, End, Velocity, Note, Message, Time, NoteID, TextureID)
+            SELECT Start, End, Velocity, Note, Message, Time, NoteID, TextureID
             FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
+

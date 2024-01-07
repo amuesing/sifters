@@ -339,6 +339,8 @@ if __name__ == '__main__':
     def generate_notes_data(comp):
         notes_data = []
         indice_list = []
+        velocity = 64
+        texture_id = 1
         
         steps = comp.get_successive_diff(comp.indices)
         normalized_Sieve = comp.generate_pitchclass_matrix(comp.indices)
@@ -363,9 +365,8 @@ if __name__ == '__main__':
             duration = comp.period // comp.factors[factor_index]
             
             for index in tiled_indices:
-                velocity = 64
                 start = index * duration
-                notes_data.append((start, velocity, next(note_pool), duration, 1))
+                notes_data.append((start, velocity, next(note_pool), duration, texture_id))
         
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = comp.create_dataframe(notes_data)
@@ -376,7 +377,10 @@ if __name__ == '__main__':
         commands = []
         commands.append(db.generate_max_duration_command())
         commands.append(db.preprocess_max_duration())
-        commands.append(db.generate_create_and_insert_end_data_commands())
+        commands.append(db.generate_end_column_command())
+        commands.append(db.insert_end_column_data())
+        commands.append(db.generate_type_column_command())
+        commands.append(db.insert_type_column_data())
 
         return '\n'.join(commands)
     
@@ -403,7 +407,7 @@ if __name__ == '__main__':
 
         columns_list = db.fetch_columns_by_table_name('notes', exclude_columns={'Start', 'Duration', 'NoteID'})
 
-        table_commands = db.generate_sql_for_duration_values(columns_list)
+        table_commands = db.generate_duration_commands(columns_list)
 
         for table_name, union_statements in table_commands.items():
             table_names.append(table_name)
@@ -414,7 +418,7 @@ if __name__ == '__main__':
 
         sql_commands = [
                 generate_notes_table_commands(db),
-                generate_midi_messages_table_commands(db),
+                # generate_midi_messages_table_commands(db),
                 ]
         
         combined_sql = "\n".join(sql_commands)
@@ -446,6 +450,8 @@ if __name__ == '__main__':
     
     ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
     # siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
+    
+    ### I NEED TO WRITE SQL THAT ADDS NOTE_OFF MESSAGES IN THE EVENT OF A REST
     
     comp = Composition(sieve)
     notes_data = generate_notes_data(comp)
