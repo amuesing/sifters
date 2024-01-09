@@ -155,7 +155,7 @@ class Database:
 
     def generate_end_column_command(self):
         create_table_command = '''
-            CREATE TABLE end_column (
+            CREATE TEMPORARY TABLE end_column (
                 Start INTEGER, 
                 End INTEGER, 
                 Duration INTEGER,
@@ -186,33 +186,33 @@ class Database:
         return insert_data_command
     
     
-    def generate_type_column_command(self):
+    def generate_message_column_command(self):
         create_table_command = '''
-            CREATE TABLE type_column (
+            CREATE TEMPORARY TABLE message_column (
                 Start INTEGER, 
                 End INTEGER, 
                 Duration INTEGER,
                 Velocity INTEGER, 
                 Note INTEGER,
-                Type TEXT,
+                Message TEXT,
                 NoteID INTEGER,
                 TextureID INTEGER
             );
         '''
         
         return create_table_command
-
-
-    def insert_type_column_data(self):
-        insert_data_command = '''
+    
+    
+    def insert_message_column_data(self):
+        insert_command = '''
             WITH RestRows AS (
                 SELECT
-                    m.Start AS Start,
-                    m.End AS End,
+                    m.Start,
+                    m.End,
                     m.Duration,
                     m.Velocity,
                     m.Note,
-                    'note' AS Type,
+                    'note_on' AS Message,
                     m.NoteID,
                     m.TextureID
                 FROM (
@@ -229,23 +229,14 @@ class Database:
                 ) m
                 WHERE m.lead_start > m.End
             )
-            INSERT INTO type_column
+            INSERT INTO message_column
             SELECT
-                CASE
-                    WHEN lead_start > m.End THEN m.End
-                    ELSE m.Start
-                END AS Start,
+                CASE WHEN lead_start > m.End THEN m.End ELSE m.Start END AS Start,
                 COALESCE(lead_start, m.End) AS End,
-                COALESCE(lead_start, m.End) - CASE
-                    WHEN lead_start > m.End THEN m.End
-                    ELSE m.Start
-                END AS Duration,
+                COALESCE(lead_start, m.End) - CASE WHEN lead_start > m.End THEN m.End ELSE m.Start END AS Duration,
                 m.Velocity,
                 m.Note,
-                CASE
-                    WHEN lead_start > m.End THEN 'rest'
-                    ELSE 'note'
-                END AS Type,
+                CASE WHEN lead_start > m.End THEN 'note_off' ELSE 'note_on' END AS Message,
                 m.NoteID,
                 m.TextureID
             FROM (
@@ -260,60 +251,55 @@ class Database:
                 FROM end_column m
             ) m
             UNION ALL
-            SELECT * FROM RestRows;
+            SELECT * FROM RestRows
+            ORDER BY Start;
         '''
 
-        return insert_data_command  
-
-
-
+        return insert_command
     
+    
+    def insert_first_row_if_needed(self):
+        # Fetch the first row's Start value from the message_column table
+        check_first_row_command = '''
+            SELECT 
+                Start,
+                Note,
+                Velocity,
+                NoteID,
+                TextureID
+            FROM message_column
+            LIMIT 1;
+        '''
+        self.cursor.execute(check_first_row_command)
+        first_row = self.cursor.fetchone()
+
+        if first_row["Start"] > 0:
+            # The first row's Start value is greater than 0, insert a new row at the beginning
+            insert_first_row_command = f'''
+                INSERT INTO message_column (Start, End, Duration, Velocity, Note, Message, NoteID, TextureID)
+                VALUES (0, {first_row["Start"]}, {first_row['Start']}, {first_row['Velocity']}, {first_row['Note']}, 'rest', {first_row['NoteID']}, {first_row['TextureID']});
+            '''
+            self.cursor.execute(insert_first_row_command)
+            self.connection.commit()
+
+
     def create_temporary_midi_messages_table(self):
         return f'''
             CREATE TEMPORARY TABLE "midi_messages" AS
             SELECT 
-                note_id,
                 Start,
                 End,
                 Velocity,
                 Note,
-                'note_on' AS Message,
+                Message,
                 CASE 
-                    WHEN ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
+                    WHEN Message = 'note_on' AND ROW_NUMBER() OVER (ORDER BY Start ASC) = 1 AND Start != 0 THEN ROUND(Start * {self.ticks_per_beat})
+                    WHEN Message = 'note_off' THEN ROUND((End - Start) * {self.ticks_per_beat})  -- Calculate Time as (End - Start) for 'note_off'
                     ELSE 0 
-                END AS Time
-            FROM "no_duplicates";
-        '''
-
-
-    def update_time_column(self):
-        return '''
-            UPDATE "midi_messages"
-            SET Time = (
-                SELECT COALESCE("midi_messages".Start - t.PreviousEnd, 0)
-                FROM (
-                    SELECT 
-                        Start,
-                        LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd
-                    FROM "midi_messages"
-                ) AS t
-                WHERE 
-                    "midi_messages".Start = t.Start
-            )
-            WHERE EXISTS (
-                SELECT 1
-                FROM (
-                    SELECT 
-                        Start,
-                        LAG(End) OVER (ORDER BY Start ASC) AS PreviousEnd,
-                        LAG(Start) OVER (ORDER BY Start ASC) AS PreviousStart
-                    FROM "midi_messages"
-                ) AS t_sub
-                WHERE 
-                    "midi_messages".Start = t_sub.Start 
-                    AND "midi_messages".Start != t_sub.PreviousEnd
-                    AND "midi_messages".Start != t_sub.PreviousStart
-            );
+                END AS Time,
+                NoteID,
+                TextureID
+            FROM "message_column";
         '''
 
         
@@ -331,7 +317,7 @@ class Database:
         '''
 
 
-    def order_matrix_table_by_start(self):
+    def order_midi_messages_by_start(self):
         return '''
             CREATE TEMPORARY TABLE "midi_messages_ordered" AS
             SELECT
@@ -340,11 +326,7 @@ class Database:
                 Velocity,
                 Note,
                 Message,
-                CASE
-                    WHEN Message = 'note_off' AND LAG(Message) OVER (ORDER BY Start) = 'note_off'
-                        THEN 0
-                    ELSE Time
-                END AS Time,
+                Time,
                 NoteID,
                 TextureID
             FROM "midi_messages"
@@ -359,4 +341,3 @@ class Database:
             FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
-

@@ -379,8 +379,8 @@ if __name__ == '__main__':
         commands.append(db.preprocess_max_duration())
         commands.append(db.generate_end_column_command())
         commands.append(db.insert_end_column_data())
-        commands.append(db.generate_type_column_command())
-        commands.append(db.insert_type_column_data())
+        commands.append(db.generate_message_column_command())
+        commands.append(db.insert_message_column_data())
 
         return '\n'.join(commands)
     
@@ -388,9 +388,8 @@ if __name__ == '__main__':
     def generate_midi_messages_table_commands(db):
         command = []
         command.append(db.create_temporary_midi_messages_table())
-        command.append(db.update_time_column())
         command.append(db.append_note_off_message())
-        command.append(db.order_matrix_table_by_start())
+        command.append(db.order_midi_messages_by_start())
         command.append(db.insert_into_messages_table())
 
         return '\n'.join(command)
@@ -418,11 +417,12 @@ if __name__ == '__main__':
 
         sql_commands = [
                 generate_notes_table_commands(db),
-                # generate_midi_messages_table_commands(db),
+                generate_midi_messages_table_commands(db),
                 ]
         
         combined_sql = "\n".join(sql_commands)
         db.cursor.executescript(combined_sql)
+        # db.insert_first_row_if_needed()
         db.connection.commit()
 
 
