@@ -202,7 +202,7 @@ class Database:
         
         return create_table_command
     
-    
+
     def insert_message_column_data(self):
         insert_command = '''
             WITH RestRows AS (
@@ -256,31 +256,6 @@ class Database:
         '''
 
         return insert_command
-    
-    
-    def insert_first_row_if_needed(self):
-        # Fetch the first row's Start value from the message_column table
-        check_first_row_command = '''
-            SELECT 
-                Start,
-                Note,
-                Velocity,
-                NoteID,
-                TextureID
-            FROM message_column
-            LIMIT 1;
-        '''
-        self.cursor.execute(check_first_row_command)
-        first_row = self.cursor.fetchone()
-
-        if first_row["Start"] > 0:
-            # The first row's Start value is greater than 0, insert a new row at the beginning
-            insert_first_row_command = f'''
-                INSERT INTO message_column (Start, End, Duration, Velocity, Note, Message, NoteID, TextureID)
-                VALUES (0, {first_row["Start"]}, {first_row['Start']}, {first_row['Velocity']}, {first_row['Note']}, 'rest', {first_row['NoteID']}, {first_row['TextureID']});
-            '''
-            self.cursor.execute(insert_first_row_command)
-            self.connection.commit()
 
 
     def create_temporary_midi_messages_table(self):

@@ -422,7 +422,6 @@ if __name__ == '__main__':
         
         combined_sql = "\n".join(sql_commands)
         db.cursor.executescript(combined_sql)
-        # db.insert_first_row_if_needed()
         db.connection.commit()
 
 
