@@ -31,20 +31,37 @@ class Database:
     def create_textures_table(self):
         columns = '''
             Name TEXT,
-            TextureID INTEGER PRIMARY KEY
+            GridID INTEGER PRIMARY KEY
         '''
         self.create_table('textures', columns)
+        
+        
+    def create_grids_table(self):
+        columns = '''
+            Numerator INTEGER,
+            Denominator INTEGER,
+            GridID INTEGER PRIMARY KEY
+        '''
+        self.create_table('grids', columns)
+
+        # Insert fractions into the "grids" table
+        for grid_id, fraction in enumerate(self.grids_set, start=1):
+            self.cursor.execute('INSERT INTO grids (Numerator, Denominator, GridID) VALUES (?, ?, ?)',
+                                (fraction.numerator, fraction.denominator, grid_id))
+
+        self.connection.commit()
 
 
     def create_notes_table(self):
         columns = '''
             Start INTEGER,
             Velocity INTEGER,
-            Note TEXT,
+            Note INTEGER,
             Duration INTEGER,
             NoteID INTEGER PRIMARY KEY,
-            TextureID INTEGER
+            GridID INTEGER
         '''
+        
         self.create_table('notes', columns)
 
 
@@ -58,7 +75,7 @@ class Database:
             Time INTEGER,
             MessageID INTEGER PRIMARY KEY,
             NoteID INTEGER,
-            TextureID INTEGER
+            GridID INTEGER
         '''
         
         self.create_table('messages', columns)
@@ -90,18 +107,32 @@ class Database:
 
         return " UNION ALL ".join(select_statements)
     
-
+    
     def generate_duration_commands(self, columns_list):
         columns_string = ', '.join(columns_list)
-        duration_values = [grid * self.scaling_factor for grid in self.grids_set]
-        length_of_reps = [int(math.pow(self.period, 2) * duration) for duration in duration_values]
 
-        table_commands = {}
-        for duration_value, length_of_one_rep, repeat in zip(duration_values, length_of_reps, self.repeats):
-            table_name = f"duration_{duration_value}"
-            table_commands[table_name] = self.generate_union_all_statements(columns_string, duration_value, length_of_one_rep, repeat)
+        # Fetch fractions and GridIDs from the "grids" table
+        self.cursor.execute('SELECT * FROM grids')
+        fractions_and_grid_ids = self.cursor.fetchall()
 
-        return table_commands
+        # Generate duration values based on fractions
+        duration_commands = {}
+        for row in fractions_and_grid_ids:
+            fraction = row['Numerator'] / row['Denominator']
+            grid_id = row['GridID']
+
+            # Assuming self.repeats is a list of repeat values corresponding to grid IDs
+            repeat_index = grid_id - 1  # Assuming grid_id starts from 1
+            repeat = self.repeats[repeat_index] if 0 <= repeat_index < len(self.repeats) else 1
+
+            duration_value = fraction * self.scaling_factor
+            length_of_one_rep = int(math.pow(self.period, 2) * duration_value)
+
+            table_name = f'grid_{grid_id}'
+            # Include "GridID" in the generated statement
+            duration_commands[table_name] = self.generate_union_all_statements(f'{columns_string}, {grid_id} AS "GridID"', duration_value, length_of_one_rep, repeat)
+
+        return duration_commands
 
 
     def insert_into_notes_command(self, table_names):
@@ -126,7 +157,7 @@ class Database:
             FROM notes
             GROUP BY Start
         )
-        SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.TextureID
+        SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
         FROM notes c
         LEFT JOIN max_durations m ON c.Start = m.Start;
         '''
@@ -141,7 +172,7 @@ class Database:
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Duration DESC) AS row_num
                 FROM max_duration
             )
-            SELECT Start, Velocity, Note, Duration, NoteID, TextureID
+            SELECT Start, Velocity, Note, Duration, NoteID, GridID
             FROM OrderedMaxDuration
             WHERE row_num = 1;
 
@@ -162,7 +193,7 @@ class Database:
                 Velocity INTEGER, 
                 Note INTEGER,
                 NoteID INTEGER,
-                TextureID INTEGER
+                GridID INTEGER
             );
         '''
         
@@ -179,7 +210,7 @@ class Database:
                 m.Velocity,
                 m.Note,
                 m.NoteID,
-                m.TextureID
+                m.GridID
             FROM max_duration m;
         '''
 
@@ -196,7 +227,7 @@ class Database:
                 Note INTEGER,
                 Message TEXT,
                 NoteID INTEGER,
-                TextureID INTEGER
+                GridID INTEGER
             );
         '''
         
@@ -214,7 +245,7 @@ class Database:
                     m.Note,
                     'note_on' AS Message,
                     m.NoteID,
-                    m.TextureID
+                    m.GridID
                 FROM (
                     SELECT
                         m.Start,
@@ -224,7 +255,7 @@ class Database:
                         m.Velocity,
                         m.Note,
                         m.NoteID,
-                        m.TextureID
+                        m.GridID
                     FROM end_column m
                 ) m
                 WHERE m.lead_start > m.End
@@ -238,7 +269,7 @@ class Database:
                 m.Note,
                 CASE WHEN lead_start > m.End THEN 'note_off' ELSE 'note_on' END AS Message,
                 m.NoteID,
-                m.TextureID
+                m.GridID
             FROM (
                 SELECT
                     m.Start,
@@ -247,7 +278,7 @@ class Database:
                     m.Velocity,
                     m.Note,
                     m.NoteID,
-                    m.TextureID
+                    m.GridID
                 FROM end_column m
             ) m
             UNION ALL
@@ -273,20 +304,20 @@ class Database:
                     ELSE 0 
                 END AS Time,
                 NoteID,
-                TextureID
+                GridID
             FROM "message_column";
         '''
 
         
     def append_note_off_message(self):
         return f'''
-            INSERT INTO "midi_messages" (Start, End, Velocity, Note, Message, Time, NoteID, TextureID)
+            INSERT INTO "midi_messages" (Start, End, Velocity, Note, Message, Time, NoteID, GridID)
             SELECT 
                 Start, End, Velocity, Note,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time,
                 NoteID,
-                TextureID
+                GridID
             FROM "midi_messages" AS t
             WHERE Message = 'note_on';
         '''
@@ -303,7 +334,7 @@ class Database:
                 Message,
                 Time,
                 NoteID,
-                TextureID
+                GridID
             FROM "midi_messages"
             ORDER BY Start;
         '''
@@ -311,8 +342,8 @@ class Database:
 
     def insert_into_messages_table(self):
         return '''
-            INSERT INTO "messages" (Start, End, Velocity, Note, Message, Time, NoteID, TextureID)
-            SELECT Start, End, Velocity, Note, Message, Time, NoteID, TextureID
+            INSERT INTO "messages" (Start, End, Velocity, Note, Message, Time, NoteID, GridID)
+            SELECT Start, End, Velocity, Note, Message, Time, NoteID, GridID
             FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
