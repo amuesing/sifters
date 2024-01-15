@@ -149,17 +149,71 @@ class Database:
         return "\n".join(commands)
 
 
-    def generate_max_duration_command(self):
-        max_duration_command =  '''
+    # def generate_max_duration_command(self):
+    #     max_duration_command =  '''
+    #     CREATE TEMPORARY TABLE max_duration AS
+    #     WITH max_durations AS (
+    #         SELECT Start, MAX(Duration) as MaxDuration
+    #         FROM notes
+    #         GROUP BY Start
+    #     )
+    #     SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
+    #     FROM notes c
+    #     LEFT JOIN max_durations m ON c.Start = m.Start;
+    #     '''
+        
+    #     return max_duration_command
+    
+    
+    # def generate_max_duration_commands(self):
+    #     max_duration_commands = []
+
+    #     # Fetch unique GridIDs from the "grids" table
+    #     self.cursor.execute('SELECT DISTINCT GridID FROM grids')
+    #     unique_grid_ids = [row['GridID'] for row in self.cursor.fetchall()]
+
+    #     for grid_id in unique_grid_ids:
+    #         # If a specific GridID is provided, add a WHERE clause to filter by GridID
+    #         filter_condition = f'WHERE GridID = {grid_id}' if grid_id is not None else ''
+
+    #         max_duration_command = f'''
+    #         CREATE TABLE max_duration_{grid_id} AS
+    #         WITH max_durations AS (
+    #             SELECT Start, MAX(Duration) as MaxDuration
+    #             FROM notes
+    #             {filter_condition}
+    #             GROUP BY Start
+    #         )
+    #         SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
+    #         FROM notes c
+    #         LEFT JOIN max_durations m ON c.Start = m.Start
+    #         {filter_condition};
+    #         '''
+
+    #         max_duration_commands.append(max_duration_command)
+
+    #     return max_duration_commands
+    
+    
+    def generate_max_duration_command(self, grid_id=None):
+        if grid_id is not None:
+            # If a specific GridID is provided, add a WHERE clause to filter by GridID
+            filter_condition = f'WHERE GridID = {grid_id}'
+        else:
+            filter_condition = ''
+
+        max_duration_command = f'''
         CREATE TEMPORARY TABLE max_duration AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
             FROM notes
+            {filter_condition}
             GROUP BY Start
         )
         SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
         FROM notes c
-        LEFT JOIN max_durations m ON c.Start = m.Start;
+        LEFT JOIN max_durations m ON c.Start = m.Start
+        {filter_condition};
         '''
         
         return max_duration_command
@@ -347,3 +401,4 @@ class Database:
             FROM "midi_messages_ordered"
             ORDER BY Start ASC;
         '''
+    

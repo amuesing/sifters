@@ -374,28 +374,6 @@ if __name__ == '__main__':
         return notes_data
     
     
-    def generate_notes_table_commands(db):
-        commands = []
-        commands.append(db.generate_max_duration_command())
-        commands.append(db.preprocess_max_duration())
-        commands.append(db.generate_end_column_command())
-        commands.append(db.insert_end_column_data())
-        commands.append(db.generate_message_column_command())
-        commands.append(db.insert_message_column_data())
-
-        return '\n'.join(commands)
-    
-    
-    def generate_midi_messages_table_commands(db):
-        command = []
-        command.append(db.create_temporary_midi_messages_table())
-        command.append(db.append_note_off_message())
-        command.append(db.order_midi_messages_by_start())
-        command.append(db.insert_into_messages_table())
-
-        return '\n'.join(command)
-    
-    
     def set_database_tables(db, notes_data):
         table_names = []
         
@@ -416,9 +394,18 @@ if __name__ == '__main__':
         db.cursor.executescript(db.insert_into_notes_command(table_names))
 
         sql_commands = [
-                generate_notes_table_commands(db),
-                generate_midi_messages_table_commands(db),
-                ]
+            ### MAKE METHOD TO PARSE OUT GRIDID INTO SEPARATE TABLES BASED ON GRID
+            db.generate_max_duration_command(),
+            db.preprocess_max_duration(),
+            db.generate_end_column_command(),
+            db.insert_end_column_data(),
+            db.generate_message_column_command(),
+            db.insert_message_column_data(),
+            db.create_temporary_midi_messages_table(),
+            db.append_note_off_message(),
+            db.order_midi_messages_by_start(),
+            db.insert_into_messages_table(),
+        ]
         
         combined_sql = "\n".join(sql_commands)
         db.cursor.executescript(combined_sql)
@@ -439,8 +426,7 @@ if __name__ == '__main__':
     #         (8@1&5@2)
     #         '''
     
-    ### THIS SHOULD BE A TABLE BASED ON THE DIFFERENT GRIDS,
-    ### THEN EACH GRID SHOULD BE TRACKED WITHIN THE NOTES TABLE
+    ### NOW THAT GRIDID IS IMPLEMENTED IS GRIDID TO GENERATE INDIVIDUAL MIDI FILES FOR EACH GRID
     
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
