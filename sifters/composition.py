@@ -428,10 +428,6 @@ if __name__ == '__main__':
     # sieve = '''
     #         (8@1&5@2)
     #         '''
-    
-    ### WHAT IF I WANT TO JUST GET A SLICE OF MIDI DATA THAT DOES NOT NEED TO BE NORMALIZED,
-    ### TO LOOP IN ABLETON?
-    ### MAKE IT POSSIBLE TO NOT NORMALIZE BASED ON A BOOLEAN VALUE PASSES TO COMPOSITION CLASS ON INIT
         
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
