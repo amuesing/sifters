@@ -11,7 +11,8 @@ class Database:
         self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
-
+        
+        self.normalized_grids = mediator.normalized_grids
         self.grids_set = mediator.grids_set
         self.repeats = mediator.repeats
         self.period = mediator.period
@@ -121,15 +122,11 @@ class Database:
             fraction = row['Numerator'] / row['Denominator']
             grid_id = row['GridID']
 
-            # Assuming self.repeats is a list of repeat values corresponding to grid IDs
-            repeat_index = grid_id - 1  # Assuming grid_id starts from 1
-            repeat = self.repeats[repeat_index] if 0 <= repeat_index < len(self.repeats) else 1
-
+            repeat_index = grid_id - 1
+            repeat = self.repeats[repeat_index] if self.normalized_grids and 0 <= repeat_index < len(self.repeats) else 1
             duration_value = fraction * self.scaling_factor
             length_of_one_rep = int(math.pow(self.period, 2) * duration_value)
-
             table_name = f'grid_{grid_id}'
-            # Include "GridID" in the generated statement
             duration_commands[table_name] = self.generate_union_all_statements(f'{columns_string}, {grid_id} AS "GridID"', duration_value, length_of_one_rep, repeat)
 
         return duration_commands
@@ -147,100 +144,56 @@ class Database:
             commands.append(sql_command)
 
         return "\n".join(commands)
-
-
-    # def generate_max_duration_command(self):
-    #     max_duration_command =  '''
-    #     CREATE TEMPORARY TABLE max_duration AS
-    #     WITH max_durations AS (
-    #         SELECT Start, MAX(Duration) as MaxDuration
-    #         FROM notes
-    #         GROUP BY Start
-    #     )
-    #     SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
-    #     FROM notes c
-    #     LEFT JOIN max_durations m ON c.Start = m.Start;
-    #     '''
+    
+    
+    def select_distinct_grids(self):
+        self.cursor.execute('SELECT GridID FROM grids')
+        grid_ids = [row['GridID'] for row in self.cursor.fetchall()]
         
-    #     return max_duration_command
+        return grid_ids
     
     
-    # def generate_max_duration_commands(self):
-    #     max_duration_commands = []
-
-    #     # Fetch unique GridIDs from the "grids" table
-    #     self.cursor.execute('SELECT DISTINCT GridID FROM grids')
-    #     unique_grid_ids = [row['GridID'] for row in self.cursor.fetchall()]
-
-    #     for grid_id in unique_grid_ids:
-    #         # If a specific GridID is provided, add a WHERE clause to filter by GridID
-    #         filter_condition = f'WHERE GridID = {grid_id}' if grid_id is not None else ''
-
-    #         max_duration_command = f'''
-    #         CREATE TABLE max_duration_{grid_id} AS
-    #         WITH max_durations AS (
-    #             SELECT Start, MAX(Duration) as MaxDuration
-    #             FROM notes
-    #             {filter_condition}
-    #             GROUP BY Start
-    #         )
-    #         SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
-    #         FROM notes c
-    #         LEFT JOIN max_durations m ON c.Start = m.Start
-    #         {filter_condition};
-    #         '''
-
-    #         max_duration_commands.append(max_duration_command)
-
-    #     return max_duration_commands
-    
-    
-    def generate_max_duration_command(self, grid_id=None):
-        if grid_id is not None:
-            # If a specific GridID is provided, add a WHERE clause to filter by GridID
-            filter_condition = f'WHERE GridID = {grid_id}'
-        else:
-            filter_condition = ''
-
+    def generate_max_duration_commands(self, grid_id):
         max_duration_command = f'''
-        CREATE TEMPORARY TABLE max_duration AS
+        CREATE TEMPORARY TABLE max_duration_{grid_id} AS
         WITH max_durations AS (
             SELECT Start, MAX(Duration) as MaxDuration
             FROM notes
-            {filter_condition}
+            WHERE GridID = {grid_id}
             GROUP BY Start
         )
         SELECT c.Start, c.Velocity, c.Note, m.MaxDuration as Duration, c.NoteID, c.GridID
         FROM notes c
         LEFT JOIN max_durations m ON c.Start = m.Start
-        {filter_condition};
+        WHERE GridID = {grid_id};
         '''
         
         return max_duration_command
 
 
-    def preprocess_max_duration(self):
-        preprocess_command = '''
-            CREATE TEMPORARY TABLE preprocess_max_duration AS
+    def preprocess_max_duration(self, grid_id):
+        preprocess_command = f'''
+            CREATE TEMPORARY TABLE preprocess_max_duration_{grid_id} AS
             WITH OrderedMaxDuration AS (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY Start ORDER BY Duration DESC) AS row_num
-                FROM max_duration
+                FROM max_duration_{grid_id}
             )
             SELECT Start, Velocity, Note, Duration, NoteID, GridID
             FROM OrderedMaxDuration
             WHERE row_num = 1;
 
-            DELETE FROM max_duration;
+            DELETE FROM max_duration_{grid_id};
 
-            INSERT INTO max_duration SELECT * FROM preprocess_max_duration;
+            INSERT INTO max_duration_{grid_id} SELECT * FROM preprocess_max_duration_{grid_id};
         '''
         
         return preprocess_command
 
 
-    def generate_end_column_command(self):
-        create_table_command = '''
-            CREATE TEMPORARY TABLE end_column (
+
+    def generate_end_column_command(self, grid_id):
+        create_table_command = f'''
+            CREATE TEMPORARY TABLE end_column_{grid_id} (
                 Start INTEGER, 
                 End INTEGER, 
                 Duration INTEGER,
@@ -254,9 +207,9 @@ class Database:
         return create_table_command
     
     
-    def insert_end_column_data(self):
-        insert_data_command = '''
-            INSERT INTO end_column
+    def insert_end_column_data(self, grid_id):
+        insert_data_command = f'''
+            INSERT INTO end_column_{grid_id}
             SELECT
                 m.Start,
                 MIN(m.Start + m.Duration, LEAD(m.Start, 1, m.Start + m.Duration) OVER (ORDER BY m.Start)) AS End,
@@ -265,15 +218,15 @@ class Database:
                 m.Note,
                 m.NoteID,
                 m.GridID
-            FROM max_duration m;
+            FROM max_duration_{grid_id} m;
         '''
 
         return insert_data_command
     
     
-    def generate_message_column_command(self):
-        create_table_command = '''
-            CREATE TEMPORARY TABLE message_column (
+    def generate_message_column_command(self, grid_id):
+        create_table_command = f'''
+            CREATE TEMPORARY TABLE message_column_{grid_id} (
                 Start INTEGER, 
                 End INTEGER, 
                 Duration INTEGER,
@@ -288,8 +241,8 @@ class Database:
         return create_table_command
     
 
-    def insert_message_column_data(self):
-        insert_command = '''
+    def insert_message_column_data(self, grid_id):
+        insert_command = f'''
             WITH RestRows AS (
                 SELECT
                     m.Start,
@@ -310,11 +263,11 @@ class Database:
                         m.Note,
                         m.NoteID,
                         m.GridID
-                    FROM end_column m
+                    FROM end_column_{grid_id} m
                 ) m
                 WHERE m.lead_start > m.End
             )
-            INSERT INTO message_column
+            INSERT INTO message_column_{grid_id}
             SELECT
                 CASE WHEN lead_start > m.End THEN m.End ELSE m.Start END AS Start,
                 COALESCE(lead_start, m.End) AS End,
@@ -333,7 +286,7 @@ class Database:
                     m.Note,
                     m.NoteID,
                     m.GridID
-                FROM end_column m
+                FROM end_column_{grid_id} m
             ) m
             UNION ALL
             SELECT * FROM RestRows
@@ -343,10 +296,10 @@ class Database:
         return insert_command
 
 
-    def create_temporary_midi_messages_table(self):
+    def create_temporary_midi_messages_table(self, grid_id):
         return f'''
-            CREATE TEMPORARY TABLE "midi_messages" AS
-            SELECT 
+            CREATE TEMPORARY TABLE midi_messages_{grid_id} AS
+            SELECT  
                 Start,
                 End,
                 Velocity,
@@ -359,27 +312,27 @@ class Database:
                 END AS Time,
                 NoteID,
                 GridID
-            FROM "message_column";
+            FROM message_column_{grid_id};
         '''
 
         
-    def append_note_off_message(self):
+    def append_note_off_message(self, grid_id):
         return f'''
-            INSERT INTO "midi_messages" (Start, End, Velocity, Note, Message, Time, NoteID, GridID)
+            INSERT INTO midi_messages_{grid_id} (Start, End, Velocity, Note, Message, Time, NoteID, GridID)
             SELECT 
                 Start, End, Velocity, Note,
                 'note_off' AS Message,
                 (End - Start) * {self.ticks_per_beat} AS Time,
                 NoteID,
                 GridID
-            FROM "midi_messages" AS t
+            FROM midi_messages_{grid_id} AS t
             WHERE Message = 'note_on';
         '''
 
 
-    def order_midi_messages_by_start(self):
-        return '''
-            CREATE TEMPORARY TABLE "midi_messages_ordered" AS
+    def order_midi_messages_by_start(self, grid_id):
+        return f'''
+            CREATE TEMPORARY TABLE midi_messages_ordered_{grid_id} AS
             SELECT
                 Start,
                 End,
@@ -389,16 +342,16 @@ class Database:
                 Time,
                 NoteID,
                 GridID
-            FROM "midi_messages"
+            FROM midi_messages_{grid_id}
             ORDER BY Start;
         '''
 
 
-    def insert_into_messages_table(self):
-        return '''
-            INSERT INTO "messages" (Start, End, Velocity, Note, Message, Time, NoteID, GridID)
+    def insert_into_messages_table(self, grid_id):
+        return f'''
+            INSERT INTO messages (Start, End, Velocity, Note, Message, Time, NoteID, GridID)
             SELECT Start, End, Velocity, Note, Message, Time, NoteID, GridID
-            FROM "midi_messages_ordered"
+            FROM midi_messages_ordered_{grid_id}
             ORDER BY Start ASC;
         '''
     

@@ -16,13 +16,14 @@ from generators import *
 class Composition:
     
     
-    def __init__(self, sieve, grids_set=None):
+    def __init__(self, sieve, grids_set=None, normalized_grids=True):
         self.ticks_per_beat = 480
         self.scaling_factor = 100000
         
         self.sieve = sieve
         self.period = None
         self.binary = self.set_binary(sieve)
+        self.normalized_grids = normalized_grids
         
         # Interpolate a dictionary which tracks the indices of pattern changes within self.binary.
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
@@ -232,7 +233,7 @@ class Composition:
     def create_tuning_file(self, floats_list):
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
-        file_name = 'data/scl/tuning.scl'
+        file_name = 'data/scl/.tuning.scl'
         # Construct the file_content
         file_content = f'''! {title}
 !
@@ -269,71 +270,17 @@ class Composition:
 
         # Return the original list of cents
         return cents
+        
+        
+if __name__ == '__main__':
     
     
-    def create_dataframe(self, notes_data):
+    def create_dataframe(notes_data):
         columns = ['Start', 'Velocity', 'Note', 'Duration', 'GridID']
         dataframe = pandas.DataFrame(notes_data, columns=columns)
         dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
         dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
         return dataframe
-
-    
-    def fetch_midi_messages_from_sql(self):
-        query = "SELECT * FROM messages"
-        db.cursor.execute(query)
-        return db.cursor.fetchall()
-
-    
-    def data_to_midi_messages(self, data):
-        messages = []
-        midi_data_list = []
-        for row in data:
-            message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / self.scaling_factor)}
-            if row['Message'] == 'note_on' or row['Message'] == 'note_off':
-                msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=message_dict['Time'])
-                message_dict['Note'] = row['Note']
-                message_dict['Velocity'] = row['Velocity']
-
-            messages.append(msg)
-            midi_data_list.append(message_dict)
-
-        return messages, midi_data_list
-
-
-    def write_midi(self):
-        midi_track = mido.MidiTrack()
-        midi_track.name = 'mono'
-
-        # Create a new MIDI file object
-        score = mido.MidiFile()
-
-        # Set the ticks per beat resolution
-        score.ticks_per_beat = self.ticks_per_beat
-
-        # Setting BPM
-        bpm = 20  # You can change this value to set a different BPM
-        tempo = int(60_000_000 / bpm)
-        midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
-        
-        midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
-
-        # Fetch data and convert to MIDI messages
-        data = self.fetch_midi_messages_from_sql()
-        midi_messages, midi_data_list = self.data_to_midi_messages(data)
-        
-        dataframe = pandas.DataFrame(midi_data_list)
-        dataframe.to_csv('data/csv/.MIDI_Messages.csv', index=False)
-
-        # Append messages to MIDI track and save MIDI file
-        for message in midi_messages:
-            midi_track.append(message)
-
-        score.tracks.append(midi_track)
-        score.save('data/mid/score.mid')
-        
-        
-if __name__ == '__main__':
     
     
     def generate_notes_data(comp):
@@ -343,10 +290,10 @@ if __name__ == '__main__':
         texture_id = 1
         
         steps = comp.get_successive_diff(comp.indices)
-        normalized_Sieve = comp.generate_pitchclass_matrix(comp.indices)
-        matrix_represented_by_size = comp.represent_matrix_by_size(normalized_Sieve)
+        normalized_matrix = comp.generate_pitchclass_matrix(comp.indices)
+        matrix_represented_by_size = comp.represent_matrix_by_size(normalized_matrix)
         matrix_represented_by_size = comp.convert_matrix_to_dataframe(matrix_represented_by_size)
-        sieve_adjusted_by_step = comp.indices[0] + normalized_Sieve
+        sieve_adjusted_by_step = comp.indices[0] + normalized_matrix
         sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
         
         # For each factor, create exactly the number of notes required for each texture to achieve parity
@@ -369,13 +316,14 @@ if __name__ == '__main__':
                 notes_data.append((start, velocity, next(note_pool), duration, texture_id))
         
         comp.select_scalar_segments(list(set(indice_list)))
-        notes_data = comp.create_dataframe(notes_data)
+        notes_data = create_dataframe(notes_data)
         notes_data.to_csv('data/csv/.Notes_Data.csv', index=False)
         return notes_data
     
     
     def set_database_tables(db, notes_data):
         table_names = []
+        sql_commands = []
         
         db.create_grids_table()
         db.create_notes_table()
@@ -392,24 +340,79 @@ if __name__ == '__main__':
 
         db.cursor.execute('DELETE FROM notes;')
         db.cursor.executescript(db.insert_into_notes_command(table_names))
-
-        sql_commands = [
-            ### MAKE METHOD TO PARSE OUT GRIDID INTO SEPARATE TABLES BASED ON GRID
-            db.generate_max_duration_command(),
-            db.preprocess_max_duration(),
-            db.generate_end_column_command(),
-            db.insert_end_column_data(),
-            db.generate_message_column_command(),
-            db.insert_message_column_data(),
-            db.create_temporary_midi_messages_table(),
-            db.append_note_off_message(),
-            db.order_midi_messages_by_start(),
-            db.insert_into_messages_table(),
-        ]
+        
+        grid_ids = db.select_distinct_grids()
+        
+        for grid_id in grid_ids:
+            sql_commands.append(db.generate_max_duration_commands(grid_id)),
+            sql_commands.append(db.preprocess_max_duration(grid_id)),
+            sql_commands.append(db.generate_end_column_command(grid_id)),
+            sql_commands.append(db.insert_end_column_data(grid_id)),
+            sql_commands.append(db.generate_message_column_command(grid_id)),
+            sql_commands.append(db.insert_message_column_data(grid_id)),
+            sql_commands.append(db.create_temporary_midi_messages_table(grid_id)),
+            sql_commands.append(db.append_note_off_message(grid_id)),
+            sql_commands.append(db.order_midi_messages_by_start(grid_id)),
+            sql_commands.append(db.insert_into_messages_table(grid_id)),
         
         combined_sql = "\n".join(sql_commands)
         db.cursor.executescript(combined_sql)
         db.connection.commit()
+        
+        
+    # Function to fetch MIDI messages for a specific GridID
+    def fetch_midi_messages_for_grid_id(grid_id):
+        query = f"SELECT * FROM messages WHERE GridID = {grid_id}"
+        db.cursor.execute(query)
+        return db.cursor.fetchall()
+
+    
+    def data_to_midi_messages(data, scaling_factor):
+        messages = []
+        midi_data_list = []
+        for row in data:
+            message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / scaling_factor)}
+            if row['Message'] == 'note_on' or row['Message'] == 'note_off':
+                msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=message_dict['Time'])
+                message_dict['Note'] = row['Note']
+                message_dict['Velocity'] = row['Velocity']
+
+            messages.append(msg)
+            midi_data_list.append(message_dict)
+
+        return messages, midi_data_list
+
+
+    def write_midi(comp, grid_id):
+        midi_track = mido.MidiTrack()
+        midi_track.name = f'grid_{grid_id}'
+
+        # Create a new MIDI file object
+        score = mido.MidiFile()
+
+        # Set the ticks per beat resolution
+        score.ticks_per_beat = comp.ticks_per_beat
+
+        # Setting BPM
+        bpm = 20  # You can change this value to set a different BPM
+        tempo = int(60_000_000 / bpm)
+        midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
+
+        midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
+
+        # Fetch data for the specific GridID and convert to MIDI messages
+        data = fetch_midi_messages_for_grid_id(grid_id)
+        midi_messages, midi_data_list = data_to_midi_messages(data, comp.scaling_factor)
+
+        dataframe = pandas.DataFrame(midi_data_list)
+        dataframe.to_csv(f'data/csv/.MIDI_Messages_GridID_{grid_id}.csv', index=False)
+
+        # Append messages to MIDI track and save MIDI file
+        for message in midi_messages:
+            midi_track.append(message)
+
+        score.tracks.append(midi_track)
+        score.save(f'data/mid/.Grid_{grid_id}.mid')
 
 
     sieve = '''
@@ -426,16 +429,21 @@ if __name__ == '__main__':
     #         (8@1&5@2)
     #         '''
     
-    ### NOW THAT GRIDID IS IMPLEMENTED IS GRIDID TO GENERATE INDIVIDUAL MIDI FILES FOR EACH GRID
-    
+    ### WHAT IF I WANT TO JUST GET A SLICE OF MIDI DATA THAT DOES NOT NEED TO BE NORMALIZED,
+    ### TO LOOP IN ABLETON?
+    ### MAKE IT POSSIBLE TO NOT NORMALIZE BASED ON A BOOLEAN VALUE PASSES TO COMPOSITION CLASS ON INIT
+        
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
     
     ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
     # siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
     
-    comp = Composition(sieve)
+    comp = Composition(sieve, normalized_grids=False)
     notes_data = generate_notes_data(comp)
     db = database.Database(comp)
     set_database_tables(db, notes_data)
-    comp.write_midi()
+    grid_ids = db.select_distinct_grids()
+
+    for grid_id in grid_ids:
+        write_midi(comp, grid_id)
