@@ -1,50 +1,10 @@
-sifters
-
-_______________________________________________________________________________
-Interlude I
-
-zerØ Σum 
-
-Interlude II
-
-sign\\ified
-
-Interlude III
-
-it's not just me
-
-Interlude IV
-_______________________________________________________________________________
 isort sifters/composition.py
 
 # Derive self-similar lists of integers based on the self.changes attribute.
 self.form = [[num] * len(self.changes) for num in self.changes]
 
-FUNCTIONALITY:
-
-1) Utilize logical sieves to generate a sequence of MIDI 'note_on', 'note_off', and 'pitchwheel'
-messages.
-
-2) Utilize 
-
-LIMITATIONS:
-
-1) In order to have simultaneous pitchwheel events it is necessary to isolate each
-within it's own midi channel. Since there are a maximum of 16 midi channels, it is 
-only possible to have 16 simultaneous pitchwheel events.
-
-GOALS:
-
-1) Create distict classes which emulate the behavior of contrapuntal textures. Create
-Heterophonic, Homophonic, Monophonic, NonPitched, and Polyphonic classes. These classes
-are sub-classes of the Texture class but alter the resulting data so that it mimics
-the behaviors of each contrapuntal texture.
-
 TO-DO:
 
-1) Remove calling methods from the constructor (__init__) methods in a class and
-call explicity from the if __name__ = '__main__'
+1) Consider using phase offset as a modulation source
 
-2) Consider using phase offset as a modulation source
-
-3) Monophonic, Polyphonic, Nonpitched, Homophonic, and Heterophonic textures
+2) Monophonic, Polyphonic, Nonpitched, Homophonic, and Heterophonic behaviors

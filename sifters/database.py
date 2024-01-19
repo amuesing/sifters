@@ -190,7 +190,6 @@ class Database:
         return preprocess_command
 
 
-
     def generate_end_column_command(self, grid_id):
         create_table_command = f'''
             CREATE TEMPORARY TABLE end_column_{grid_id} (

@@ -233,7 +233,7 @@ class Composition:
     def create_tuning_file(self, floats_list):
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
-        file_name = 'data/scl/.tuning.scl'
+        file_name = 'data/scl/tuning.scl'
         # Construct the file_content
         file_content = f'''! {title}
 !
@@ -360,7 +360,6 @@ if __name__ == '__main__':
         db.connection.commit()
         
         
-    # Function to fetch MIDI messages for a specific GridID
     def fetch_midi_messages_for_grid_id(grid_id):
         query = f"SELECT * FROM messages WHERE GridID = {grid_id}"
         db.cursor.execute(query)
@@ -371,7 +370,8 @@ if __name__ == '__main__':
         messages = []
         midi_data_list = []
         for row in data:
-            message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / scaling_factor)}
+            # Increase the time value of the MIDI message by dividing the scaling_factor by 10.
+            message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / (scaling_factor / 10))}
             if row['Message'] == 'note_on' or row['Message'] == 'note_off':
                 msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=message_dict['Time'])
                 message_dict['Note'] = row['Note']
@@ -394,16 +394,14 @@ if __name__ == '__main__':
         score.ticks_per_beat = comp.ticks_per_beat
 
         # Setting BPM
-        bpm = 20  # You can change this value to set a different BPM
+        bpm = 60  # You can change this value to set a different BPM
         tempo = int(60_000_000 / bpm)
         midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
-
-        midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
+        # midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
 
         # Fetch data for the specific GridID and convert to MIDI messages
         data = fetch_midi_messages_for_grid_id(grid_id)
         midi_messages, midi_data_list = data_to_midi_messages(data, comp.scaling_factor)
-
         dataframe = pandas.DataFrame(midi_data_list)
         dataframe.to_csv(f'data/csv/.MIDI_Messages_GridID_{grid_id}.csv', index=False)
 
@@ -412,7 +410,7 @@ if __name__ == '__main__':
             midi_track.append(message)
 
         score.tracks.append(midi_track)
-        score.save(f'data/mid/.Grid_{grid_id}.mid')
+        score.save(f'data/mid/Grid_{grid_id}.mid')
 
 
     sieve = '''
