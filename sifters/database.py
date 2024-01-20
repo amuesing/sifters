@@ -8,7 +8,7 @@ class Database:
     
     def __init__(self, mediator):
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        self.connection = sqlite3.connect(f'data/db/.{self.__class__.__name__}_{timestamp}.db')
+        self.connection = sqlite3.connect(f'.data/db/.{self.__class__.__name__}_{timestamp}.db')
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
         
