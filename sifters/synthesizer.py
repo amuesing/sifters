@@ -6,17 +6,16 @@ import matplotlib.pyplot as plt
 
 class Synthesizer:
     
-    def __init__(self, mediator):
+    def __init__(self):
         # Serum is optimized at 2048 cycles-per-frame
         self.num_samples = 2048
         # Serum is optimized at a sample rate of 96000
         self.sample_rate = 96000
-        # 46.875 cooresponds to the frequency of one cycle relative to the designated num_samples (2048) and sample_rate (96000)
+        # 46.875 corresponds to the frequency of one cycle relative to the designated num_samples (2048) and sample_rate (96000)
         self.reference_frequency = 46.875
         self.time = numpy.arange(0, self.num_samples) / self.sample_rate
         
         self.grids_set = [fractions.Fraction(1, 40), fractions.Fraction(1, 20), fractions.Fraction(3, 40), fractions.Fraction(1, 10), fractions.Fraction(1, 8)]
-        # self.grids_set = mediator.grids_set
     
     
     def generate_sine_wave(self, amplitude=1, frequency=None, time=None, phase=0):
@@ -27,7 +26,8 @@ class Synthesizer:
         return sine_wave
     
     
-    def generate_adsr_envelope(self, attack_time=.2, decay_time=.2, sustain_level=.75, release_time=.2, length=2048):
+    def generate_adsr_envelope(self, attack_time=.2, decay_time=.2, sustain_level=.75, release_time=.2, length=None):
+        length = length if length is not None else self.num_samples
         envelope = numpy.zeros(length)
         
         # Attack
@@ -74,33 +74,46 @@ class Synthesizer:
         
 if __name__ == '__main__':
     
+    synth = Synthesizer()
     
-    synth = Synthesizer(mediator=None)
-
+    frequency_multiplier = 8
     # Use the reference frequency as the carrier frequency
-    carrier_frequency = synth.reference_frequency * 64
+    carrier_frequency = synth.reference_frequency * frequency_multiplier
     carrier_wave = synth.generate_sine_wave(frequency=carrier_frequency)
     
     # Use each grid fraction multiplied by the reference frequency as the modulating frequency
     modulating_frequencies = [grid_fraction * carrier_frequency for grid_fraction in synth.grids_set]
     
-    ### NEXT I SHOULD HAVE UNIQUE ENVELOPES FOR ALL MODULATING FREQUENCIES
-    envelope = synth.generate_adsr_envelope()
+    # Specify unique values for the carrier envelope
+    carrier_envelope = synth.generate_adsr_envelope(attack_time=0.1, decay_time=0.3, sustain_level=0.5, release_time=0.1)
     
-    enveloped_carrier = carrier_wave * envelope
-    # Generate ADSR envelopes for each modulating frequency
-    envelopes = [synth.generate_adsr_envelope() for _ in modulating_frequencies]
+    # Apply unique envelopes to carrier and modulator waves
+    enveloped_carrier = carrier_wave * carrier_envelope
+    
+    # Save the carrier wave as a WAV file
+    write('data/wav/carrier_wave.wav', synth.sample_rate, synth.normalize_waveform(carrier_wave))
+    
+    # Specify unique values for each modulator envelope
+    modulator_envelopes = [
+        synth.generate_adsr_envelope(attack_time=0.15, decay_time=0.2, sustain_level=0.8, release_time=0.15),
+        synth.generate_adsr_envelope(attack_time=0.2, decay_time=0.1, sustain_level=0.6, release_time=0.2),
+        synth.generate_adsr_envelope(attack_time=0.1, decay_time=0.4, sustain_level=0.7, release_time=0.1),
+        synth.generate_adsr_envelope(attack_time=0.2, decay_time=0.3, sustain_level=0.4, release_time=0.2),
+        synth.generate_adsr_envelope(attack_time=0.15, decay_time=0.2, sustain_level=0.3, release_time=0.15)
+    ]
 
     # Perform FM synthesis for each modulating frequency and visualize the resulting waveforms
     for i, modulating_frequency in enumerate(modulating_frequencies):
         modulating_wave = synth.generate_sine_wave(frequency=modulating_frequency)
-        enveloped_modulator = modulating_wave * envelope
         fm_wave = synth.perform_linear_fm_synthesis(carrier_wave, modulating_wave)
 
+        enveloped_modulator = modulating_wave * modulator_envelopes[i]
+        fm_wave_with_adsr = synth.perform_linear_fm_synthesis(enveloped_carrier, enveloped_modulator)
+
         # Visualize the waveform with FM synthesis and ADSR envelope
-        plt.plot(fm_wave, label=f'FM Wave with ADSR ({synth.grids_set[i]} fraction)')
+        plt.plot(fm_wave_with_adsr, label=f'FM Wave with ADSR ({synth.grids_set[i]} fraction)')
     
-    plt.title('FM Synthesis with ADSR Envelopes')
+    plt.title('FM Synthesis with Unique ADSR Envelopes')
     plt.xlabel('Sample')
     plt.ylabel('Amplitude')
     plt.legend()
@@ -109,9 +122,12 @@ if __name__ == '__main__':
     # Save the resulting waveforms with FM synthesis and ADSR envelope as WAV files
     for i, modulating_frequency in enumerate(modulating_frequencies):
         modulating_wave = synth.generate_sine_wave(frequency=modulating_frequency)
-        fm_wave = synth.perform_linear_fm_synthesis(synth.generate_sine_wave(frequency=carrier_frequency),
-                                                    modulating_wave)
-        fm_wave_with_adsr = fm_wave * envelopes[i]
+        fm_wave = synth.perform_linear_fm_synthesis(carrier_wave, modulating_wave)
+
+        # Apply unique envelopes to carrier and modulator waves
+        enveloped_carrier = carrier_wave * carrier_envelope
+        enveloped_modulator = modulating_wave * modulator_envelopes[i]
+        fm_wave_with_adsr = synth.perform_linear_fm_synthesis(enveloped_carrier, enveloped_modulator)
 
         # Save the waveform with FM synthesis and ADSR envelope as a WAV file
         write(f'data/wav/fm_wave_{i + 1}.wav', synth.sample_rate, synth.normalize_waveform(fm_wave_with_adsr))
