@@ -5,10 +5,14 @@ import sqlite3
 
 class Database:
     
-    
-    def __init__(self, mediator):
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        self.connection = sqlite3.connect(f'data/db/{self.__class__.__name__}_{timestamp}.db')
+    def __init__(self, mediator, use_timestamp=False):
+        if use_timestamp:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            db_name = f'data/db/{self.__class__.__name__}_{timestamp}.db'
+        else:
+            db_name = f'data/db/{self.__class__.__name__}.db'
+
+        self.connection = sqlite3.connect(db_name)
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
         
@@ -18,6 +22,19 @@ class Database:
         self.period = mediator.period
         self.ticks_per_beat = mediator.ticks_per_beat
         self.scaling_factor = mediator.scaling_factor
+        
+    
+    def clear_database(self):
+        # Get a list of all tables in the database
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = self.cursor.fetchall()
+
+        # Drop each table
+        for table in tables:
+            self.cursor.execute(f"DROP TABLE IF EXISTS {table['name']}")
+
+        # Commit the changes to make them permanent
+        self.connection.commit()
 
     
     def create_table(self, table_name, columns):

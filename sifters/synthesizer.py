@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 class Synthesizer:
     
     def __init__(self, mediator):
+        # Serum is optimized at 2048 cycles-per-frame
         self.num_samples = 2048
+        # Serum is optimized at a sample rate of 96000
         self.sample_rate = 96000
-        
-        # 46.875 cooresponds to the frequency of one cycle relative to the designated num_samples and sample_rate
+        # 46.875 cooresponds to the frequency of one cycle relative to the designated num_samples (2048) and sample_rate (96000)
         self.reference_frequency = 46.875
         self.time = numpy.arange(0, self.num_samples) / self.sample_rate
         
@@ -70,7 +71,10 @@ class Synthesizer:
         normalized_waveform = numpy.int16(waveform / numpy.max(numpy.abs(waveform)) * 32767)
         return normalized_waveform
         
+        
 if __name__ == '__main__':
+    
+    
     synth = Synthesizer(mediator=None)
 
     # Use the reference frequency as the carrier frequency
@@ -80,6 +84,7 @@ if __name__ == '__main__':
     # Use each grid fraction multiplied by the reference frequency as the modulating frequency
     modulating_frequencies = [grid_fraction * carrier_frequency for grid_fraction in synth.grids_set]
     
+    ### NEXT I SHOULD HAVE UNIQUE ENVELOPES FOR ALL MODULATING FREQUENCIES
     envelope = synth.generate_adsr_envelope()
     
     enveloped_carrier = carrier_wave * envelope
@@ -109,6 +114,6 @@ if __name__ == '__main__':
         fm_wave_with_adsr = fm_wave * envelopes[i]
 
         # Save the waveform with FM synthesis and ADSR envelope as a WAV file
-        write(f'data/wav/fm_wave_with_adsr_{i + 1}.wav', synth.sample_rate, synth.normalize_waveform(fm_wave_with_adsr))
+        write(f'data/wav/fm_wave_{i + 1}.wav', synth.sample_rate, synth.normalize_waveform(fm_wave_with_adsr))
     
     print("WAV files saved successfully.")

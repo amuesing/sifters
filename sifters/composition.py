@@ -16,7 +16,7 @@ import synthesizer
 class Composition:
     
     
-    def __init__(self, sieve, grids_set=None, normalized_grids=True):
+    def __init__(self, sieve, grids_set=None, normalized_grids=False):
         self.ticks_per_beat = 480
         self.scaling_factor = 100000
         
@@ -90,7 +90,7 @@ class Composition:
         # Remove duplicates from each grid while keeping the original order.
         grids = self.get_unique_fractions(grids) 
         
-        sorted_grids = sorted(grids)
+        sorted_grids = sorted(grids, reverse=True)
         # Return the grids containing unique fractions representing the proportion of the period.
         return sorted_grids
     
@@ -436,16 +436,15 @@ if __name__ == '__main__':
     ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
     # siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
     
-    comp = Composition(sieve, normalized_grids=False)
+    comp = Composition(sieve)
     notes_data = generate_notes_data(comp)
     
     db = database.Database(comp)
+    db.clear_database()
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
     
     synth = synthesizer.Synthesizer(comp)
-    for grid in synth.grids_set:
-        print(synth.reference_frequency * grid)
 
     for grid_id in grid_ids:
         write_midi(comp, grid_id)
