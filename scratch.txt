@@ -8,3 +8,5 @@ TO-DO:
 1) Consider using phase offset as a modulation source
 
 2) Monophonic, Polyphonic, Nonpitched, Homophonic, and Heterophonic behaviors
+
+3) Consider adding a curve to attack, decay, and release values of the ADSR envelope

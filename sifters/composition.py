@@ -10,7 +10,7 @@ import mido
 import music21
 import numpy
 import pandas
-from generators import *
+import synthesizer
 
 
 class Composition:
@@ -90,8 +90,9 @@ class Composition:
         # Remove duplicates from each grid while keeping the original order.
         grids = self.get_unique_fractions(grids) 
         
+        sorted_grids = sorted(grids)
         # Return the grids containing unique fractions representing the proportion of the period.
-        return grids 
+        return sorted_grids
     
         
     # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
@@ -233,7 +234,7 @@ class Composition:
     def create_tuning_file(self, floats_list):
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
-        file_name = '.data/scl/tuning.scl'
+        file_name = 'data/scl/tuning.scl'
         # Construct the file_content
         file_content = f'''! {title}
 !
@@ -295,6 +296,7 @@ if __name__ == '__main__':
         matrix_represented_by_size = comp.convert_matrix_to_dataframe(matrix_represented_by_size)
         sieve_adjusted_by_step = comp.indices[0] + normalized_matrix
         sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
+        print(f'Number of unique matrix elements: {comp.convert_matrix_to_dataframe(normalized_matrix).stack().nunique()}')
         
         # For each factor, create exactly the number of notes required for each texture to achieve parity
         for factor_index in range(len(comp.factors)):
@@ -303,6 +305,7 @@ if __name__ == '__main__':
             pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
             adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
             flattened_pool = [num for list in pool for num in list]
+            
             indice_list = [num for list in adjusted_pool for num in list]
 
             note_pool = itertools.cycle(flattened_pool)
@@ -317,7 +320,7 @@ if __name__ == '__main__':
         
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = create_dataframe(notes_data)
-        notes_data.to_csv('.data/csv/.Notes_Data.csv', index=False)
+        notes_data.to_csv('data/csv/Notes_Data.csv', index=False)
         return notes_data
     
     
@@ -403,14 +406,14 @@ if __name__ == '__main__':
         data = fetch_midi_messages_for_grid_id(grid_id)
         midi_messages, midi_data_list = data_to_midi_messages(data, comp.scaling_factor)
         dataframe = pandas.DataFrame(midi_data_list)
-        dataframe.to_csv(f'.data/csv/.MIDI_Messages_GridID_{grid_id}.csv', index=False)
+        dataframe.to_csv(f'data/csv/MIDI_Messages_GridID_{grid_id}.csv', index=False)
 
         # Append messages to MIDI track and save MIDI file
         for message in midi_messages:
             midi_track.append(message)
 
         score.tracks.append(midi_track)
-        score.save(f'.data/mid/Grid_{grid_id}.mid')
+        score.save(f'data/mid/Grid_{grid_id}.mid')
 
 
     sieve = '''
@@ -435,9 +438,14 @@ if __name__ == '__main__':
     
     comp = Composition(sieve, normalized_grids=False)
     notes_data = generate_notes_data(comp)
+    
     db = database.Database(comp)
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
+    
+    synth = synthesizer.Synthesizer(comp)
+    for grid in synth.grids_set:
+        print(synth.reference_frequency * grid)
 
     for grid_id in grid_ids:
         write_midi(comp, grid_id)
