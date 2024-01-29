@@ -10,7 +10,7 @@ import mido
 import music21
 import numpy
 import pandas
-import synthesizer
+import wavetable
 
 
 class Composition:
@@ -90,7 +90,7 @@ class Composition:
         # Remove duplicates from each grid while keeping the original order.
         grids = self.get_unique_fractions(grids) 
         
-        sorted_grids = sorted(grids, reverse=True)
+        sorted_grids = sorted(grids, reverse=False)
         # Return the grids containing unique fractions representing the proportion of the period.
         return sorted_grids
     
@@ -444,7 +444,10 @@ if __name__ == '__main__':
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
     
-    synth = synthesizer.Synthesizer(comp)
+    synth = wavetable.Wavetable(comp)
+    ### HOW CAN I GENERATE ENVELOPES IN A PROGRAMATIC WAY
+    ### HOW TO SELECT MODULATION INDEX IN A PROGRAMATIC WAY
+    synth.run_fm_synthesis(synthesis_type='exponential')
 
     for grid_id in grid_ids:
         write_midi(comp, grid_id)
