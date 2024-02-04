@@ -396,41 +396,6 @@ if __name__ == '__main__':
 
         return messages, midi_data_list
     
-    
-    def visualize_fm_synthesis(self, modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type='linear'):
-        for i, modulating_frequency in enumerate(modulating_frequencies):
-            modulating_wave = self.generate_sine_wave(frequency=modulating_frequency)
-            
-            # Original FM waveform without ADSR envelope
-            fm_wave = self.perform_fm_synthesis(enveloped_carrier, modulating_wave, synthesis_type=synthesis_type)
-
-            enveloped_modulator = modulating_wave * modulator_envelopes[i]
-            fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, synthesis_type=synthesis_type)
-
-            # Superimposed plot for each grid
-            matplotlib.pyplot.plot(fm_wave, label=f'Original FM Wave ({self.grids_set[i]} fraction)')
-            matplotlib.pyplot.plot(fm_wave_with_adsr, label=f'FM Wave with ADSR ({self.grids_set[i]} fraction)')
-
-        matplotlib.pyplot.title(f'FM Synthesis with Unique ADSR Envelopes ({synthesis_type.capitalize()} Synthesis)')
-        matplotlib.pyplot.xlabel('Sample')
-        matplotlib.pyplot.ylabel('Amplitude')
-        matplotlib.pyplot.legend()
-        matplotlib.pyplot.show()
-
-
-
-    def save_fm_waveforms(self, modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type='linear'):
-        for i, modulating_frequency in enumerate(modulating_frequencies):
-            modulating_wave = self.generate_sine_wave(frequency=modulating_frequency)
-
-            enveloped_modulator = modulating_wave * modulator_envelopes[i]
-            fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, synthesis_type=synthesis_type)
-
-            scipy.io.wavfile.write(f'data/wav/fm_wave_{i + 1}_{synthesis_type}.wav', self.sample_rate, self.normalize_waveform(fm_wave_with_adsr))
-
-        print(f"{synthesis_type.capitalize()} WAV files saved successfully.")
-
-
 
     def write_midi(comp, grid_id):
         midi_track = mido.MidiTrack()
