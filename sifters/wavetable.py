@@ -47,37 +47,14 @@ class Wavetable:
         envelope[-release_samples:] = numpy.linspace(sustain_level, 0, release_samples)
         
         return envelope
-    
-    
-    def generate_carrier_wave(self, frequency_multiplier=16):
-        carrier_frequency = self.reference_frequency * frequency_multiplier
-        return self.generate_sine_wave(frequency=carrier_frequency)
 
-
-    def generate_modulating_frequencies(self, frequency_multiplier=16):
-        return [grid_fraction * self.reference_frequency * frequency_multiplier for grid_fraction in self.grids_set]
-
-
-    def generate_carrier_envelope(self):
-        return self.generate_adsr_envelope(attack_time=0.1, decay_time=0.4, sustain_level=0.8, release_time=0.1)
-
-
-    def generate_modulator_envelopes(self):
-        return [
-            self.generate_adsr_envelope(attack_time=0.1, decay_time=0.4, sustain_level=0.55, release_time=0.2),
-            self.generate_adsr_envelope(attack_time=0.15, decay_time=0.35, sustain_level=0.60, release_time=0.2),
-            self.generate_adsr_envelope(attack_time=0.2, decay_time=0.3, sustain_level=0.65, release_time=0.2),
-            self.generate_adsr_envelope(attack_time=0.25, decay_time=0.25, sustain_level=0.70, release_time=0.2),
-            self.generate_adsr_envelope(attack_time=0.3, decay_time=0.2, sustain_level=0.75, release_time=0.2)
-        ]
-        
         
     def normalize_waveform(self, waveform):
         normalized_waveform = numpy.int16(waveform / numpy.max(numpy.abs(waveform)) * 32767)
         return normalized_waveform
 
 
-    def perform_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=10, synthesis_type='linear'):
+    def perform_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index=5, synthesis_type='linear'):
         if synthesis_type == 'linear':
             modulated_signal = carrier_signal * numpy.sin(2 * numpy.pi * modulation_index * modulating_signal * self.time)
         elif synthesis_type == 'exponential':
@@ -91,11 +68,15 @@ class Wavetable:
     def visualize_fm_synthesis(self, modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type='linear'):
         for i, modulating_frequency in enumerate(modulating_frequencies):
             modulating_wave = self.generate_sine_wave(frequency=modulating_frequency)
+            
+            # Original FM waveform without ADSR envelope
             fm_wave = self.perform_fm_synthesis(enveloped_carrier, modulating_wave, synthesis_type=synthesis_type)
 
             enveloped_modulator = modulating_wave * modulator_envelopes[i]
             fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, synthesis_type=synthesis_type)
 
+            # Superimposed plot for each grid
+            matplotlib.pyplot.plot(fm_wave, label=f'Original FM Wave ({self.grids_set[i]} fraction)')
             matplotlib.pyplot.plot(fm_wave_with_adsr, label=f'FM Wave with ADSR ({self.grids_set[i]} fraction)')
 
         matplotlib.pyplot.title(f'FM Synthesis with Unique ADSR Envelopes ({synthesis_type.capitalize()} Synthesis)')
@@ -115,19 +96,3 @@ class Wavetable:
             scipy.io.wavfile.write(f'data/wav/fm_wave_{i + 1}_{synthesis_type}.wav', self.sample_rate, self.normalize_waveform(fm_wave_with_adsr))
 
         print(f"{synthesis_type.capitalize()} WAV files saved successfully.")
-
-
-    def run_fm_synthesis(self, synthesis_type='linear'):
-        carrier_wave = self.generate_carrier_wave()
-        modulating_frequencies = self.generate_modulating_frequencies()
-        carrier_envelope = self.generate_carrier_envelope()
-        modulator_envelopes = self.generate_modulator_envelopes()
-
-        enveloped_carrier = carrier_wave * carrier_envelope
-
-        # Save the carrier wave as a WAV file
-        scipy.io.wavfile.write(f'data/wav/carrier_wave_{synthesis_type}.wav', self.sample_rate, self.normalize_waveform(carrier_wave))
-
-        # Visualize and save FM synthesis results
-        self.visualize_fm_synthesis(modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type=synthesis_type)
-        self.save_fm_waveforms(modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type=synthesis_type)

@@ -6,10 +6,12 @@ import itertools
 import math
 
 import database
+import matplotlib.pyplot
 import mido
 import music21
 import numpy
 import pandas
+import scipy.io.wavfile
 import wavetable
 
 
@@ -68,7 +70,8 @@ class Composition:
         return consecutive_counts
     
     
-    def get_percent_of_period(self, lst): # Inner function to compute the proportion of the period that each number in the list represents.
+    # Inner function to compute the proportion of the period that each number in the list represents.
+    def get_percent_of_period(self, lst): 
         return [
             (decimal.Decimal(num) / decimal.Decimal(self.period)).quantize(decimal.Decimal('0.000')) 
             for num in lst
@@ -88,15 +91,18 @@ class Composition:
         grids = self.convert_decimal_to_fraction(self.percent_of_period)
         
         # Remove duplicates from each grid while keeping the original order.
-        grids = self.get_unique_fractions(grids) 
+        grids = self.get_unique_fractions(grids)
         
-        sorted_grids = sorted(grids, reverse=False)
+        # Grid fractions are sorted in numerical order so highest frequency last when converting to FM.
+        sorted_grids = sorted(grids)
+        
         # Return the grids containing unique fractions representing the proportion of the period.
         return sorted_grids
     
         
     # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
     def set_normalized_numerators(self, grids):
+        
         # Compute the least common multiple (LCM) of all denominators in the list.
         lcm = self.get_least_common_multiple([fraction.denominator for fraction in grids])
         
@@ -118,6 +124,7 @@ class Composition:
 
     # This function computes the repetitions required for each fraction in the grids_set to equalize them.
     def set_repeats(self):
+        
         # Standardize the numerators in the grids_set.
         normalized_numerators = self.set_normalized_numerators(self.grids_set)
         
@@ -134,10 +141,10 @@ class Composition:
     def represent_by_size(self, steps):
         sorted_list = sorted(steps)
         sorted_set = set(sorted_list)
-
+        
         # Create a dictionary to store the index for each value
         index_mapping = {value: rank for rank, value in enumerate(sorted_set)}
-
+        
         # Map each element in the original list to its index in the sorted set
         steps = [index_mapping[value] for value in steps]
         
@@ -145,9 +152,10 @@ class Composition:
 
     
     def unflatten_list(self, flat_list, original_matrix):
+        
         # Assuming original_matrix is a list of lists
         rows, cols = len(original_matrix), len(original_matrix[0])
-
+        
         # Reshape the flat_list back to the original Sieve shape
         reshaped_matrix = [flat_list[i * cols:(i + 1) * cols] for i in range(rows)]
 
@@ -183,7 +191,7 @@ class Composition:
         flattened_matrix = [value for lst in matrix for value in lst]
         
         sized_matrix = self.represent_by_size(flattened_matrix)
-
+        
         # Unflatten the sized list back to the original Sieve structure
         matrix = self.unflatten_list(sized_matrix, matrix)
         
@@ -191,6 +199,7 @@ class Composition:
     
     
     def convert_matrix_to_dataframe(self, matrix):
+        
         # Convert the unflattened Sieve to a DataFrame
         matrix = pandas.DataFrame(matrix,
                                     index=[f'P{m[0]}' for m in matrix], 
@@ -235,6 +244,7 @@ class Composition:
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
         file_name = 'data/scl/tuning.scl'
+        
         # Construct the file_content
         file_content = f'''! {title}
 !
@@ -248,9 +258,10 @@ class Composition:
         
         # Add '2/1' on its own line
         file_content += '\n2/1'
-
+        
         # Open the file in write mode ('w')
         with open(file_name, 'w') as file:
+            
             # Write content to the file
             file.write(file_content)
         
@@ -384,6 +395,41 @@ if __name__ == '__main__':
             midi_data_list.append(message_dict)
 
         return messages, midi_data_list
+    
+    
+    def visualize_fm_synthesis(self, modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type='linear'):
+        for i, modulating_frequency in enumerate(modulating_frequencies):
+            modulating_wave = self.generate_sine_wave(frequency=modulating_frequency)
+            
+            # Original FM waveform without ADSR envelope
+            fm_wave = self.perform_fm_synthesis(enveloped_carrier, modulating_wave, synthesis_type=synthesis_type)
+
+            enveloped_modulator = modulating_wave * modulator_envelopes[i]
+            fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, synthesis_type=synthesis_type)
+
+            # Superimposed plot for each grid
+            matplotlib.pyplot.plot(fm_wave, label=f'Original FM Wave ({self.grids_set[i]} fraction)')
+            matplotlib.pyplot.plot(fm_wave_with_adsr, label=f'FM Wave with ADSR ({self.grids_set[i]} fraction)')
+
+        matplotlib.pyplot.title(f'FM Synthesis with Unique ADSR Envelopes ({synthesis_type.capitalize()} Synthesis)')
+        matplotlib.pyplot.xlabel('Sample')
+        matplotlib.pyplot.ylabel('Amplitude')
+        matplotlib.pyplot.legend()
+        matplotlib.pyplot.show()
+
+
+
+    def save_fm_waveforms(self, modulating_frequencies, enveloped_carrier, modulator_envelopes, synthesis_type='linear'):
+        for i, modulating_frequency in enumerate(modulating_frequencies):
+            modulating_wave = self.generate_sine_wave(frequency=modulating_frequency)
+
+            enveloped_modulator = modulating_wave * modulator_envelopes[i]
+            fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, synthesis_type=synthesis_type)
+
+            scipy.io.wavfile.write(f'data/wav/fm_wave_{i + 1}_{synthesis_type}.wav', self.sample_rate, self.normalize_waveform(fm_wave_with_adsr))
+
+        print(f"{synthesis_type.capitalize()} WAV files saved successfully.")
+
 
 
     def write_midi(comp, grid_id):
@@ -444,10 +490,34 @@ if __name__ == '__main__':
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
     
+    ### ENVELOPES AND MODULATION INDEX SEEM TO MAKE THE MOST AUDITORY DIFFERENCE.
+    ### HOW TO ASSIGN ENVELOPES VALUES IN A PROGRAMATIC WAY?
+    ### HOW TO ASSIGN MODULATION INDEX IN A PROGRAMATIC WAY?
     synth = wavetable.Wavetable(comp)
-    ### HOW CAN I GENERATE ENVELOPES IN A PROGRAMATIC WAY
-    ### HOW TO SELECT MODULATION INDEX IN A PROGRAMATIC WAY
-    synth.run_fm_synthesis(synthesis_type='exponential')
+    synthesis_type = 'exponential'
+    frequency_multiplier = 16
+    
+    carrier_wave = synth.generate_sine_wave(frequency=synth.reference_frequency * frequency_multiplier)
+    carrier_envelope = synth.generate_adsr_envelope(attack_time=0.1, decay_time=0.4, sustain_level=0.8, release_time=0.1)
+    enveloped_carrier = carrier_wave * carrier_envelope
+    
+    modulating_frequencies = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
+    modulator_envelopes = [
+        synth.generate_adsr_envelope(
+            attack_time=0.1 + 0.05 * i,
+            decay_time=0.4 - 0.05 * i,
+            sustain_level=0.55 + 0.05 * i,
+            release_time=0.2,
+            length=synth.num_samples
+        )
+        for i in range(len(comp.grids_set))
+    ]
+
+    # Visualize and save FM synthesis results
+    synth.visualize_fm_synthesis(modulating_frequencies, enveloped_carrier, modulator_envelopes,
+                                synthesis_type=synthesis_type)
+    synth.save_fm_waveforms(modulating_frequencies, enveloped_carrier, modulator_envelopes,
+                            synthesis_type=synthesis_type)
 
     for grid_id in grid_ids:
         write_midi(comp, grid_id)
