@@ -6,12 +6,10 @@ import itertools
 import math
 
 import database
-import matplotlib.pyplot
 import mido
 import music21
 import numpy
 import pandas
-import scipy.io.wavfile
 import wavetable
 
 
@@ -95,6 +93,8 @@ class Composition:
         
         # Grid fractions are sorted in numerical order so highest frequency last when converting to FM.
         sorted_grids = sorted(grids)
+        
+        print(f'Unique grid fractions: {sorted_grids}')
         
         # Return the grids containing unique fractions representing the proportion of the period.
         return sorted_grids
@@ -264,7 +264,7 @@ class Composition:
             
             # Write content to the file
             file.write(file_content)
-        
+
     
     def select_scalar_segments(self, indice_list):
         cents = []
@@ -455,15 +455,18 @@ if __name__ == '__main__':
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
     
-    ### ENVELOPES AND MODULATION INDEX SEEM TO MAKE THE MOST AUDITORY DIFFERENCE.
-    ### HOW TO ASSIGN ENVELOPES VALUES IN A PROGRAMATIC WAY?
     ### HOW TO ASSIGN MODULATION INDEX IN A PROGRAMATIC WAY?
-    synth = wavetable.Wavetable(comp)
+    synth = wavetable.Wavetable()
     synthesis_type = 'exponential'
     frequency_multiplier = 16
+    modulation_index = 10
     
     carrier_wave = synth.generate_sine_wave(frequency=synth.reference_frequency * frequency_multiplier)
-    carrier_envelope = synth.generate_adsr_envelope(attack_time=0.1, decay_time=0.4, sustain_level=0.8, release_time=0.1)
+    carrier_envelope = synth.generate_adsr_envelope(
+                            attack_time=0.5, 
+                            decay_time=0.1, 
+                            sustain_level=0.75, 
+                            release_time=0.3)
     enveloped_carrier = carrier_wave * carrier_envelope
     
     modulating_frequencies = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
@@ -477,12 +480,40 @@ if __name__ == '__main__':
         )
         for i in range(len(comp.grids_set))
     ]
+    
+    synth.visualize_envelopes(carrier_envelope, modulator_envelopes)
+    synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies, modulator_envelopes, modulation_index, synthesis_type)
+    synth.save_fm_waveforms(enveloped_carrier, modulating_frequencies, modulator_envelopes, modulation_index, synthesis_type)
 
-    # Visualize and save FM synthesis results
-    synth.visualize_fm_synthesis(modulating_frequencies, enveloped_carrier, modulator_envelopes,
-                                synthesis_type=synthesis_type)
-    synth.save_fm_waveforms(modulating_frequencies, enveloped_carrier, modulator_envelopes,
-                            synthesis_type=synthesis_type)
+    # for grid_id in grid_ids:
+    #     write_midi(comp, grid_id)
+        
+        
+    #     # Number of modulators
+    # num_modulators = len(comp.grids_set)
 
-    for grid_id in grid_ids:
-        write_midi(comp, grid_id)
+    # enveloped_carrier_wave = enveloped_carrier
+    # enveloped_modulator_waves = [
+    #     synth.generate_sine_wave(frequency=modulating_frequencies[i] * frequency_multiplier) * modulator_envelopes[i]
+    #     for i in range(num_modulators)
+    # ]
+    # import matplotlib.pyplot as plt
+
+    # # Visualizer section
+    # # Create a grid of subplots (now 4x1)
+    # fig, axes = plt.subplots(1, 2, figsize=(3, 10))
+
+    # # Plot carrier and modulator envelopes in the first subplot
+    # axes[0].plot(numpy.arange(synth.num_samples), carrier_envelope, 'r-', label='Carrier Envelope')
+    # for i in range(num_modulators):
+    #     axes[0].plot(numpy.arange(synth.num_samples), modulator_envelopes[i], label=f'Modulator Envelope {i + 1} (Dotted)', linestyle='--')
+    # axes[0].set_title('Carrier and Modulator Envelopes')
+    # axes[0].set_xlabel('Time (samples)')
+    # axes[0].set_ylabel('Amplitude')
+    # axes[0].legend()
+    
+    # #     # Adjust layout
+    # # plt.tight_layout()
+
+    # # Show the plot
+    # plt.show()

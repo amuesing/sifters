@@ -5,6 +5,7 @@ import sqlite3
 
 class Database:
     
+    
     def __init__(self, mediator, use_timestamp=False):
         if use_timestamp:
             timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -370,4 +371,3 @@ class Database:
             FROM midi_messages_ordered_{grid_id}
             ORDER BY Start ASC;
         '''
-    
