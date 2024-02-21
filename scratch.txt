@@ -11,4 +11,6 @@ TO-DO:
 
 3) Consider adding a curve to attack, decay, and release values of the ADSR envelope
 
-4) Create a UI for ease of use with a DAW
+4) Develop approach to structure that incoorperates stochastic compositional techniques
+
+5) Create a UI for ease of use with a DAW

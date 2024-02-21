@@ -60,7 +60,6 @@ class Composition:
         return [0] + [integers[i+1] - integers[i] for i in range(len(integers)-1)]
     
         
-    
     def get_consecutive_count(self):
         # Each tuple represents an element and its consecutive count.
         consecutive_counts = [(key, len(list(group))) for key, group in itertools.groupby(self.binary)]
@@ -256,7 +255,7 @@ class Composition:
         # Add floats to the content
         file_content += '\n'.join(map(str, floats_list))
         
-        # Add '2/1' on its own line
+        # Add '2/1' on its own line (representing an octave)
         file_content += '\n2/1'
         
         # Open the file in write mode ('w')
@@ -270,6 +269,7 @@ class Composition:
         cents = []
 
         for i in range(self.period):
+            # 1200 represents the number of cents in an octave
             cent_value = (1200 / self.period) * i
             cent_value = round(cent_value, 6)
             cents.append(cent_value)
@@ -408,7 +408,7 @@ if __name__ == '__main__':
         score.ticks_per_beat = comp.ticks_per_beat
 
         # Setting BPM
-        bpm = 60  # You can change this value to set a different BPM
+        bpm = 60 
         tempo = int(60_000_000 / bpm)
         midi_track.append(mido.MetaMessage('set_tempo', tempo=tempo))
         # midi_track.append(mido.MetaMessage('time_signature', numerator=5, denominator=4))
@@ -425,7 +425,11 @@ if __name__ == '__main__':
 
         score.tracks.append(midi_track)
         score.save(f'data/mid/Grid_{grid_id}.mid')
-
+        
+    
+    def cents_to_frequency(reference_frequency, cents_list):
+        return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
+    
 
     sieve = '''
             (((8@0|8@1|8@7)&(5@1|5@3))|
@@ -445,7 +449,7 @@ if __name__ == '__main__':
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
     
     ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
-    # siv = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
+    # sieve = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
     
     comp = Composition(sieve)
     notes_data = generate_notes_data(comp)
@@ -455,65 +459,49 @@ if __name__ == '__main__':
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
     
-    ### HOW TO ASSIGN MODULATION INDEX IN A PROGRAMATIC WAY?
+    ### HOW TO ASSIGN MODULATION INDEX IN A DYNAMIC/PROGRAMATIC WAY?
     synth = wavetable.Wavetable()
     synthesis_type = 'exponential'
-    frequency_multiplier = 16
+    frequency_multiplier = 128
     modulation_index = 10
     
     carrier_wave = synth.generate_sine_wave(frequency=synth.reference_frequency * frequency_multiplier)
     carrier_envelope = synth.generate_adsr_envelope(
-                            attack_time=0.5, 
+                            attack_time=0.3, 
                             decay_time=0.1, 
-                            sustain_level=0.75, 
+                            sustain_level=0.5, 
                             release_time=0.3)
     enveloped_carrier = carrier_wave * carrier_envelope
     
-    modulating_frequencies = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
-    modulator_envelopes = [
-        synth.generate_adsr_envelope(
-            attack_time=0.1 + 0.05 * i,
-            decay_time=0.4 - 0.05 * i,
-            sustain_level=0.55 + 0.05 * i,
-            release_time=0.2,
-            length=synth.num_samples
-        )
-        for i in range(len(comp.grids_set))
-    ]
     
+    def generate_modulator_envelopes(modulating_frequencies, attack_range=(0.1, 0.3), decay_range=(0.1, 0.3), sustain_range=(0.55, 0.75), release_range=(0.1, 0.3)):
+        # Calculate step sizes for each ADSR parameter
+        attack_step, decay_step, sustain_step, release_step = [
+            (high - low) / len(modulating_frequencies) for low, high in [attack_range, decay_range, sustain_range, release_range]
+        ]
+
+        envelopes = [
+            synth.generate_adsr_envelope(
+                attack_time=attack_range[0] + i * attack_step,
+                decay_time=decay_range[0] + i * decay_step,
+                sustain_level=sustain_range[0] + i * sustain_step,
+                release_time=release_range[0] + i * release_step,
+                length=synth.num_samples
+            )
+            for i in range(len(modulating_frequencies))
+        ]
+
+        return envelopes
+    
+    
+    # modulating_frequencies_cents = [synth.reference_frequency * 10] + [freq * 10 for freq in cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)]
+
+    modulating_frequencies_cents = [synth.reference_frequency] + cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)
+    modulating_frequencies_grid = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
+    modulator_envelopes = generate_modulator_envelopes(modulating_frequencies_cents)
+    print(modulating_frequencies_cents)
+    print(modulating_frequencies_grid)
+
     synth.visualize_envelopes(carrier_envelope, modulator_envelopes)
-    synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies, modulator_envelopes, modulation_index, synthesis_type)
-    synth.save_fm_waveforms(enveloped_carrier, modulating_frequencies, modulator_envelopes, modulation_index, synthesis_type)
-
-    # for grid_id in grid_ids:
-    #     write_midi(comp, grid_id)
-        
-        
-    #     # Number of modulators
-    # num_modulators = len(comp.grids_set)
-
-    # enveloped_carrier_wave = enveloped_carrier
-    # enveloped_modulator_waves = [
-    #     synth.generate_sine_wave(frequency=modulating_frequencies[i] * frequency_multiplier) * modulator_envelopes[i]
-    #     for i in range(num_modulators)
-    # ]
-    # import matplotlib.pyplot as plt
-
-    # # Visualizer section
-    # # Create a grid of subplots (now 4x1)
-    # fig, axes = plt.subplots(1, 2, figsize=(3, 10))
-
-    # # Plot carrier and modulator envelopes in the first subplot
-    # axes[0].plot(numpy.arange(synth.num_samples), carrier_envelope, 'r-', label='Carrier Envelope')
-    # for i in range(num_modulators):
-    #     axes[0].plot(numpy.arange(synth.num_samples), modulator_envelopes[i], label=f'Modulator Envelope {i + 1} (Dotted)', linestyle='--')
-    # axes[0].set_title('Carrier and Modulator Envelopes')
-    # axes[0].set_xlabel('Time (samples)')
-    # axes[0].set_ylabel('Amplitude')
-    # axes[0].legend()
-    
-    # #     # Adjust layout
-    # # plt.tight_layout()
-
-    # # Show the plot
-    # plt.show()
+    synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
+    synth.save_fm_waveforms(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)

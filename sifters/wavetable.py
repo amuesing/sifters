@@ -46,10 +46,21 @@ class Wavetable:
         
         return envelope
 
-        
+    # Serum is optimized for a 32-bit architecture
     def normalize_waveform(self, waveform):
-        normalized_waveform = numpy.int16(waveform / numpy.max(numpy.abs(waveform)) * 32767)
-        return normalized_waveform
+        # Calculate the maximum absolute value in the waveform
+        max_abs_value = numpy.max(numpy.abs(waveform))
+        
+        # Normalize the waveform to the range [-1, 1]
+        normalized_waveform = waveform / max_abs_value
+        
+        # Scale the normalized waveform to fit within the range of a 32-bit signed integer
+        scaled_waveform = normalized_waveform * 2147483647
+        
+        # Convert the result to a NumPy array of 32-bit integers
+        normalized_waveform_32bit = numpy.int32(scaled_waveform)
+        
+        return normalized_waveform_32bit
 
 
     def perform_fm_synthesis(self, carrier_signal, modulating_signal, modulation_index, synthesis_type):
@@ -79,7 +90,7 @@ class Wavetable:
         matplotlib.pyplot.title('Carrier and Modulator Envelopes')
         matplotlib.pyplot.xlabel('Time (samples)')
         matplotlib.pyplot.ylabel('Amplitude')
-        matplotlib.pyplot.legend()
+        # matplotlib.pyplot.legend()
 
         # Show the plot
         matplotlib.pyplot.show()
@@ -92,14 +103,12 @@ class Wavetable:
             enveloped_modulator = modulating_wave * modulator_envelopes[i]
             fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, modulation_index, synthesis_type)
 
-            # Superimposed plot for each grid
-            # matplotlib.pyplot.plot(fm_wave, label=f'Original FM Wave ({self.grids_set[i]} fraction)')
             matplotlib.pyplot.plot(fm_wave_with_adsr, label=f'FM Wave with ADSR ({i + 1} fraction)')
 
         matplotlib.pyplot.title(f'FM Synthesis with Unique ADSR Envelopes ({synthesis_type.capitalize()} Synthesis)')
         matplotlib.pyplot.xlabel('Sample')
         matplotlib.pyplot.ylabel('Amplitude')
-        matplotlib.pyplot.legend()
+        # matplotlib.pyplot.legend()
         matplotlib.pyplot.show()
 
 
@@ -110,6 +119,8 @@ class Wavetable:
             enveloped_modulator = modulating_wave * modulator_envelopes[i]
             fm_wave_with_adsr = self.perform_fm_synthesis(enveloped_carrier, enveloped_modulator, modulation_index, synthesis_type)
 
-            scipy.io.wavfile.write(f'data/wav/fm_wave_{i + 1}_{synthesis_type}.wav', self.sample_rate, self.normalize_waveform(fm_wave_with_adsr))
+            scipy.io.wavfile.write(f'data/wav/{synthesis_type.capitalize()}{i + 1}_Index{modulation_index}.wav', self.sample_rate, self.normalize_waveform(fm_wave_with_adsr))
 
         print(f"{len(modulating_frequencies)} {synthesis_type.capitalize()} WAV files saved successfully.")
+        
+        
