@@ -4,6 +4,7 @@ import fractions
 import functools
 import itertools
 import math
+import os
 
 import database
 import mido
@@ -426,6 +427,20 @@ if __name__ == '__main__':
         score.tracks.append(midi_track)
         score.save(f'data/mid/Grid_{grid_id}.mid')
         
+        
+    def empty_folder(folder_path):
+        # Iterate over the files in the folder
+        for file_name in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file_name)
+            try:
+                # Check if the path is a file
+                if os.path.isfile(file_path):
+                    # If it's a file, remove it
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Error: {e}")
+
+        
     
     def cents_to_frequency(reference_frequency, cents_list):
         return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
@@ -451,6 +466,11 @@ if __name__ == '__main__':
     ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
     # sieve = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
     
+    empty_folder('data/csv')
+    empty_folder('data/mid')
+    empty_folder('data/wav')
+
+
     comp = Composition(sieve)
     notes_data = generate_notes_data(comp)
     
@@ -458,6 +478,8 @@ if __name__ == '__main__':
     db.clear_database()
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
+    for grid_id in grid_ids:
+        write_midi(comp, grid_id)
     
     ### HOW TO ASSIGN MODULATION INDEX IN A DYNAMIC/PROGRAMATIC WAY?
     synth = wavetable.Wavetable()
