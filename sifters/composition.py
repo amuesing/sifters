@@ -39,6 +39,10 @@ class Composition:
         self.indices = numpy.nonzero(self.binary)[0]
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
+        print(self.sieve)
+        # print(self.binary)
+        # print(self.changes)
+        
         
     def set_binary(self, sieve):
         # Convert sieve to Sieve object.
@@ -55,10 +59,6 @@ class Composition:
 
         # Return the binary representation of sieve.
         return binary
-    
-    
-    def get_successive_diff(self, integers):
-        return [0] + [integers[i+1] - integers[i] for i in range(len(integers)-1)]
     
         
     def get_consecutive_count(self):
@@ -94,10 +94,14 @@ class Composition:
         # Grid fractions are sorted in numerical order so highest frequency last when converting to FM.
         sorted_grids = sorted(grids)
         
-        print(f'Unique grid fractions: {sorted_grids}')
+        # print(f'Unique grid fractions: {sorted_grids}')
         
         # Return the grids containing unique fractions representing the proportion of the period.
         return sorted_grids
+    
+    
+    def get_successive_diff(self, integers):
+        return [0] + [integers[i+1] - integers[i] for i in range(len(integers)-1)]
     
         
     # Function to standardize the numerators in the list of grids by transforming them to a shared denominator.
@@ -308,7 +312,7 @@ if __name__ == '__main__':
         matrix_represented_by_size = comp.convert_matrix_to_dataframe(matrix_represented_by_size)
         sieve_adjusted_by_step = comp.indices[0] + normalized_matrix
         sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
-        print(f'Number of unique matrix elements: {comp.convert_matrix_to_dataframe(normalized_matrix).stack().nunique()}')
+        # print(f'Number of unique matrix elements: {comp.convert_matrix_to_dataframe(normalized_matrix).stack().nunique()}')
         
         # For each factor, create exactly the number of notes required for each texture to achieve parity
         for factor_index in range(len(comp.factors)):
@@ -432,33 +436,26 @@ if __name__ == '__main__':
         # Iterate over the files in the folder
         for file_name in os.listdir(folder_path):
             file_path = os.path.join(folder_path, file_name)
-            try:
-                # Check if the path is a file
-                if os.path.isfile(file_path):
-                    # If it's a file, remove it
-                    os.remove(file_path)
-            except Exception as e:
-                print(f"Error: {e}")
+            os.remove(file_path)
 
-        
-    
+
     def cents_to_frequency(reference_frequency, cents_list):
         return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
     
 
-    sieve = '''
-            (((8@0|8@1|8@7)&(5@1|5@3))|
-            ((8@0|8@1|8@2)&5@0)|
-            ((8@5|8@6)&(5@2|5@3|5@4))|
-            (8@6&5@1)|
-            (8@3)|
-            (8@4)|
-            (8@1&5@2))
-            '''
-    
     # sieve = '''
-    #         (8@1&5@2)
+    #         (((8@0|8@1|8@7)&(5@1|5@3))|
+    #         ((8@0|8@1|8@2)&5@0)|
+    #         ((8@5|8@6)&(5@2|5@3|5@4))|
+    #         (8@6&5@1)|
+    #         (8@3)|
+    #         (8@4)|
+    #         (8@1&5@2))
     #         '''
+    
+    sieve = '''
+            (5@0&3@0)
+            '''
         
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
@@ -469,7 +466,6 @@ if __name__ == '__main__':
     empty_folder('data/csv')
     empty_folder('data/mid')
     empty_folder('data/wav')
-
 
     comp = Composition(sieve)
     notes_data = generate_notes_data(comp)
@@ -515,15 +511,16 @@ if __name__ == '__main__':
 
         return envelopes
     
-    
     # modulating_frequencies_cents = [synth.reference_frequency * 10] + [freq * 10 for freq in cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)]
 
     modulating_frequencies_cents = [synth.reference_frequency] + cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)
     modulating_frequencies_grid = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
     modulator_envelopes = generate_modulator_envelopes(modulating_frequencies_cents)
-    print(modulating_frequencies_cents)
-    print(modulating_frequencies_grid)
 
-    synth.visualize_envelopes(carrier_envelope, modulator_envelopes)
-    synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
-    synth.save_fm_waveforms(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
+    # synth.visualize_envelopes(carrier_envelope, modulator_envelopes)
+    # synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
+    # synth.save_fm_waveforms(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
+    
+    
+    ### Create the ability to only produce 1 iteration of the clip, without normalizing across factors in the initial staging of the matrix
+    ### What about processing multiple sieves at once
