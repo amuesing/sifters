@@ -39,7 +39,7 @@ class Composition:
         self.indices = numpy.nonzero(self.binary)[0]
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
         
-        print(self.sieve)
+        print(self.grids_set)
         # print(self.binary)
         # print(self.changes)
         
@@ -304,7 +304,7 @@ if __name__ == '__main__':
         notes_data = []
         indice_list = []
         velocity = 64
-        texture_id = 1
+        grid_id = 1
         
         steps = comp.get_successive_diff(comp.indices)
         normalized_matrix = comp.generate_pitchclass_matrix(comp.indices)
@@ -332,7 +332,7 @@ if __name__ == '__main__':
             
             for index in tiled_indices:
                 start = index * duration
-                notes_data.append((start, velocity, next(note_pool), duration, texture_id))
+                notes_data.append((start, velocity, next(note_pool), duration, grid_id))
         
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = create_dataframe(notes_data)
@@ -456,12 +456,19 @@ if __name__ == '__main__':
     sieve = '''
             (5@0&3@0)
             '''
+            
+    # grid = [fractions.Fraction(1, 1)]
         
     ### WHY DOES THE BELOW GIVE ME AN ERROR?
     # sieve = '(8@5|8@6)&(5@2|5@3|5@4)'
     
     ### WHY DOES THE BELOW GIVE ME A STRANGE TUNING FILE
     # sieve = '(8@0|8@1|8@2)&5@0|(8@1&5@2)'
+    
+    ### Create the ability to only produce 1 iteration of the clip, without normalizing across factors in the initial staging of the matrix
+    ### DO THIS BY LOOKING AT THE SET_NOTES_DATA METHOD AND CREATING AN OPTION TO GENERATE GRIDS WITHOUT TILING BASED ON FACTORS
+    ### LOOK AT THE SET_GRIDS METHOD, HOW IS IT GENERATING GRIDS? WHAT ABOUT [1,0,0,0,0,0,0,0,0,0]-- WHY DOES THIS CREATE TWO GRIDS? SHOULD IT ONLY CREATE ONE?
+    ### What about processing multiple sieves at once
     
     empty_folder('data/csv')
     empty_folder('data/mid')
@@ -520,7 +527,3 @@ if __name__ == '__main__':
     # synth.visualize_envelopes(carrier_envelope, modulator_envelopes)
     # synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
     # synth.save_fm_waveforms(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)
-    
-    
-    ### Create the ability to only produce 1 iteration of the clip, without normalizing across factors in the initial staging of the matrix
-    ### What about processing multiple sieves at once
