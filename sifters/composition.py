@@ -28,6 +28,8 @@ class Composition:
         
         # Interpolate a dictionary which tracks the indices of pattern changes within self.binary.
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
+        print(self.binary)
+        print(self.changes)
         
         self.percent_of_period = self.get_percent_of_period(self.changes)
 
@@ -38,10 +40,6 @@ class Composition:
         self.repeats = self.set_repeats()
         self.indices = numpy.nonzero(self.binary)[0]
         self.factors = [i for i in range(1, self.period + 1) if self.period % i == 0]
-        
-        print(self.grids_set)
-        # print(self.binary)
-        # print(self.changes)
         
         
     def set_binary(self, sieve):
@@ -296,11 +294,45 @@ if __name__ == '__main__':
         columns = ['Start', 'Velocity', 'Note', 'Duration', 'GridID']
         dataframe = pandas.DataFrame(notes_data, columns=columns)
         dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
-        dataframe = dataframe.apply(pandas.to_numeric, errors='ignore')
+        dataframe = dataframe.apply(pandas.to_numeric)
         return dataframe
     
-    
+
     def generate_notes_data(comp):
+        notes_data = []
+        velocity = 64
+        grid_id = 1
+        
+        steps = comp.get_successive_diff(comp.indices)
+        normalized_matrix = comp.generate_pitchclass_matrix(comp.indices)
+        matrix_represented_by_size = comp.represent_matrix_by_size(normalized_matrix)
+        matrix_represented_by_size = comp.convert_matrix_to_dataframe(matrix_represented_by_size)
+        sieve_adjusted_by_step = comp.indices[0] + normalized_matrix
+        sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
+        
+        # For each factor, create notes data without considering factors
+        num_of_events = len(comp.indices)
+        num_of_positions = num_of_events // len(steps)
+        pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
+        adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
+        flattened_pool = [num for list in pool for num in list]
+        indice_list = [num for list in adjusted_pool for num in list]
+
+        note_pool = itertools.cycle(flattened_pool)
+        indices = numpy.nonzero(comp.binary)[0]
+        duration = comp.period // num_of_events
+
+        for index in indices:
+            start = index * duration
+            notes_data.append((start, velocity, next(note_pool), duration, grid_id))
+        
+        comp.select_scalar_segments(list(set(indice_list)))
+        notes_data = create_dataframe(notes_data)
+        notes_data.to_csv('data/csv/Notes_Data.csv', index=False)
+        return notes_data
+
+    
+    def generate_notes_data(comp, factorize=False):
         notes_data = []
         indice_list = []
         velocity = 64
@@ -314,26 +346,43 @@ if __name__ == '__main__':
         sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
         # print(f'Number of unique matrix elements: {comp.convert_matrix_to_dataframe(normalized_matrix).stack().nunique()}')
         
-        # For each factor, create exactly the number of notes required for each texture to achieve parity
-        for factor_index in range(len(comp.factors)):
-            num_of_events = (len(comp.indices) * comp.factors[factor_index])
+        if factorize == True:
+            # For each factor, create exactly the number of notes required for each texture to achieve parity
+            for factor_index in range(len(comp.factors)):
+                num_of_events = (len(comp.indices) * comp.factors[factor_index])
+                num_of_positions = num_of_events // len(steps)
+                pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
+                adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
+                flattened_pool = [num for list in pool for num in list]
+                
+                indice_list = [num for list in adjusted_pool for num in list]
+
+                note_pool = itertools.cycle(flattened_pool)
+                tiled_pattern = numpy.tile(comp.binary, comp.factors[factor_index])
+                tiled_indices = numpy.nonzero(tiled_pattern)[0]
+
+                duration = comp.period // comp.factors[factor_index]
+                
+                for index in tiled_indices:
+                    start = index * duration
+                    notes_data.append((start, velocity, next(note_pool), duration, grid_id))
+        else:
+            # For each factor, create notes data without considering factors
+            num_of_events = len(comp.indices)
             num_of_positions = num_of_events // len(steps)
             pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
             adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
             flattened_pool = [num for list in pool for num in list]
-            
             indice_list = [num for list in adjusted_pool for num in list]
 
             note_pool = itertools.cycle(flattened_pool)
-            tiled_pattern = numpy.tile(comp.binary, comp.factors[factor_index])
-            tiled_indices = numpy.nonzero(tiled_pattern)[0]
+            indices = numpy.nonzero(comp.binary)[0]
+            duration = comp.period // num_of_events
 
-            duration = comp.period // comp.factors[factor_index]
-            
-            for index in tiled_indices:
+            for index in indices:
                 start = index * duration
                 notes_data.append((start, velocity, next(note_pool), duration, grid_id))
-        
+            
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = create_dataframe(notes_data)
         notes_data.to_csv('data/csv/Notes_Data.csv', index=False)
@@ -454,7 +503,7 @@ if __name__ == '__main__':
     #         '''
     
     sieve = '''
-            (5@0&3@0)
+            (5@1&3@1)
             '''
             
     # grid = [fractions.Fraction(1, 1)]
@@ -473,14 +522,16 @@ if __name__ == '__main__':
     empty_folder('data/csv')
     empty_folder('data/mid')
     empty_folder('data/wav')
+    comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
 
-    comp = Composition(sieve)
-    notes_data = generate_notes_data(comp)
+    notes_data = generate_notes_data(comp, factorize=True)
+    print(comp.grids_set)
     
     db = database.Database(comp)
     db.clear_database()
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
+    print(db.grids_set)
     for grid_id in grid_ids:
         write_midi(comp, grid_id)
     

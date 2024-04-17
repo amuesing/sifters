@@ -14,3 +14,5 @@ TO-DO:
 4) Develop approach to structure that incoorperates stochastic compositional techniques
 
 5) Create a UI for ease of use with a DAW
+
+6) What about creating sieves that are a specific number of beats. Creating sieves based on given parameters.
