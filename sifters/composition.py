@@ -17,7 +17,7 @@ import wavetable
 class Composition:
     
     
-    def __init__(self, sieve, grids_set=None, normalized_grids=False):
+    def __init__(self, sieve, grids_set=None, normalized_grids=False, factorize=False):
         self.ticks_per_beat = 480
         self.scaling_factor = 100000
         
@@ -25,11 +25,11 @@ class Composition:
         self.period = None
         self.binary = self.set_binary(sieve)
         self.normalized_grids = normalized_grids
+        self.factorize = factorize
+        self.total_duration = self.set_total_duration()
         
         # Interpolate a dictionary which tracks the indices of pattern changes within self.binary.
         self.changes = [tupl[1] for tupl in self.get_consecutive_count()]
-        print(self.binary)
-        print(self.changes)
         
         self.percent_of_period = self.get_percent_of_period(self.changes)
 
@@ -57,6 +57,13 @@ class Composition:
 
         # Return the binary representation of sieve.
         return binary
+    
+
+    def set_total_duration(self):
+        if self.factorize == True:
+            return self.period * 2
+        else:
+            return self.period
     
         
     def get_consecutive_count(self):
@@ -332,7 +339,7 @@ if __name__ == '__main__':
         return notes_data
 
     
-    def generate_notes_data(comp, factorize=False):
+    def generate_notes_data(comp):
         notes_data = []
         indice_list = []
         velocity = 64
@@ -346,7 +353,8 @@ if __name__ == '__main__':
         sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
         # print(f'Number of unique matrix elements: {comp.convert_matrix_to_dataframe(normalized_matrix).stack().nunique()}')
         
-        if factorize == True:
+        if comp.factorize == True:
+            total_duration = comp.period ** 2
             # For each factor, create exactly the number of notes required for each texture to achieve parity
             for factor_index in range(len(comp.factors)):
                 num_of_events = (len(comp.indices) * comp.factors[factor_index])
@@ -362,26 +370,27 @@ if __name__ == '__main__':
                 tiled_indices = numpy.nonzero(tiled_pattern)[0]
 
                 duration = comp.period // comp.factors[factor_index]
-                
+
                 for index in tiled_indices:
                     start = index * duration
                     notes_data.append((start, velocity, next(note_pool), duration, grid_id))
         else:
-            # For each factor, create notes data without considering factors
-            num_of_events = len(comp.indices)
-            num_of_positions = num_of_events // len(steps)
+            ### WHAT IF I WANT TO USE GRID AS THE DURATION_UNIT, WHAT ABOUT MULTIPLE GRIDS? LCM?
+            duration_unit = 1
+            total_duration = comp.period
+            num_of_positions = len(comp.indices) // len(steps)
             pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
             adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
             flattened_pool = [num for list in pool for num in list]
+
             indice_list = [num for list in adjusted_pool for num in list]
 
             note_pool = itertools.cycle(flattened_pool)
-            indices = numpy.nonzero(comp.binary)[0]
-            duration = comp.period // num_of_events
 
-            for index in indices:
-                start = index * duration
-                notes_data.append((start, velocity, next(note_pool), duration, grid_id))
+            for index in comp.indices:
+                notes_data.append((index, velocity, next(note_pool), duration_unit, grid_id))
+                if index == comp.indices[-1]:
+                    notes_data.append((index + duration_unit, 0, 0, total_duration - (index + duration_unit), grid_id))
             
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = create_dataframe(notes_data)
@@ -438,8 +447,7 @@ if __name__ == '__main__':
         messages = []
         midi_data_list = []
         for row in data:
-            # Increase the time value of the MIDI message by dividing the scaling_factor by 10.
-            message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / (scaling_factor / 10))}
+            message_dict = {'Message': row['Message'], 'Note': '', 'Velocity': '', 'Time': int(row['Time'] / scaling_factor)}
             if row['Message'] == 'note_on' or row['Message'] == 'note_off':
                 msg = mido.Message(row['Message'], note=row['Note'], velocity=row['Velocity'], time=message_dict['Time'])
                 message_dict['Note'] = row['Note']
@@ -477,6 +485,8 @@ if __name__ == '__main__':
         for message in midi_messages:
             midi_track.append(message)
 
+        midi_track.append(mido.MetaMessage('end_of_track'))
+
         score.tracks.append(midi_track)
         score.save(f'data/mid/Grid_{grid_id}.mid')
         
@@ -490,7 +500,6 @@ if __name__ == '__main__':
 
     def cents_to_frequency(reference_frequency, cents_list):
         return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
-    
 
     # sieve = '''
     #         (((8@0|8@1|8@7)&(5@1|5@3))|
@@ -503,7 +512,7 @@ if __name__ == '__main__':
     #         '''
     
     sieve = '''
-            (5@1&3@1)
+            (5@2&3@2)
             '''
             
     # grid = [fractions.Fraction(1, 1)]
@@ -522,58 +531,59 @@ if __name__ == '__main__':
     empty_folder('data/csv')
     empty_folder('data/mid')
     empty_folder('data/wav')
-    comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
+    # comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
+    comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], factorize=False)
 
-    notes_data = generate_notes_data(comp, factorize=True)
-    print(comp.grids_set)
+    ### HOW TO MAKE SURE THE NOTES DATA REPRESENTS THE TOTAL LENGTH OF THE PERIOD REGARDLESS OF IF IT ENDS ON 0
+    ### I NEED TO CALCULATE THE OVER ALL DURATION OF A SIEVE ACROSS GRIDIDs
+    notes_data = generate_notes_data(comp)
     
     db = database.Database(comp)
     db.clear_database()
     set_database_tables(db, notes_data)
     grid_ids = db.select_distinct_grids()
-    print(db.grids_set)
     for grid_id in grid_ids:
         write_midi(comp, grid_id)
     
     ### HOW TO ASSIGN MODULATION INDEX IN A DYNAMIC/PROGRAMATIC WAY?
-    synth = wavetable.Wavetable()
-    synthesis_type = 'exponential'
-    frequency_multiplier = 128
-    modulation_index = 10
+    # synth = wavetable.Wavetable()
+    # synthesis_type = 'exponential'
+    # frequency_multiplier = 128
+    # modulation_index = 10
     
-    carrier_wave = synth.generate_sine_wave(frequency=synth.reference_frequency * frequency_multiplier)
-    carrier_envelope = synth.generate_adsr_envelope(
-                            attack_time=0.3, 
-                            decay_time=0.1, 
-                            sustain_level=0.5, 
-                            release_time=0.3)
-    enveloped_carrier = carrier_wave * carrier_envelope
+    # carrier_wave = synth.generate_sine_wave(frequency=synth.reference_frequency * frequency_multiplier)
+    # carrier_envelope = synth.generate_adsr_envelope(
+    #                         attack_time=0.3, 
+    #                         decay_time=0.1, 
+    #                         sustain_level=0.5, 
+    #                         release_time=0.3)
+    # enveloped_carrier = carrier_wave * carrier_envelope
     
     
-    def generate_modulator_envelopes(modulating_frequencies, attack_range=(0.1, 0.3), decay_range=(0.1, 0.3), sustain_range=(0.55, 0.75), release_range=(0.1, 0.3)):
-        # Calculate step sizes for each ADSR parameter
-        attack_step, decay_step, sustain_step, release_step = [
-            (high - low) / len(modulating_frequencies) for low, high in [attack_range, decay_range, sustain_range, release_range]
-        ]
+    # def generate_modulator_envelopes(modulating_frequencies, attack_range=(0.1, 0.3), decay_range=(0.1, 0.3), sustain_range=(0.55, 0.75), release_range=(0.1, 0.3)):
+    #     # Calculate step sizes for each ADSR parameter
+    #     attack_step, decay_step, sustain_step, release_step = [
+    #         (high - low) / len(modulating_frequencies) for low, high in [attack_range, decay_range, sustain_range, release_range]
+    #     ]
 
-        envelopes = [
-            synth.generate_adsr_envelope(
-                attack_time=attack_range[0] + i * attack_step,
-                decay_time=decay_range[0] + i * decay_step,
-                sustain_level=sustain_range[0] + i * sustain_step,
-                release_time=release_range[0] + i * release_step,
-                length=synth.num_samples
-            )
-            for i in range(len(modulating_frequencies))
-        ]
+    #     envelopes = [
+    #         synth.generate_adsr_envelope(
+    #             attack_time=attack_range[0] + i * attack_step,
+    #             decay_time=decay_range[0] + i * decay_step,
+    #             sustain_level=sustain_range[0] + i * sustain_step,
+    #             release_time=release_range[0] + i * release_step,
+    #             length=synth.num_samples
+    #         )
+    #         for i in range(len(modulating_frequencies))
+    #     ]
 
-        return envelopes
+    #     return envelopes
     
-    # modulating_frequencies_cents = [synth.reference_frequency * 10] + [freq * 10 for freq in cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)]
+    # # modulating_frequencies_cents = [synth.reference_frequency * 10] + [freq * 10 for freq in cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)]
 
-    modulating_frequencies_cents = [synth.reference_frequency] + cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)
-    modulating_frequencies_grid = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
-    modulator_envelopes = generate_modulator_envelopes(modulating_frequencies_cents)
+    # modulating_frequencies_cents = [synth.reference_frequency] + cents_to_frequency(synth.reference_frequency, comp.selected_cents_implied_zero)
+    # modulating_frequencies_grid = [grid_fraction * synth.reference_frequency * frequency_multiplier for grid_fraction in comp.grids_set]
+    # modulator_envelopes = generate_modulator_envelopes(modulating_frequencies_cents)
 
     # synth.visualize_envelopes(carrier_envelope, modulator_envelopes)
     # synth.visualize_fm_synthesis(enveloped_carrier, modulating_frequencies_cents, modulator_envelopes, modulation_index, synthesis_type)

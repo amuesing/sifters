@@ -18,6 +18,7 @@ class Database:
         self.cursor = self.connection.cursor()
         
         self.normalized_grids = mediator.normalized_grids
+        self.total_duration = mediator.total_duration
         self.grids_set = mediator.grids_set
         self.repeats = mediator.repeats
         self.period = mediator.period
