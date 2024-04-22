@@ -303,46 +303,11 @@ if __name__ == '__main__':
         dataframe = dataframe.sort_values(by='Start').drop_duplicates().reset_index(drop=True)
         dataframe = dataframe.apply(pandas.to_numeric)
         return dataframe
-    
-
-    def generate_notes_data(comp):
-        notes_data = []
-        velocity = 64
-        grid_id = 1
-        
-        steps = comp.get_successive_diff(comp.indices)
-        normalized_matrix = comp.generate_pitchclass_matrix(comp.indices)
-        matrix_represented_by_size = comp.represent_matrix_by_size(normalized_matrix)
-        matrix_represented_by_size = comp.convert_matrix_to_dataframe(matrix_represented_by_size)
-        sieve_adjusted_by_step = comp.indices[0] + normalized_matrix
-        sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
-        
-        # For each factor, create notes data without considering factors
-        num_of_events = len(comp.indices)
-        num_of_positions = num_of_events // len(steps)
-        pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
-        adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
-        flattened_pool = [num for list in pool for num in list]
-        indice_list = [num for list in adjusted_pool for num in list]
-
-        note_pool = itertools.cycle(flattened_pool)
-        indices = numpy.nonzero(comp.binary)[0]
-        duration = comp.period // num_of_events
-
-        for index in indices:
-            start = index * duration
-            notes_data.append((start, velocity, next(note_pool), duration, grid_id))
-        
-        comp.select_scalar_segments(list(set(indice_list)))
-        notes_data = create_dataframe(notes_data)
-        notes_data.to_csv('data/csv/Notes_Data.csv', index=False)
-        return notes_data
 
     
     def generate_notes_data(comp):
         notes_data = []
         indice_list = []
-        velocity = 64
         grid_id = 1
         
         steps = comp.get_successive_diff(comp.indices)
@@ -353,9 +318,10 @@ if __name__ == '__main__':
         sieve_adjusted_by_step = comp.convert_matrix_to_dataframe(sieve_adjusted_by_step)
         # print(f'Number of unique matrix elements: {comp.convert_matrix_to_dataframe(normalized_matrix).stack().nunique()}')
         
-        if comp.factorize == True:
-            total_duration = comp.period ** 2
+        if comp.factorize:
             # For each factor, create exactly the number of notes required for each texture to achieve parity
+            velocity = 64
+            total_duration = comp.period ** 2
             for factor_index in range(len(comp.factors)):
                 num_of_events = (len(comp.indices) * comp.factors[factor_index])
                 num_of_positions = num_of_events // len(steps)
@@ -369,14 +335,18 @@ if __name__ == '__main__':
                 tiled_pattern = numpy.tile(comp.binary, comp.factors[factor_index])
                 tiled_indices = numpy.nonzero(tiled_pattern)[0]
 
-                duration = comp.period // comp.factors[factor_index]
+                durational_unit = comp.period // comp.factors[factor_index]
 
                 for index in tiled_indices:
-                    start = index * duration
-                    notes_data.append((start, velocity, next(note_pool), duration, grid_id))
+                    start = index * durational_unit
+                    notes_data.append((start, velocity, next(note_pool), durational_unit, grid_id))
+                    if comp.factors[factor_index] == comp.factors[-1]:
+                        if index == tiled_indices[-1]:
+                            notes_data.append((start + durational_unit, 0, 0, total_duration - (index + durational_unit), grid_id))
         else:
-            ### WHAT IF I WANT TO USE GRID AS THE DURATION_UNIT, WHAT ABOUT MULTIPLE GRIDS? LCM?
-            duration_unit = 1
+            durational_unit = 1
+            note = 0
+            velocity = 0
             total_duration = comp.period
             num_of_positions = len(comp.indices) // len(steps)
             pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
@@ -388,9 +358,10 @@ if __name__ == '__main__':
             note_pool = itertools.cycle(flattened_pool)
 
             for index in comp.indices:
-                notes_data.append((index, velocity, next(note_pool), duration_unit, grid_id))
+                start = index
+                notes_data.append((start, velocity, next(note_pool), durational_unit, grid_id))
                 if index == comp.indices[-1]:
-                    notes_data.append((index + duration_unit, 0, 0, total_duration - (index + duration_unit), grid_id))
+                    notes_data.append((start + durational_unit, velocity, note, total_duration - (index + durational_unit), grid_id))
             
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = create_dataframe(notes_data)
@@ -501,19 +472,21 @@ if __name__ == '__main__':
     def cents_to_frequency(reference_frequency, cents_list):
         return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
 
-    # sieve = '''
-    #         (((8@0|8@1|8@7)&(5@1|5@3))|
-    #         ((8@0|8@1|8@2)&5@0)|
-    #         ((8@5|8@6)&(5@2|5@3|5@4))|
-    #         (8@6&5@1)|
-    #         (8@3)|
-    #         (8@4)|
-    #         (8@1&5@2))
-    #         '''
-    
     sieve = '''
-            (5@2&3@2)
+            (((8@0|8@1|8@7)&(5@1|5@3))|
+            ((8@0|8@1|8@2)&5@0)|
+            ((8@5|8@6)&(5@2|5@3|5@4))|
+            (8@6&5@1)|
+            (8@3)|
+            (8@4)|
+            (8@1&5@2))
             '''
+    
+    ### WHY DOES THE SIEVE BELOW NOT WORK WHEN NORMALIZED_GRIDS IS TRUE
+    ### IS IS BECAUSE THERE IS ONLY ONE INDICE (EVENT)
+    # sieve = '''
+    #         (5@2&3@2)
+    #         '''
             
     # grid = [fractions.Fraction(1, 1)]
         
@@ -532,7 +505,9 @@ if __name__ == '__main__':
     empty_folder('data/mid')
     empty_folder('data/wav')
     # comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
-    comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], factorize=False)
+    # comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], factorize=True)
+    comp = Composition(sieve, normalized_grids=True, factorize=True)
+
 
     ### HOW TO MAKE SURE THE NOTES DATA REPRESENTS THE TOTAL LENGTH OF THE PERIOD REGARDLESS OF IF IT ENDS ON 0
     ### I NEED TO CALCULATE THE OVER ALL DURATION OF A SIEVE ACROSS GRIDIDs
