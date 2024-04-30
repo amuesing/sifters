@@ -244,7 +244,6 @@ class Composition:
                     pool.append(matrix.iloc[:, wrapped_index].tolist())
 
             current_index = wrapped_index
-        
 
         return pool
     
@@ -309,6 +308,7 @@ if __name__ == '__main__':
         notes_data = []
         indice_list = []
         grid_id = 1
+        velocity = 64
         
         steps = comp.get_successive_diff(comp.indices)
         normalized_matrix = comp.generate_pitchclass_matrix(comp.indices)
@@ -320,13 +320,13 @@ if __name__ == '__main__':
         
         if comp.factorize:
             # For each factor, create exactly the number of notes required for each texture to achieve parity
-            velocity = 64
             total_duration = comp.period ** 2
             for factor_index in range(len(comp.factors)):
                 num_of_events = (len(comp.indices) * comp.factors[factor_index])
                 num_of_positions = num_of_events // len(steps)
                 pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
                 adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
+                print(pool)
                 flattened_pool = [num for list in pool for num in list]
                 
                 indice_list = [num for list in adjusted_pool for num in list]
@@ -345,8 +345,6 @@ if __name__ == '__main__':
                             notes_data.append((start + durational_unit, 0, 0, total_duration - (index + durational_unit), grid_id))
         else:
             durational_unit = 1
-            note = 0
-            velocity = 0
             total_duration = comp.period
             num_of_positions = len(comp.indices) // len(steps)
             pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
@@ -360,8 +358,10 @@ if __name__ == '__main__':
             for index in comp.indices:
                 start = index
                 notes_data.append((start, velocity, next(note_pool), durational_unit, grid_id))
+                ### WHAT IF I TRIED SETTING THE TIME SIGNATURE TO THE PERIOD OR A FRACTION OF THE PERIOD AND ENSURED THE SEGMENT WAS A SPECIFIC NUMBER OF BARS IN ORDER TO RETAIN ACTUAL LENGTH OF SIEVE
                 if index == comp.indices[-1]:
-                    notes_data.append((start + durational_unit, velocity, note, total_duration - (index + durational_unit), grid_id))
+                    velocity = 0
+                    notes_data.append((start + durational_unit, velocity, 0, total_duration - (index + durational_unit), grid_id))
             
         comp.select_scalar_segments(list(set(indice_list)))
         notes_data = create_dataframe(notes_data)
@@ -506,7 +506,7 @@ if __name__ == '__main__':
     empty_folder('data/wav')
     # comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
     # comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], factorize=True)
-    comp = Composition(sieve, normalized_grids=True, factorize=True)
+    comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], normalized_grids=False, factorize=True)
 
 
     ### HOW TO MAKE SURE THE NOTES DATA REPRESENTS THE TOTAL LENGTH OF THE PERIOD REGARDLESS OF IF IT ENDS ON 0
