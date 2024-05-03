@@ -1,37 +1,46 @@
+import mido
+import numpy
 import music21
 
-# siv = '''
-#         (((8@0|8@1|8@7)&(5@1|5@3))|
-#         ((8@0|8@1|8@2)&5@0)|
-#         ((8@5|8@6)&(5@2|5@3|5@4))|
-#         (8@6&5@1)|
-#         (8@3)|
-#         (8@4)|
-#         (8@1&5@2))
-#         '''
+def generate_midi_clip(sieve_string, filename):
+    # Create a Sieve object
+    s = music21.sieve.Sieve(sieve_string)
 
-siv = '''
-        (3@2|7@1)
-        '''
+    # Calculate the period
+    period = s.period()
 
-s = music21.sieve.Sieve(siv)
+    # Set Z-range
+    s.setZRange(0, period - 1)
 
-# period = s.period()
+    # Get the binary segment
+    binary = s.segment(segmentFormat='binary')
 
-# s.setZRange(0, period - 1)
+    # Create a MIDI file
+    mid = mido.MidiFile()
 
-binary = s.segment(segmentFormat='binary')
-width = s.segment(segmentFormat='width')
-unit = s.segment(segmentFormat='unit')
+    # Create a MIDI track
+    track = mido.MidiTrack()
+    mid.tracks.append(track)
 
-count = 0
+    # Create a time signature message
+    numerator = period
+    denominator = 4  # You can adjust this as needed
+    time_signature = mido.MetaMessage('time_signature', numerator=numerator, denominator=denominator, time=0)
+    track.append(time_signature)
 
-for i in binary:
-    if binary[i] == 1:
-        count += 1
+    # Add note events
+    for i, value in enumerate(binary):
+        duration = 480
+        if value == 0:
+            track.append(mido.Message('note_on', note=64, velocity=0, time=0))
+            track.append(mido.Message('note_off', note=64, velocity=0, time=duration))
+        else:
+            track.append(mido.Message('note_on', note=64, velocity=100, time=0))
+            track.append(mido.Message('note_off', note=64, velocity=100, time=duration))
+
+    # Save the MIDI file
+    mid.save(f'data/mid/{filename}')
 
 
-# print(len(binary))
-print(count)
-# print(width)
-print(len(unit))
+sieve_string = '(2@0|4@2)'
+generate_midi_clip(sieve_string, f'{sieve_string}')

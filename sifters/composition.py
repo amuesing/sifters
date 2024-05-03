@@ -472,21 +472,21 @@ if __name__ == '__main__':
     def cents_to_frequency(reference_frequency, cents_list):
         return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
 
-    sieve = '''
-            (((8@0|8@1|8@7)&(5@1|5@3))|
-            ((8@0|8@1|8@2)&5@0)|
-            ((8@5|8@6)&(5@2|5@3|5@4))|
-            (8@6&5@1)|
-            (8@3)|
-            (8@4)|
-            (8@1&5@2))
-            '''
+    # sieve = '''
+    #         (((8@0|8@1|8@7)&(5@1|5@3))|
+    #         ((8@0|8@1|8@2)&5@0)|
+    #         ((8@5|8@6)&(5@2|5@3|5@4))|
+    #         (8@6&5@1)|
+    #         (8@3)|
+    #         (8@4)|
+    #         (8@1&5@2))
+    #         '''
     
     ### WHY DOES THE SIEVE BELOW NOT WORK WHEN NORMALIZED_GRIDS IS TRUE
     ### IS IS BECAUSE THERE IS ONLY ONE INDICE (EVENT)
-    # sieve = '''
-    #         (5@2&3@2)
-    #         '''
+    sieve = '''
+            (5@2&3@2)
+            '''
             
     # grid = [fractions.Fraction(1, 1)]
         
@@ -501,9 +501,9 @@ if __name__ == '__main__':
     ### LOOK AT THE SET_GRIDS METHOD, HOW IS IT GENERATING GRIDS? WHAT ABOUT [1,0,0,0,0,0,0,0,0,0]-- WHY DOES THIS CREATE TWO GRIDS? SHOULD IT ONLY CREATE ONE?
     ### What about processing multiple sieves at once
     
-    empty_folder('data/csv')
-    empty_folder('data/mid')
-    empty_folder('data/wav')
+    # empty_folder('data/csv')
+    # empty_folder('data/mid')
+    # empty_folder('data/wav')
     # comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
     # comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], factorize=True)
     comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], normalized_grids=False, factorize=True)
