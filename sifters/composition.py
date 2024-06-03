@@ -326,7 +326,6 @@ if __name__ == '__main__':
                 num_of_positions = num_of_events // len(steps)
                 pool = comp.generate_note_pool_from_matrix(matrix_represented_by_size, num_of_positions, steps)
                 adjusted_pool = comp.generate_note_pool_from_matrix(sieve_adjusted_by_step, num_of_positions, steps)
-                print(pool)
                 flattened_pool = [num for list in pool for num in list]
                 
                 indice_list = [num for list in adjusted_pool for num in list]
@@ -363,7 +362,9 @@ if __name__ == '__main__':
                     velocity = 0
                     notes_data.append((start + durational_unit, velocity, 0, total_duration - (index + durational_unit), grid_id))
             
-        comp.select_scalar_segments(list(set(indice_list)))
+        # comp.select_scalar_segments(list(set(indice_list)))
+        comp.select_scalar_segments(list(set(comp.indices)))
+
         notes_data = create_dataframe(notes_data)
         notes_data.to_csv('data/csv/Notes_Data.csv', index=False)
         return notes_data
@@ -472,21 +473,21 @@ if __name__ == '__main__':
     def cents_to_frequency(reference_frequency, cents_list):
         return [round(reference_frequency * 2**(cents / 1200), 2) for cents in cents_list]
 
-    # sieve = '''
-    #         (((8@0|8@1|8@7)&(5@1|5@3))|
-    #         ((8@0|8@1|8@2)&5@0)|
-    #         ((8@5|8@6)&(5@2|5@3|5@4))|
-    #         (8@6&5@1)|
-    #         (8@3)|
-    #         (8@4)|
-    #         (8@1&5@2))
-    #         '''
+    sieve = '''
+            (((8@0|8@1|8@7)&(5@1|5@3))|
+            ((8@0|8@1|8@2)&5@0)|
+            ((8@5|8@6)&(5@2|5@3|5@4))|
+            (8@6&5@1)|
+            (8@3)|
+            (8@4)|
+            (8@1&5@2))
+            '''
     
     ### WHY DOES THE SIEVE BELOW NOT WORK WHEN NORMALIZED_GRIDS IS TRUE
     ### IS IS BECAUSE THERE IS ONLY ONE INDICE (EVENT)
-    sieve = '''
-            (5@2&3@2)
-            '''
+    # sieve = '''
+    #         (5@2&3@2)
+    #         '''
             
     # grid = [fractions.Fraction(1, 1)]
         
