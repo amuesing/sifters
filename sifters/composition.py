@@ -507,7 +507,8 @@ if __name__ == '__main__':
     # empty_folder('data/wav')
     # comp = Composition(sieve, grids_set=[fractions.Fraction('1/1')])
     # comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], factorize=True)
-    comp = Composition(sieve, grids_set=[fractions.Fraction(1/1)], normalized_grids=False, factorize=True)
+    comp = Composition(sieve, grids_set=[fractions.Fraction(1/4)], normalized_grids=False, factorize=True)
+    # comp = Composition(sieve, normalized_grids=False, factorize=True)
 
 
     ### HOW TO MAKE SURE THE NOTES DATA REPRESENTS THE TOTAL LENGTH OF THE PERIOD REGARDLESS OF IF IT ENDS ON 0
