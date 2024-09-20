@@ -8,7 +8,7 @@ The logical sieve behaves in a way that is similar to an oscillator from a tradi
 
 To use Sifters, create a `Composition` object with the following arguments:
 
-- `sieve`: A string that can be used to initialize a sieve object from the music21 library. This string represents the logical sieve from which musical materials will be derived. For more information on how the sieve object works, refer to the [music21 documentation](https://web.mit.edu/music21/doc/moduleReference/moduleSieve.html).
+- `sieve`: A string that can be used to initialize a sieve object from the music21 library. This string represents the logical sieve from which musical materials will be derived. For more information on how the sieve object works, refer to the [music21 documentation](https://www.music21.org/music21docs/moduleReference/moduleSieve.html).
 
 - `grid_set`: This parameter accepts a list of fraction objects that define the basic unit of duration for each version of the sieve. If none are provided, Sifters will generate a list of grids based on the percent of the period the non-zero integers fall on in the binary representation of the sieve. Essentially, this parameter allows users to specify the rhythmic structure or grid divisions for the generated musical materials, providing flexibility in crafting rhythmic patterns and structures.
 
