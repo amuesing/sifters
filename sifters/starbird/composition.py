@@ -137,7 +137,6 @@ def process_sieve(s, name, period, accent_binaries, velocity_profile):
 
     binary = sieve_to_binary(s)
     indices = numpy.nonzero(binary)[0]
-    print(indices)
 
     for i in indices:
         filename = f'{title}_{name}_shift_clip{i + 1}.mid'

@@ -6,43 +6,11 @@ title = 'untitled'
 
 instrument_dict = {
     'snare': {
-        'sieve': '(8@0|8@1|8@7)&(5@1|5@3)|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))',
+        'sieve': '(4@0)',
         'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
         'accent_dict': {
             'primary': '5@0|5@2|5@1|5@3',
             'secondary': '8@0|8@1|8@2|8@5|8@6|8@7'
-        }
-    },
-    'clap': {
-        'sieve': '(((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|(8@6&5@1)|(8@3)|(8@4)|(8@1&5@2))',
-        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-        'accent_dict': {
-            'primary': '5@0|5@1|5@2|5@3|5@4',
-            'secondary': '8@0|8@1|8@2|8@3|8@4|8@5|8@6|8@7'
-        }
-    },
-    'kick': {
-        'sieve': '(8@3)|(8@4)',
-        'velocity_profile': {'gap': 127, 'primary': 63, 'secondary': 95, 'overlap': 31},
-        'accent_dict': {
-            'primary': '(8@3)',
-            'secondary': '(8@4)'
-        }
-    },
-    'woodblock': {
-        'sieve': '(8@1&5@2)',
-        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-        'accent_dict': {
-            'primary': '5@2',
-            'secondary': '8@1'
-        }
-    },
-    'impact': {
-        'sieve': '(8@6&5@1)',
-        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-        'accent_dict': {
-            'primary': '5@1',
-            'secondary': '8@6',
         }
     }
 }
@@ -137,7 +105,6 @@ def process_sieve(s, name, period, accent_binaries, velocity_profile):
 
     binary = sieve_to_binary(s)
     indices = numpy.nonzero(binary)[0]
-    print(indices)
 
     for i in indices:
         filename = f'{title}_{name}_shift_clip{i + 1}.mid'
