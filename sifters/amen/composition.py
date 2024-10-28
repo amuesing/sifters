@@ -2,15 +2,23 @@ import mido
 import music21
 import numpy
 
-title = 'untitled'
+title = 'amen'
 
 instrument_dict = {
-    'snare': {
-        'sieve': '(4@0)',
+    'kick': {
+        'sieve': '(16@0|16@2|16@10|16@11)',
         'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
         'accent_dict': {
-            'primary': '5@0|5@2|5@1|5@3',
-            'secondary': '8@0|8@1|8@2|8@5|8@6|8@7'
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'snare': {
+        'sieve': '(16@4|16@7|16@9|16@12|16@15)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
         }
     }
 }
