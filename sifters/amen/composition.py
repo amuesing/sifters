@@ -5,7 +5,7 @@ import numpy
 title = 'amen'
 
 instrument_dict = {
-    'kick': {
+    'kick m.1': {
         'sieve': '(16@0|16@2|16@10|16@11)',
         'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
         'accent_dict': {
@@ -13,8 +13,88 @@ instrument_dict = {
             'secondary': '16@10|16@11'
         }
     },
-    'snare': {
+    'snare m.1': {
         'sieve': '(16@4|16@7|16@9|16@12|16@15)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'closed hi hat m.1': {
+        'sieve': '16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'kick m.2': {
+        'sieve': '(16@0|16@2|16@10|16@11)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'snare m.2': {
+        'sieve': '(16@4|16@7|16@9|16@12|16@15)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'closed hi hat m.2': {
+        'sieve': '(16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'kick m.3': {
+        'sieve': '(16@0|16@2|16@10)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'snare m.3': {
+        'sieve': '(16@4|16@7|16@9|16@14)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'closed hi hat m.3': {
+        'sieve': '(16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'kick m.4': {
+        'sieve': '(16@2|16@3|16@10)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'snare m.4': {
+        'sieve': '(16@1|16@4|16@7|16@9|16@14)',
+        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
+        'accent_dict': {
+            'primary': '16@0|16@2',
+            'secondary': '16@10|16@11'
+        }
+    },
+    'closed hi hat m.4': {
+        'sieve': '(16@0|16@2|16@4|16@6|16@8|16@12|16@14)',
         'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
         'accent_dict': {
             'primary': '16@0|16@2',
