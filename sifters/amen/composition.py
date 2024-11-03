@@ -6,7 +6,7 @@ title = 'amen'
 
 instrument_dict = {
     'test': {
-        'sieve': '(2@0 & 64@0) | (2@0 & 64@2)',
+        'sieve': '(2@0&-64@58)',
         'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
         'accent_dict': {
             'primary': '16@0|16@2',
