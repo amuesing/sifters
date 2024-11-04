@@ -13,94 +13,6 @@ instrument_dict = {
             'secondary': '16@10|16@11'
         }
     }
-    # 'snare m.1': {
-    #     'sieve': '(16@4|16@7|16@9|16@12|16@15)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'closed hi hat m.1': {
-    #     'sieve': '16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'kick m.2': {
-    #     'sieve': '(16@0|16@2|16@10|16@11)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'snare m.2': {
-    #     'sieve': '(16@4|16@7|16@9|16@12|16@15)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'closed hi hat m.2': {
-    #     'sieve': '(16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'kick m.3': {
-    #     'sieve': '(16@0|16@2|16@10)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'snare m.3': {
-    #     'sieve': '(16@4|16@7|16@9|16@14)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'closed hi hat m.3': {
-    #     'sieve': '(16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'kick m.4': {
-    #     'sieve': '(16@2|16@3|16@10)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'snare m.4': {
-    #     'sieve': '(16@1|16@4|16@7|16@9|16@14)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # },
-    # 'closed hi hat m.4': {
-    #     'sieve': '(16@0|16@2|16@4|16@6|16@8|16@12|16@14)',
-    #     'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-    #     'accent_dict': {
-    #         'primary': '16@0|16@2',
-    #         'secondary': '16@10|16@11'
-    #     }
-    # }
 }
 
 def sieve_to_binary(sieve):
@@ -174,7 +86,48 @@ def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velo
 
     return velocities
 
+def create_accent_binaries(accent_dict, largest_period):
+    # Set default accent dictionary if none is provided
+    if not accent_dict:
+        accent_dict = {'primary': '', 'secondary': ''}  # Empty patterns
+
+    accent_binaries = {}
+    for name, sieve_pattern in accent_dict.items():
+        if sieve_pattern:
+            sieve_obj = music21.sieve.Sieve(sieve_pattern)
+            sieve_obj.setZRange(0, largest_period - 1)  # Set the zRange to largest_period
+            accent_binaries[name] = sieve_to_binary(sieve_obj)
+        else:
+            accent_binaries[name] = numpy.zeros(largest_period)  # Default to an empty binary
+    return accent_binaries
+
+def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velocity_profile):
+    # Set a default velocity profile if none is provided
+    default_velocity_profile = {'gap': 64, 'primary': 94, 'secondary': 64, 'overlap': 32}
+    velocity_profile = velocity_profile or default_velocity_profile
+
+    velocities = []
+    primary_length = len(primary_binary)
+    secondary_length = len(secondary_binary)
+
+    for i, value in enumerate(binary):
+        if value == 0:
+            velocities.append(0)
+        elif primary_binary[i % primary_length] == 1 and secondary_binary[i % secondary_length] == 1:
+            velocities.append(velocity_profile['overlap'])
+        elif primary_binary[i % primary_length] == 1:
+            velocities.append(velocity_profile['primary'])
+        elif secondary_binary[i % secondary_length] == 1:
+            velocities.append(velocity_profile['secondary'])
+        else:
+            velocities.append(velocity_profile['gap'])
+
+    return velocities
+
 def process_sieve(s, name, period, accent_binaries, velocity_profile):
+    # Provide defaults if velocity profile is missing
+    velocity_profile = velocity_profile or {'gap': 64, 'primary': 95, 'secondary': 63, 'overlap': 31}
+    
     transformations = [
         ('prime', lambda x: x),
         ('invert', invert_binary),
@@ -182,8 +135,8 @@ def process_sieve(s, name, period, accent_binaries, velocity_profile):
         ('stretch_2', lambda x: stretch_binary(x, 2))
     ]
 
-    primary_binary = accent_binaries['primary']
-    secondary_binary = accent_binaries['secondary']
+    primary_binary = accent_binaries.get('primary', numpy.zeros(period))
+    secondary_binary = accent_binaries.get('secondary', numpy.zeros(period))
 
     for suffix, transform in transformations:
         transformed_sieve = transform_sieve(s, transform)
@@ -206,5 +159,6 @@ largest_period = find_largest_period(instrument_dict)
 
 for name, s in sieve_objs:
     s.setZRange(0, largest_period - 1)
-    accent_binaries = create_accent_binaries(instrument_dict[name]['accent_dict'], largest_period)
-    process_sieve(s, name, largest_period, accent_binaries, instrument_dict[name]['velocity_profile'])
+    accent_binaries = create_accent_binaries(instrument_dict[name].get('accent_dict', {}), largest_period)
+    velocity_profile = instrument_dict[name].get('velocity_profile', None)
+    process_sieve(s, name, largest_period, accent_binaries, velocity_profile)
