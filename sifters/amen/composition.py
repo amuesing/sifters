@@ -12,6 +12,7 @@ instrument_dict = {
             'primary': '16@0|16@2',
             'secondary': '16@10|16@11'
         }
+        
     }
     # 'snare m.1': {
     #     'sieve': '(16@4|16@7|16@9|16@12|16@15)',
