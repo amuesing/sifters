@@ -5,13 +5,14 @@ import numpy
 title = 'amen'
 
 instrument_dict = {
-    'test': {
-        'sieve': '(2@0&-64@58)',
-        'velocity_profile': {'gap': 127, 'primary': 95, 'secondary': 63, 'overlap': 31},
-        'accent_dict': {
-            'primary': '16@0|16@2',
-            'secondary': '16@10|16@11'
-        }
+    'hi hat': {
+        'sieve': '(2@0&-64@58)'
+    },
+    'crash': {
+        'sieve': '64@58'
+    },
+    'snare': {
+        'sieve': 
     }
 }
 
