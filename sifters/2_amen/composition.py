@@ -12,7 +12,7 @@ instrument_dict = {
         'sieve': '64@58'
     },
     'snare': {
-        'sieve': 
+        'sieve': '5@2|6@3|8@4'
     }
 }
 
