@@ -5,12 +5,12 @@ import numpy
 title = 'amen'
 
 instrument_dict = {
-    'hi hat': {
-        'sieve': '(2@0&-64@58)'
-    },
-    'crash': {
-        'sieve': '64@58'
-    },
+    # 'hi hat': {
+    #     'sieve': '(2@0&-64@58)'
+    # },
+    # 'crash': {
+    #     'sieve': '64@58'
+    # },
     'snare': {
         'sieve': '5@2|6@3|8@4'
     }
@@ -157,6 +157,7 @@ def process_sieve(s, name, period, accent_binaries, velocity_profile):
 # Main processing loop
 sieve_objs = create_sieve_objs(instrument_dict)
 largest_period = find_largest_period(instrument_dict)
+print(largest_period)
 
 for name, s in sieve_objs:
     s.setZRange(0, largest_period - 1)

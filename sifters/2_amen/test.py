@@ -11,7 +11,7 @@ compressed_sieve = sieve.CompressionSegment(indices)
 print("Derived compression sieve string:", str(compressed_sieve))
 
 # Optionally apply z range
-apply_z_range = True  # Set this to False if you don't want to apply z range
+apply_z_range = False  # Set this to False if you don't want to apply z range
 
 if apply_z_range:
     # Set z range to encompass only the input values
