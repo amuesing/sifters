@@ -1,60 +1,145 @@
-import matplotlib.pyplot as plt
-from music21 import sieve
+import mido
+import music21
+import numpy
 
-# Define the list of indices
-indices = [4, 7, 9, 12, 15]
+title = 'amen'
 
-# Use CompressionSegment to derive a sieve pattern
-compressed_sieve = sieve.CompressionSegment(indices)
+instrument_dict = {
+    # 'hi hat': {
+    #     'sieve': '(2@0&-64@58)'
+    # },
+    # 'crash': {
+    #     'sieve': '64@58'
+    # },
+    'snare': {
+        'sieve': '5@2|6@3|8@4'
+    },
+    # 'kick': {
+    #     'sieve': '8@2|9@2|10@0'
+    # }
+}
 
-# Print out the derived sieve notation
-print("Derived compression sieve string:", str(compressed_sieve))
+def sieve_to_binary(sieve):
+    return numpy.array(sieve.segment(segmentFormat='binary'))
 
-# Optionally apply z range
-apply_z_range = False  # Set this to False if you don't want to apply z range
+def transform_sieve(sieve, transform, *args):
+    binary = sieve_to_binary(sieve)
+    transformed_binary = transform(binary, *args)
+    return transformed_binary
 
-if apply_z_range:
-    # Set z range to encompass only the input values
-    min_z = min(indices)
-    max_z = max(indices)
-    z_range = list(range(min_z, max_z + 1))  # Create a list of values from min to max
-    print(f"Applying z range: {z_range}")
-else:
-    print("Skipping z range application.")
+def shift_binary(binary, shift_amount):
+    return numpy.roll(binary, shift_amount)
 
-# Generate a sieve object
-sieve_object = sieve.Sieve(str(compressed_sieve))
+def invert_binary(binary):
+    return 1 - binary
 
-# Apply z range if specified
-if apply_z_range:
-    sieve_object.setZ(z_range)
+def reverse_binary(binary):
+    return binary[::-1]
 
-# Print the generated sequence (with or without z range)
-generated_sequence = sieve_object.segment()  # Get the generated sequence
-print("Generated sequence:", generated_sequence)
+def stretch_binary(binary, factor):
+    return numpy.repeat(binary, factor)
 
-# Visualization
-max_value = max(generated_sequence) if generated_sequence else 0  # Use the max value from generated sequence
+def create_sieve_objs(instrument_dict):
+    return [(name, music21.sieve.Sieve(info['sieve'])) for name, info in instrument_dict.items()]
 
-# Create a list of x values that cover every integer from 0 to the max_value
-x = list(range(0, max_value + 1))
+def find_largest_period(instrument_dict):
+    return max(music21.sieve.Sieve(info['sieve']).period() for info in instrument_dict.values())
 
-# Create a y list with zeros for the number line
-y = [0] * len(x)
+def create_accent_binaries(accent_dict, largest_period):
+    if not accent_dict:
+        accent_dict = {'primary': '', 'secondary': ''}
 
-plt.figure(figsize=(10, 2))  # Create a figure with specific size
-plt.plot(x, y, 'o')  # Plot the points as circles on the x-axis
+    accent_binaries = {}
+    for name, sieve_pattern in accent_dict.items():
+        if sieve_pattern:
+            sieve_obj = music21.sieve.Sieve(sieve_pattern)
+            sieve_obj.setZRange(0, largest_period - 1)
+            accent_binaries[name] = sieve_to_binary(sieve_obj)
+        else:
+            accent_binaries[name] = numpy.zeros(largest_period)
+    return accent_binaries
 
-# Set x-axis limits to show every integer on the axis
-plt.xlim(-1, max_value + 1)  # Set x-axis limits
-plt.ylim(-1, 1)  # Set y-axis limits
-plt.yticks([])  # Remove y-axis ticks
-plt.xticks(range(max_value + 1))  # Set x-ticks to be every integer from 0 to max_value
-plt.xlabel('Index')  # Label x-axis
-plt.title('Number Line for Generated Sequence')  # Add title
-plt.grid(True)  # Optional: Add a grid
+def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velocity_profile):
+    default_velocity_profile = {'gap': 64, 'primary': 94, 'secondary': 64, 'overlap': 32}
+    velocity_profile = velocity_profile or default_velocity_profile
 
-# Highlight the points in the generated sequence
-plt.plot(generated_sequence, [0] * len(generated_sequence), 'ro', markersize=8, label='Generated Sequence')  # Highlight generated points in red
-plt.legend()  # Show legend
-plt.show()  # Display the plot
+    velocities = []
+    primary_length = len(primary_binary)
+    secondary_length = len(secondary_binary)
+
+    for i, value in enumerate(binary):
+        if value == 0:
+            velocities.append(0)
+        elif primary_binary[i % primary_length] == 1 and secondary_binary[i % secondary_length] == 1:
+            velocities.append(velocity_profile['overlap'])
+        elif primary_binary[i % primary_length] == 1:
+            velocities.append(velocity_profile['primary'])
+        elif secondary_binary[i % secondary_length] == 1:
+            velocities.append(velocity_profile['secondary'])
+        else:
+            velocities.append(velocity_profile['gap'])
+
+    return velocities
+
+def create_midi(binary, period, filename, velocities):
+    mid = mido.MidiFile()
+    track = mido.MidiTrack()
+    mid.tracks.append(track)
+
+    ticks_per_quarter_note = 480
+    duration = ticks_per_quarter_note // 4
+
+    for value, velocity in zip(binary, velocities):
+        track.append(mido.Message('note_on', note=64, velocity=0 if value == 0 else velocity, time=0))
+        track.append(mido.Message('note_off', note=64, velocity=0 if value == 0 else velocity, time=duration))
+
+    time_signature = mido.MetaMessage('time_signature', numerator=period, denominator=16, time=0)
+    track.append(mido.MetaMessage('track_name'))
+    track.append(time_signature)
+    mid.save(f'data/mid/{filename}')
+
+def process_sieve(s, name, period, accent_binaries, velocity_profile):
+    velocity_profile = velocity_profile or {'gap': 64, 'primary': 95, 'secondary': 63, 'overlap': 31}
+    
+    transformations = [
+        ('prime', lambda x: x),
+        ('invert', invert_binary),
+        ('reverse', reverse_binary),
+        ('stretch_2', lambda x: stretch_binary(x, 2))
+    ]
+
+    primary_binary = accent_binaries.get('primary', numpy.zeros(period))
+    secondary_binary = accent_binaries.get('secondary', numpy.zeros(period))
+
+    for suffix, transform in transformations:
+        transformed_sieve = transform_sieve(s, transform)
+        filename = f'{title}_{name}_{suffix}.mid'
+        velocities = accent_velocity_with_patterns(transformed_sieve, primary_binary, secondary_binary, velocity_profile)
+        create_midi(transformed_sieve, period, filename, velocities)
+
+    binary = sieve_to_binary(s)
+    indices = numpy.nonzero(binary)[0]
+
+    for i in indices:
+        filename = f'{title}_{name}_shift_clip{i + 1}.mid'
+        shifted_sieve = transform_sieve(s, shift_binary, i)
+        velocities = accent_velocity_with_patterns(shifted_sieve, primary_binary, secondary_binary, velocity_profile)
+        create_midi(shifted_sieve, period, filename, velocities)
+
+# Main processing loop
+sieve_objs = create_sieve_objs(instrument_dict)
+largest_period = find_largest_period(instrument_dict)
+print("Largest period:", largest_period)
+
+for name, s in sieve_objs:
+    binary_sequence = sieve_to_binary(s)
+    indices = numpy.nonzero(binary_sequence)[0]
+
+    if indices.size > 0:
+        min_index = indices.min()
+        max_index = indices.max()
+        s.setZRange(min_index, max_index)
+    
+    accent_binaries = create_accent_binaries(instrument_dict[name].get('accent_dict', {}), largest_period)
+    velocity_profile = instrument_dict[name].get('velocity_profile', None)
+    process_sieve(s, name, largest_period, accent_binaries, velocity_profile)

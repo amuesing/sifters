@@ -13,7 +13,10 @@ instrument_dict = {
     # },
     'snare': {
         'sieve': '5@2|6@3|8@4'
-    }
+    },
+    # 'kick': {
+    #     'sieve': '8@2|9@2|10@0'
+    # }
 }
 
 def sieve_to_binary(sieve):

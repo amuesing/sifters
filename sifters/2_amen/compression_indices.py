@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from music21 import sieve
 
 # Define the list of indices
-indices = [4, 7, 9, 12, 15, 20, 23, 25, 28, 31, 36, 39, 41, 46, 49, 52, 55, 57, 62]
+indices = [0, 2, 10, 11]
 
 # Use CompressionSegment to derive a sieve pattern
 compressed_sieve = sieve.CompressionSegment(indices)
@@ -34,7 +34,8 @@ generated_sequence = sieve_object.segment()  # Get the generated sequence
 print("Generated sequence:", generated_sequence)
 
 # Visualization
-max_value = max(generated_sequence) if generated_sequence else 0  # Use the max value from generated sequence
+# max_value = max(generated_sequence) if generated_sequence else 0  # Use the max value from generated sequence
+max_value = 15
 
 # Create a list of x values that cover every integer from 0 to the max_value
 x = list(range(0, max_value + 1))
