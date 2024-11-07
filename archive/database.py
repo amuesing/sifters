@@ -9,9 +9,9 @@ class Database:
     def __init__(self, mediator, use_timestamp=False):
         if use_timestamp:
             timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            db_name = f'data/db/{self.__class__.__name__}_{timestamp}.db'
+            db_name = f'archive/data/db/{self.__class__.__name__}_{timestamp}.db'
         else:
-            db_name = f'data/db/{self.__class__.__name__}.db'
+            db_name = f'archive/data/db/{self.__class__.__name__}.db'
 
         self.connection = sqlite3.connect(db_name)
         self.connection.row_factory = sqlite3.Row

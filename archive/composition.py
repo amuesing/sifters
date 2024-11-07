@@ -251,7 +251,7 @@ class Composition:
     def create_tuning_file(self, floats_list):
         title = f'Base {self.period} Tuning'
         description = 'Tuning based on the periodicity of a logical sieve, selecting for degrees that coorespond to non-zero sieve elements.'
-        file_name = 'data/scl/tuning.scl'
+        file_name = 'archive/data/scl/tuning.scl'
         
         # Construct the file_content
         file_content = f'''! {title}
@@ -366,7 +366,7 @@ if __name__ == '__main__':
         comp.select_scalar_segments(list(set(comp.indices)))
 
         notes_data = create_dataframe(notes_data)
-        notes_data.to_csv('data/csv/Notes_Data.csv', index=False)
+        notes_data.to_csv('archive/data/csv/Notes_Data.csv', index=False)
         return notes_data
     
     
@@ -451,7 +451,7 @@ if __name__ == '__main__':
         data = fetch_midi_messages_for_grid_id(grid_id)
         midi_messages, midi_data_list = data_to_midi_messages(data, comp.scaling_factor)
         dataframe = pandas.DataFrame(midi_data_list)
-        dataframe.to_csv(f'data/csv/MIDI_Messages_GridID_{grid_id}.csv', index=False)
+        dataframe.to_csv(f'archive/data/csv/MIDI_Messages_GridID_{grid_id}.csv', index=False)
 
         # Append messages to MIDI track and save MIDI file
         for message in midi_messages:
@@ -460,7 +460,7 @@ if __name__ == '__main__':
         midi_track.append(mido.MetaMessage('end_of_track'))
 
         score.tracks.append(midi_track)
-        score.save(f'data/mid/Grid_{grid_id}.mid')
+        score.save(f'archive/data/mid/Grid_{grid_id}.mid')
         
         
     def empty_folder(folder_path):
