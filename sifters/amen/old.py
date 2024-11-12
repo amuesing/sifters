@@ -1,6 +1,6 @@
 import mido
 import music21
-import numpy
+import numpy as np
 
 # Global Configuration
 title = 'amen'
@@ -11,16 +11,23 @@ duration = ticks_per_quarter_note // 4  # 16th note duration
 # Instrument Configuration
 instrument_dict = {
     'snare': {
-        'sieve': '64@0',
+        'sieve': '5@2|6@3|8@4',
+        'accent_dict': {'primary': '5@1', 'secondary': '4@2'},
+        'velocity_profile': {'gap': 50, 'primary': 100, 'secondary': 80, 'overlap': 120},
+        'note': 38  # MIDI Note for snare drum
+    },
+    'kick': {
+        'sieve': '8@2|9@2|10@0',
+        'note': 36  # MIDI Note for kick drum
     }
 }
 
 # Utility Functions
 def sieve_to_binary(sieve):
-    return numpy.array(sieve.segment(segmentFormat='binary'))
+    return np.array(sieve.segment(segmentFormat='binary'))
 
 def shift_binary(binary, shift_amount):
-    return numpy.roll(binary, shift_amount)
+    return np.roll(binary, shift_amount)
 
 def invert_binary(binary):
     return 1 - binary
@@ -31,32 +38,7 @@ def reverse_binary(binary):
 def stretch_binary(binary, factor):
     return binary.repeat(factor)
 
-# Prime Factorization Function
-def prime_factors(n):
-    """Return a list of prime factors of a given number n."""
-    factors = []
-    while n % 2 == 0:
-        factors.append(2)
-        n //= 2
-    factor = 3
-    while factor * factor <= n:
-        while n % factor == 0:
-            factors.append(factor)
-            n //= factor
-        factor += 2
-    if n > 2:
-        factors.append(n)
-    return factors
-
-# Function to Generate Time Signature
-def generate_time_signature(period):
-    """Generate a time signature where the numerator is the largest prime factor of the period."""
-    factors = prime_factors(period)
-    numerator = max(factors) if factors else 1  # Default to 1 if no prime factors found
-    denominator = 16  # You can adjust this as needed
-    return numerator, denominator
-
-# Sieve Processing Functions
+# Sieve Processing
 def create_sieve_objs(instrument_dict):
     return [(name, music21.sieve.Sieve(info['sieve'])) for name, info in instrument_dict.items()]
 
@@ -74,7 +56,7 @@ def create_accent_binaries(accent_dict, largest_period):
             sieve_obj.setZRange(0, largest_period - 1)
             accent_binaries[name] = sieve_to_binary(sieve_obj)
         else:
-            accent_binaries[name] = numpy.zeros(largest_period)
+            accent_binaries[name] = np.zeros(largest_period)
 
     return accent_binaries
 
@@ -84,7 +66,7 @@ def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velo
 
     primary_length = len(primary_binary)
     secondary_length = len(secondary_binary)
-    velocities = numpy.zeros(len(binary), dtype=int)
+    velocities = np.zeros(len(binary), dtype=int)
 
     for i, value in enumerate(binary):
         if value:
@@ -101,25 +83,17 @@ def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velo
     
     return velocities
 
-# MIDI Creation Function
 def create_midi(binary, period, filename, velocities, note):
     mid = mido.MidiFile()
     track = mido.MidiTrack()
     mid.tracks.append(track)
 
-    # Generate the dynamic time signature
-    numerator, denominator = generate_time_signature(period)
-
-    # Add MIDI events
     for value, velocity in zip(binary, velocities):
         track.append(mido.Message('note_on', note=note, velocity=velocity if value else 0, time=0))
         track.append(mido.Message('note_off', note=note, velocity=velocity if value else 0, time=duration))
 
-    # Add meta messages
     track.append(mido.MetaMessage('track_name', name=filename))
-    track.append(mido.MetaMessage('time_signature', numerator=numerator, denominator=denominator, time=0))
-
-    # Save the MIDI file
+    track.append(mido.MetaMessage('time_signature', numerator=period, denominator=16, time=0))
     mid.save(f'{output_dir}{filename}.mid')
 
 def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
@@ -130,8 +104,8 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
         'stretch_2': lambda x: stretch_binary(x, 2)
     }
 
-    primary_binary = accent_binaries.get('primary', numpy.zeros(period))
-    secondary_binary = accent_binaries.get('secondary', numpy.zeros(period))
+    primary_binary = accent_binaries.get('primary', np.zeros(period))
+    secondary_binary = accent_binaries.get('secondary', np.zeros(period))
     base_binary = sieve_to_binary(sieve)
 
     for suffix, transform in transformations.items():
@@ -143,7 +117,7 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
         velocities = accent_velocity_with_patterns(transformed_binary, primary_binary, secondary_binary, velocity_profile)
         create_midi(transformed_binary, period, filename, velocities, note)
 
-    indices = numpy.nonzero(base_binary)[0]
+    indices = np.nonzero(base_binary)[0]
     for i in indices:
         shifted_binary = shift_binary(base_binary, i)
         filename = f'{title}_{name}_shift_clip{i + 1}'

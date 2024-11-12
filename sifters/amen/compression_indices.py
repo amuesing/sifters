@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from music21 import sieve
 
 # Define the list of indices
-indices = [4, 7, 9, 12, 15]
+indices = [0, 2, 10, 11]
 
 # Use CompressionSegment to derive a sieve pattern
 compressed_sieve = sieve.CompressionSegment(indices)

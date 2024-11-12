@@ -1,18 +1,33 @@
+import os
 import mido
 import music21
 import numpy
+import glob
 
 # Global Configuration
-title = 'amen'
-output_dir = 'sifters/amen/mid/'
+title = 'untitled'
+output_dir = f'sifters/{title}/mid/'
 ticks_per_quarter_note = 480
 duration = ticks_per_quarter_note // 4  # 16th note duration
+DEFAULT_VELOCITY_PROFILE = {'gap': 64, 'primary': 96, 'secondary': 64, 'overlap': 32}
+
+# Ensure Output Directory Exists
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+def clear_output_directory(output_dir):
+    """Delete all contents of the output directory."""
+    for file_path in glob.glob(f'{output_dir}*'):
+        os.remove(file_path)  # Delete the file
+
+# Clear the output directory at the start of the script
+clear_output_directory(output_dir)
 
 # Instrument Configuration
 instrument_dict = {
     'snare': {
-        'sieve': '64@0',
-    }
+        'sieve': '(7@1|7@2|7@3)',
+    }       
 }
 
 # Utility Functions
@@ -31,9 +46,7 @@ def reverse_binary(binary):
 def stretch_binary(binary, factor):
     return binary.repeat(factor)
 
-# Prime Factorization Function
 def prime_factors(n):
-    """Return a list of prime factors of a given number n."""
     factors = []
     while n % 2 == 0:
         factors.append(2)
@@ -48,15 +61,27 @@ def prime_factors(n):
         factors.append(n)
     return factors
 
-# Function to Generate Time Signature
 def generate_time_signature(period):
-    """Generate a time signature where the numerator is the largest prime factor of the period."""
     factors = prime_factors(period)
-    numerator = max(factors) if factors else 1  # Default to 1 if no prime factors found
-    denominator = 16  # You can adjust this as needed
+    numerator = max(factors) if factors else 1
+    # denominator_options = [1, 2, 4, 8, 16, 32]
+    denominator = 16
     return numerator, denominator
 
-# Sieve Processing Functions
+def create_midi(binary, period, filename, velocities, note):
+    mid = mido.MidiFile()
+    track = mido.MidiTrack()
+    mid.tracks.append(track)
+    numerator, denominator = generate_time_signature(period)
+    track.append(mido.MetaMessage('time_signature', numerator=numerator, denominator=denominator, time=0))
+
+    for value, velocity in zip(binary, velocities):
+        track.append(mido.Message('note_on', note=note, velocity=velocity if value else 0, time=0))
+        track.append(mido.Message('note_off', note=note, velocity=velocity if value else 0, time=duration))
+
+    track.append(mido.MetaMessage('track_name', name=filename))
+    mid.save(f'{output_dir}{filename}.mid')
+
 def create_sieve_objs(instrument_dict):
     return [(name, music21.sieve.Sieve(info['sieve'])) for name, info in instrument_dict.items()]
 
@@ -64,24 +89,13 @@ def find_largest_period(instrument_dict):
     return max(music21.sieve.Sieve(info['sieve']).period() for info in instrument_dict.values())
 
 def create_accent_binaries(accent_dict, largest_period):
-    default_accent_dict = {'primary': '', 'secondary': ''}
-    accent_dict = accent_dict or default_accent_dict
-    accent_binaries = {}
-
-    for name, sieve_pattern in accent_dict.items():
-        if sieve_pattern:
-            sieve_obj = music21.sieve.Sieve(sieve_pattern)
-            sieve_obj.setZRange(0, largest_period - 1)
-            accent_binaries[name] = sieve_to_binary(sieve_obj)
-        else:
-            accent_binaries[name] = numpy.zeros(largest_period)
-
-    return accent_binaries
+    accent_dict = accent_dict or {'primary': '', 'secondary': ''}
+    return {
+        name: sieve_to_binary(music21.sieve.Sieve(pattern)) if pattern else numpy.zeros(largest_period)
+        for name, pattern in accent_dict.items()
+    }
 
 def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velocity_profile):
-    default_velocity_profile = {'gap': 64, 'primary': 94, 'secondary': 64, 'overlap': 32}
-    velocity_profile = velocity_profile or default_velocity_profile
-
     primary_length = len(primary_binary)
     secondary_length = len(secondary_binary)
     velocities = numpy.zeros(len(binary), dtype=int)
@@ -100,27 +114,6 @@ def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velo
                 velocities[i] = velocity_profile['gap']
     
     return velocities
-
-# MIDI Creation Function
-def create_midi(binary, period, filename, velocities, note):
-    mid = mido.MidiFile()
-    track = mido.MidiTrack()
-    mid.tracks.append(track)
-
-    # Generate the dynamic time signature
-    numerator, denominator = generate_time_signature(period)
-
-    # Add MIDI events
-    for value, velocity in zip(binary, velocities):
-        track.append(mido.Message('note_on', note=note, velocity=velocity if value else 0, time=0))
-        track.append(mido.Message('note_off', note=note, velocity=velocity if value else 0, time=duration))
-
-    # Add meta messages
-    track.append(mido.MetaMessage('track_name', name=filename))
-    track.append(mido.MetaMessage('time_signature', numerator=numerator, denominator=denominator, time=0))
-
-    # Save the MIDI file
-    mid.save(f'{output_dir}{filename}.mid')
 
 def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     transformations = {
@@ -146,7 +139,7 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     indices = numpy.nonzero(base_binary)[0]
     for i in indices:
         shifted_binary = shift_binary(base_binary, i)
-        filename = f'{title}_{name}_shift_clip{i + 1}'
+        filename = f'{title}_{name}_shift_clip{i}'
         velocities = accent_velocity_with_patterns(shifted_binary, primary_binary, secondary_binary, velocity_profile)
         create_midi(shifted_binary, period, filename, velocities, note)
 
@@ -157,6 +150,6 @@ largest_period = find_largest_period(instrument_dict)
 for name, sieve in sieve_objs:
     sieve.setZRange(0, largest_period - 1)
     accent_binaries = create_accent_binaries(instrument_dict[name].get('accent_dict', {}), largest_period)
-    velocity_profile = instrument_dict[name].get('velocity_profile', None)
+    velocity_profile = instrument_dict[name].get('velocity_profile', DEFAULT_VELOCITY_PROFILE)
     note = instrument_dict[name].get('note', 64)  # Default to MIDI note 64 if not specified
     process_sieve(sieve, name, largest_period, accent_binaries, velocity_profile, note)
