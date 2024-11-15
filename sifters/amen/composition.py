@@ -10,10 +10,44 @@ duration = ticks_per_quarter_note // 4  # 16th note duration
 
 # Instrument Configuration
 instrument_dict = {
-    'snare': {
-        'sieve': '64@0',
+    'kick m.1': {
+        'sieve': '(16@0|16@2|16@10|16@11)',
+    },
+    'snare m.1': {
+        'sieve': '(16@4|16@7|16@9|16@12|16@15)',
+    },
+    'closed hi hat m.1': {
+        'sieve': '16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14',
+    },
+    'kick m.2': {
+        'sieve': '(16@0|16@2|16@10|16@11)',
+    },
+    'snare m.2': {
+        'sieve': '(16@4|16@7|16@9|16@12|16@15)',
+    },
+    'closed hi hat m.2': {
+        'sieve': '(16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14)',
+    },
+    'kick m.3': {
+        'sieve': '(16@0|16@2|16@10)',
+    },
+    'snare m.3': {
+        'sieve': '(16@4|16@7|16@9|16@14)',
+    },
+    'closed hi hat m.3': {
+        'sieve': '(16@0|16@2|16@4|16@6|16@8|16@10|16@12|16@14)',
+    },
+    'kick m.4': {
+        'sieve': '(16@2|16@3|16@10)',
+    },
+    'snare m.4': {
+        'sieve': '(16@1|16@4|16@7|16@9|16@14)',
+    },
+    'closed hi hat m.4': {
+        'sieve': '(16@0|16@2|16@4|16@6|16@8|16@12|16@14)',
     }
 }
+
 
 # Utility Functions
 def sieve_to_binary(sieve):
