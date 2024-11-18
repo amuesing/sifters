@@ -25,15 +25,15 @@ clear_output_directory(output_dir)
 
 # Instrument Configuration
 instrument_dict = {
-    '7,5': {
-        'sieve': '(7@0|7@1|7@6)&(5@1|5@3)|((7@0|7@1|7@2)&5@0)|((7@5|7@6)&(5@2|5@3|5@4))',
+    'snare': {
+        'sieve': '(7@0|7@1|7@5)&(5@1|5@3)'
     },
-    '8,5': {
-        'sieve': '(8@0|8@1|8@7)&(5@1|5@3)|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))'
+    'clap': {
+        'sieve': '(7@5|7@6)&(5@2|5@3|5@4)'
     },
-    # 'mod7': {
-    #     'sieve': '(7@1|7@2|7@3)',
-    # },
+    'kick': {
+        'sieve': '(7@0|7@1|7@2)&(5@0)'
+    },
     # 'mod5': {
     #     'sieve': '(5@2|5@3)',
     # }
@@ -127,9 +127,9 @@ def accent_velocity_with_patterns(binary, primary_binary, secondary_binary, velo
 def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     transformations = {
         'prime': lambda x: x,
-        'invert': invert_binary,
-        'reverse': reverse_binary,
-        'stretch_2': lambda x: stretch_binary(x, 2)
+        # 'invert': invert_binary,
+        # 'reverse': reverse_binary,
+        # 'stretch_2': lambda x: stretch_binary(x, 2)
     }
 
     primary_binary = accent_binaries.get('primary', numpy.zeros(period))
@@ -146,11 +146,11 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
         create_midi(transformed_binary, period, filename, velocities, note)
 
     indices = numpy.nonzero(base_binary)[0]
-    for i in indices:
-        shifted_binary = shift_binary(base_binary, i)
-        filename = f'{title}_{name}_shift_clip{i}'
-        velocities = accent_velocity_with_patterns(shifted_binary, primary_binary, secondary_binary, velocity_profile)
-        create_midi(shifted_binary, period, filename, velocities, note)
+    # for i in indices:
+    #     shifted_binary = shift_binary(base_binary, i)
+    #     filename = f'{title}_{name}_shift_clip{i}'
+    #     velocities = accent_velocity_with_patterns(shifted_binary, primary_binary, secondary_binary, velocity_profile)
+    #     create_midi(shifted_binary, period, filename, velocities, note)
 
 # Main Execution
 sieve_objs = create_sieve_objs(instrument_dict)
