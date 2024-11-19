@@ -73,7 +73,6 @@ def prime_factors(n):
 def generate_time_signature(period):
     factors = prime_factors(period)
     numerator = max(factors) if factors else 1
-    # denominator_options = [1, 2, 4, 7, 16, 32]
     denominator = 16
     return numerator, denominator
 
@@ -141,14 +140,14 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
         if not transformed_binary.any():
             continue  # Skip empty transformations
 
-        filename = f'{title}_{name}_{suffix}'
+        filename = f'{name}_{suffix}'
         velocities = accent_velocity_with_patterns(transformed_binary, primary_binary, secondary_binary, velocity_profile)
         create_midi(transformed_binary, period, filename, velocities, note)
 
     indices = numpy.nonzero(base_binary)[0]
     # for i in indices:
     #     shifted_binary = shift_binary(base_binary, i)
-    #     filename = f'{title}_{name}_shift_clip{i}'
+    #     filename = f'{name}_shift_{i}'
     #     velocities = accent_velocity_with_patterns(shifted_binary, primary_binary, secondary_binary, velocity_profile)
     #     create_midi(shifted_binary, period, filename, velocities, note)
 
