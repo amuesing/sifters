@@ -1,7 +1,7 @@
 import os
 import mido
 import music21
-import numpy as np
+import numpy
 import glob
 
 # Global Configuration
@@ -12,10 +12,24 @@ DURATION = TICKS_PER_QUARTER_NOTE // 4  # 16th note duration
 DEFAULT_VELOCITY_PROFILE = {'gap': 64, 'primary': 96, 'secondary': 64, 'overlap': 32}
 
 # Instrument Configuration
+
 INSTRUMENT_DICT = {
-    '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)'},
-    '(10@0|12@0|15@0)': {'sieve': '(10@0|12@0|15@0)'}
+    '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
+        'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
+        'accent_dict': {
+            'primary': '3@1|3@2|4@0|4@3',
+            'secondary': '12@0|15@0'
+        }
+    },
+    '(10@0|12@0|15@0)': {
+        'sieve': '(10@0|12@0|15@0)',
+        'accent_dict': {
+            'primary': '10@0',
+            'secondary': '8@0|8@1|8@2|8@5|8@6|8@7'
+        }
+    }
 }
+
 
 # Utility Functions
 def ensure_directory(path):
@@ -29,7 +43,7 @@ def clear_directory(path):
 
 def sieve_to_binary(sieve):
     """Convert a sieve to its binary representation."""
-    return np.array(sieve.segment(segmentFormat='binary'))
+    return numpy.array(sieve.segment(segmentFormat='binary'))
 
 def generate_time_signature(period):
     """Generate a time signature based on the sieve period."""
@@ -77,14 +91,14 @@ def create_midi(binary, period, filename, velocities, note):
 def create_accent_binaries(accent_dict, period):
     """Create accent binaries from patterns."""
     return {
-        name: sieve_to_binary(music21.sieve.Sieve(pattern)) if pattern else np.zeros(period)
+        name: sieve_to_binary(music21.sieve.Sieve(pattern)) if pattern else numpy.zeros(period)
         for name, pattern in (accent_dict or {}).items()
     }
 
 def accent_velocity(binary, primary_binary, secondary_binary, velocity_profile):
     """Apply velocity patterns based on accent binaries."""
     primary_len, secondary_len = len(primary_binary), len(secondary_binary)
-    velocities = np.zeros(len(binary), dtype=int)
+    velocities = numpy.zeros(len(binary), dtype=int)
     for i, value in enumerate(binary):
         if value:
             primary = primary_binary[i % primary_len]
@@ -102,8 +116,8 @@ def accent_velocity(binary, primary_binary, secondary_binary, velocity_profile):
 def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     """Process a sieve to generate MIDI files."""
     base_binary = sieve_to_binary(sieve)
-    primary_binary = accent_binaries.get('primary', np.zeros(period))
-    secondary_binary = accent_binaries.get('secondary', np.zeros(period))
+    primary_binary = accent_binaries.get('primary', numpy.zeros(period))
+    secondary_binary = accent_binaries.get('secondary', numpy.zeros(period))
 
     # Base transformation
     velocities = accent_velocity(base_binary, primary_binary, secondary_binary, velocity_profile)
