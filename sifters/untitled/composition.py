@@ -33,26 +33,26 @@ INSTRUMENT_DICT = {
 
 # Utility Functions
 def ensure_directory(path):
-    """Ensure a directory exists."""
+    '''Ensure a directory exists.'''
     os.makedirs(path, exist_ok=True)
 
 def clear_directory(path):
-    """Delete all files in the specified directory."""
+    '''Delete all files in the specified directory.'''
     for file_path in glob.glob(f'{path}*'):
         os.remove(file_path)
 
 def sieve_to_binary(sieve):
-    """Convert a sieve to its binary representation."""
+    '''Convert a sieve to its binary representation.'''
     return numpy.array(sieve.segment(segmentFormat='binary'))
 
 def generate_time_signature(period):
-    """Generate a time signature based on the sieve period."""
+    '''Generate a time signature based on the sieve period.'''
     factors = prime_factors(period)
     numerator = max(factors) if factors else 1
     return numerator, 16  # Default denominator: 16
 
 def prime_factors(n):
-    """Find the prime factors of a number."""
+    '''Find the prime factors of a number.'''
     factors = []
     while n % 2 == 0:
         factors.append(2)
@@ -68,7 +68,7 @@ def prime_factors(n):
     return factors
 
 def create_midi(binary, period, filename, velocities, note):
-    """Create and save a MIDI file from binary data and velocities."""
+    '''Create and save a MIDI file from binary data and velocities.'''
     mid = mido.MidiFile()
     track = mido.MidiTrack()
     mid.tracks.append(track)
@@ -89,14 +89,14 @@ def create_midi(binary, period, filename, velocities, note):
     mid.save(f'{OUTPUT_DIR}{filename}.mid')
 
 def create_accent_binaries(accent_dict, period):
-    """Create accent binaries from patterns."""
+    '''Create accent binaries from patterns.'''
     return {
         name: sieve_to_binary(music21.sieve.Sieve(pattern)) if pattern else numpy.zeros(period)
         for name, pattern in (accent_dict or {}).items()
     }
 
 def accent_velocity(binary, primary_binary, secondary_binary, velocity_profile):
-    """Apply velocity patterns based on accent binaries."""
+    '''Apply velocity patterns based on accent binaries.'''
     primary_len, secondary_len = len(primary_binary), len(secondary_binary)
     velocities = numpy.zeros(len(binary), dtype=int)
     for i, value in enumerate(binary):
@@ -114,7 +114,7 @@ def accent_velocity(binary, primary_binary, secondary_binary, velocity_profile):
     return velocities
 
 def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
-    """Process a sieve to generate MIDI files."""
+    '''Process a sieve to generate MIDI files.'''
     base_binary = sieve_to_binary(sieve)
     primary_binary = accent_binaries.get('primary', numpy.zeros(period))
     secondary_binary = accent_binaries.get('secondary', numpy.zeros(period))
