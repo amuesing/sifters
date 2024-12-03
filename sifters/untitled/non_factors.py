@@ -1,15 +1,14 @@
+from itertools import combinations
+
 def find_non_factors(numbers):
-    non_factors = []
+    non_factors = set()
     
-    for i, num1 in enumerate(numbers):
-        for j, num2 in enumerate(numbers):
-            if i != j:  # Avoid comparing a number with itself
-                if num1 % num2 != 0 and num2 % num1 != 0:  # Check non-factors
-                    pair = tuple(sorted((num1, num2)))  # Sort to avoid duplicate pairs
-                    if pair not in non_factors:
-                        non_factors.append(pair)
+    for num1, num2 in combinations(numbers, 2):  # Generate unique pairs
+        print(num1, num2)
+        if num1 % num2 != 0 and num2 % num1 != 0:  # Check non-factors
+            non_factors.add((num1, num2))
     
-    return non_factors
+    return sorted(non_factors)
 
 # Example usage
 numbers = [1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60]
