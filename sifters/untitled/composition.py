@@ -8,7 +8,7 @@ import glob
 TITLE = 'untitled'
 OUTPUT_DIR = f'sifters/{TITLE}/mid/'
 TICKS_PER_QUARTER_NOTE = 480
-DURATION = TICKS_PER_QUARTER_NOTE // 4  # 16th note duration
+DURATION = TICKS_PER_QUARTER_NOTE // 8 # 16th note duration
 DEFAULT_VELOCITY_PROFILE = {'gap': 64, 'primary': 96, 'secondary': 64, 'overlap': 32}
 
 # Instrument Configuration
@@ -19,6 +19,13 @@ INSTRUMENT_DICT = {
         'accent_dict': {
             'primary': '(5@2)',
             'secondary': '(5@4)'
+        }
+    },
+    '(10@0|12@0|15@0)': {
+        'sieve': '(10@0|12@0|15@0)',
+        'accent_dict': {
+            'primary': '10@0',
+            'secondary': '12@0'
         }
     },
     '(10@0|12@0|15@0)': {
