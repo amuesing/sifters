@@ -10,7 +10,16 @@ OUTPUT_DIR = f'sifters/{TITLE}/mid/'
 TICKS_PER_QUARTER_NOTE = 480
 DEFAULT_VELOCITY_PROFILE = {'gap': 64, 'primary': 96, 'secondary': 64, 'overlap': 32}
 
-# Instrument Configuration with duration_multiplier
+# Duration Multiplier Key
+DURATION_MULTIPLIER_KEY = {
+    'Quarter Note': 1,
+    'Eighth Note': 0.5,
+    'Sixteenth Note': 0.25,
+    'Thirty-second Note': 0.125,
+    'Sixty-fourth Note': 0.0625,
+}
+
+# Instrument Configuration
 INSTRUMENT_DICT = {
     '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
@@ -18,7 +27,7 @@ INSTRUMENT_DICT = {
             'primary': '(5@2)',
             'secondary': '(5@4)'
         },
-        'duration_multiplier': 0.125
+        'duration': 'Thirty-second Note'
     },
     '(10@0|12@0|15@0)': {
         'sieve': '(10@0|12@0|15@0)',
@@ -26,16 +35,16 @@ INSTRUMENT_DICT = {
             'primary': '10@0',
             'secondary': '12@0'
         },
-        'duration_multiplier': 0.125
+        'duration': 'Sixteenth Note'
     },
-    # '(10@0|12@0|15@0)': {
-    #     'sieve': '(10@0|12@0|15@0)',
-    #     'accent_dict': {
-    #         'primary': '10@0',
-    #         'secondary': '12@0'
-    #     },
-    #     'duration_multiplier': 2.0  # 2x duration for this instrument
-    # }
+    '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)': {
+        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+        'accent_dict': {
+            'primary': '(5@2)',
+            'secondary': '(5@3)'
+        },
+        'duration': 'Eighth Note'
+    },
 }
 
 # Utility Functions
@@ -53,26 +62,12 @@ def sieve_to_binary(sieve):
     return numpy.array(sieve.segment(segmentFormat='binary'))
 
 def generate_time_signature(period):
-    '''Generate a time signature based on the sieve period.'''
-    factors = prime_factors(period)
-    numerator = max(factors) if factors else 1
-    return numerator, 16  # Default denominator: 16
+    '''Generate a time signature using the sieve's period as the numerator.'''
+    return period, 16  # Default denominator: 16
 
-def prime_factors(n):
-    '''Find the prime factors of a number.'''
-    factors = []
-    while n % 2 == 0:
-        factors.append(2)
-        n //= 2
-    factor = 3
-    while factor * factor <= n:
-        while n % factor == 0:
-            factors.append(factor)
-            n //= factor
-        factor += 2
-    if n > 2:
-        factors.append(n)
-    return factors
+def get_duration_multiplier(note_name):
+    '''Retrieve the duration multiplier for a given note name.'''
+    return DURATION_MULTIPLIER_KEY.get(note_name, 1)  # Default to quarter note multiplier
 
 def create_midi(binary, period, filename, velocities, note, duration_multiplier=1):
     '''Create and save a MIDI file from binary data and velocities.'''
@@ -132,9 +127,12 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     # Base transformation
     velocities = accent_velocity(base_binary, primary_binary, secondary_binary, velocity_profile)
     
-    # Get the duration multiplier from the instrument configuration
+    # Get the duration from the instrument configuration
     instrument_config = INSTRUMENT_DICT.get(name, {})
-    duration_multiplier = instrument_config.get('duration_multiplier', 1)  # Default to 1 if not specified
+    duration_name = instrument_config.get('duration', 'Quarter Note')  # Default to 'Quarter Note'
+    duration_multiplier = get_duration_multiplier(duration_name)
+    
+    print(f"Processing {name}: Duration = {duration_name} (Multiplier = {duration_multiplier})")
     
     create_midi(base_binary, period, f'{name}_base', velocities, note, duration_multiplier)
 
