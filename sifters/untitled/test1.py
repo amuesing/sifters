@@ -8,30 +8,35 @@ import glob
 TITLE = 'untitled'
 OUTPUT_DIR = f'sifters/{TITLE}/mid/'
 TICKS_PER_QUARTER_NOTE = 480
-DURATION = TICKS_PER_QUARTER_NOTE // 1 # 16th note duration
-# DURATION = TICKS_PER_QUARTER_NOTE# 16th note duration
-
 DEFAULT_VELOCITY_PROFILE = {'gap': 64, 'primary': 96, 'secondary': 64, 'overlap': 32}
 
-# Instrument Configuration
-
+# Instrument Configuration with duration_multiplier
 INSTRUMENT_DICT = {
     '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
         'accent_dict': {
             'primary': '(5@2)',
             'secondary': '(5@4)'
-        }
+        },
+        'duration_multiplier': 0.125
     },
     '(10@0|12@0|15@0)': {
         'sieve': '(10@0|12@0|15@0)',
         'accent_dict': {
             'primary': '10@0',
             'secondary': '12@0'
-        }
+        },
+        'duration_multiplier': 0.125
     },
+    # '(10@0|12@0|15@0)': {
+    #     'sieve': '(10@0|12@0|15@0)',
+    #     'accent_dict': {
+    #         'primary': '10@0',
+    #         'secondary': '12@0'
+    #     },
+    #     'duration_multiplier': 2.0  # 2x duration for this instrument
+    # }
 }
-
 
 # Utility Functions
 def ensure_directory(path):
@@ -69,7 +74,7 @@ def prime_factors(n):
         factors.append(n)
     return factors
 
-def create_midi(binary, period, filename, velocities, note):
+def create_midi(binary, period, filename, velocities, note, duration_multiplier=1):
     '''Create and save a MIDI file from binary data and velocities.'''
     mid = mido.MidiFile()
     track = mido.MidiTrack()
@@ -82,10 +87,13 @@ def create_midi(binary, period, filename, velocities, note):
     numerator, denominator = generate_time_signature(period)
     track.append(mido.MetaMessage('time_signature', numerator=numerator, denominator=denominator, time=0))
 
+    # Adjust the duration based on the multiplier
+    adjusted_duration = int(TICKS_PER_QUARTER_NOTE * duration_multiplier)
+
     # Add notes
     for value, velocity in zip(binary, velocities):
         track.append(mido.Message('note_on', note=note, velocity=velocity if value else 0, time=0))
-        track.append(mido.Message('note_off', note=note, velocity=velocity if value else 0, time=DURATION))
+        track.append(mido.Message('note_off', note=note, velocity=velocity if value else 0, time=adjusted_duration))
 
     # Save the MIDI file
     mid.save(f'{OUTPUT_DIR}{filename}.mid')
@@ -123,7 +131,12 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
 
     # Base transformation
     velocities = accent_velocity(base_binary, primary_binary, secondary_binary, velocity_profile)
-    create_midi(base_binary, period, f'{name}_base', velocities, note)
+    
+    # Get the duration multiplier from the instrument configuration
+    instrument_config = INSTRUMENT_DICT.get(name, {})
+    duration_multiplier = instrument_config.get('duration_multiplier', 1)  # Default to 1 if not specified
+    
+    create_midi(base_binary, period, f'{name}_base', velocities, note, duration_multiplier)
 
 # Main Execution
 def main():
