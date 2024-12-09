@@ -61,15 +61,23 @@ def sieve_to_binary(sieve):
     '''Convert a sieve to its binary representation.'''
     return numpy.array(sieve.segment(segmentFormat='binary'))
 
-def generate_time_signature(period):
-    '''Generate a time signature using the sieve's period as the numerator.'''
-    return period, 16  # Default denominator: 16
+def generate_time_signature(period, duration):
+    '''Generate a time signature using the sieve's period as the numerator and the duration as the denominator.'''
+    duration_to_denominator = {
+        'Quarter Note': 4,
+        'Eighth Note': 8,
+        'Sixteenth Note': 16,
+        'Thirty-second Note': 32,
+        'Sixty-fourth Note': 64,
+    }
+    denominator = duration_to_denominator.get(duration, 16)  # Default to 16 if not found
+    return period, denominator
 
 def get_duration_multiplier(note_name):
     '''Retrieve the duration multiplier for a given note name.'''
     return DURATION_MULTIPLIER_KEY.get(note_name, 1)  # Default to quarter note multiplier
 
-def create_midi(binary, period, filename, velocities, note, duration_multiplier=1):
+def create_midi(binary, period, filename, velocities, note, duration_multiplier=1, time_signature=None):
     '''Create and save a MIDI file from binary data and velocities.'''
     mid = mido.MidiFile()
     track = mido.MidiTrack()
@@ -79,7 +87,7 @@ def create_midi(binary, period, filename, velocities, note, duration_multiplier=
     track.append(mido.MetaMessage('track_name', name=filename, time=0))
 
     # Set the time signature
-    numerator, denominator = generate_time_signature(period)
+    numerator, denominator = time_signature
     track.append(mido.MetaMessage('time_signature', numerator=numerator, denominator=denominator, time=0))
 
     # Adjust the duration based on the multiplier
@@ -131,10 +139,12 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     instrument_config = INSTRUMENT_DICT.get(name, {})
     duration_name = instrument_config.get('duration', 'Quarter Note')  # Default to 'Quarter Note'
     duration_multiplier = get_duration_multiplier(duration_name)
+    time_signature = generate_time_signature(period, duration_name)
     
-    print(f"Processing {name}: Duration = {duration_name} (Multiplier = {duration_multiplier})")
+    print(f"Processing {name}: Duration = {duration_name} (Multiplier = {duration_multiplier}), Time Signature = {time_signature}")
     
-    create_midi(base_binary, period, f'{name}_base', velocities, note, duration_multiplier)
+    # Create the MIDI file
+    create_midi(base_binary, period, f'{name}_base', velocities, note, duration_multiplier, time_signature)
 
 # Main Execution
 def main():
