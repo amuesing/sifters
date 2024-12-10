@@ -12,3 +12,5 @@ previous Superior Composite Number.
 How can I find all possible combinations of modulo and indices?
 What is a resonable number of permutations for a compostion?
 What is the relationship between modulo, indices, and the sieve framework?
+
+What is get_duration_multiplyer doing?

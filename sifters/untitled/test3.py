@@ -21,7 +21,7 @@ DURATION_MULTIPLIER_KEY = {
 
 # Instrument Configuration
 INSTRUMENT_DICT = {
-    'complex1': {
+    'snare1': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
         'accent_dict': {
             'primary': '(5@2)',
@@ -29,21 +29,29 @@ INSTRUMENT_DICT = {
         },
         'duration': 'Quarter Note',
     },
-    'complex2': {
-        'sieve': '(10@0|12@0|15@0)',
-        'accent_dict': {
-            'primary': '10@0',
-            'secondary': '12@0',
-        },
-        'duration': 'Half Note',
-    },
-    'complex3': {
+    'snare2': {
         'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
         'accent_dict': {
             'primary': '(5@2)',
             'secondary': '(5@3)',
         },
         'duration': 'Sixteenth Note',
+    },
+    'snare3': {
+        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+        'accent_dict': {
+            'primary': '(5@2)',
+            'secondary': '(5@3)',
+        },
+        'duration': 'Sixteenth Note',
+    },
+    'kick1': {
+        'sieve': '(10@0|12@0|15@0)',
+        'accent_dict': {
+            'primary': '10@0',
+            'secondary': '12@0',
+        },
+        'duration': 'Half Note',
     },
 }
 
@@ -63,6 +71,9 @@ def sieve_to_binary(sieve):
 
 def generate_time_signature(period: int, duration: str) -> tuple[int, int]:
     """Generate a time signature with an updated duration dictionary."""
+    if period > 255:
+        raise ValueError(f"The period {period} exceeds the maximum allowed value of 255.")
+
     duration_to_denominator = {
         'Whole Note': 1,
         'Half Note': 2,
@@ -71,14 +82,13 @@ def generate_time_signature(period: int, duration: str) -> tuple[int, int]:
         'Sixteenth Note': 16,
     }
     denominator = duration_to_denominator.get(duration, 16)  # Default to sixteenth note
-    numerator = min(period, 255)  # Cap numerator to 255
-    return numerator, denominator
+    return period, denominator
 
 def get_duration_multiplier(note_name: str) -> float:
     """Retrieve the duration multiplier for a given note name."""
     return DURATION_MULTIPLIER_KEY.get(note_name, 0.25)  # Default to sixteenth note multiplier
 
-def create_midi(binary, period, filename, velocities, note, duration_multiplier=1, time_signature=None):
+def create_midi(binary, filename, velocities, note, duration_multiplier=1, time_signature=None):
     """Create and save a MIDI file from binary data and velocities."""
     mid = mido.MidiFile()
     track = mido.MidiTrack()
@@ -145,7 +155,7 @@ def process_sieve(sieve, name, period, accent_binaries, velocity_profile, note):
     print(f"Processing {name}: Duration = {duration_name} (Multiplier = {duration_multiplier}), Time Signature = {time_signature}")
     
     # Create the MIDI file
-    create_midi(base_binary, period, f'{name}_base', velocities, note, duration_multiplier, time_signature)
+    create_midi(base_binary, f'{name}_base', velocities, note, duration_multiplier, time_signature)
 
 # Main Execution
 def main():
