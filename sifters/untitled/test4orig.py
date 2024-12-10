@@ -1,7 +1,7 @@
 import os
 import mido
 import music21
-import numpy
+import numpy as np
 
 # Global Configuration
 CONFIG = {
@@ -24,23 +24,23 @@ CONFIG = {
         'Sixteenth Note': 16,
     },
     'INSTRUMENTS': {
-        # 'snare1': {
-        #     'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
-        #     'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
-        #     'duration': 'Sixteenth Note',
-        #     'note': 60,
-        # },
-        'snare2': {
+        'snare1': {
             'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
             'accent_dict': {'primary': '(5@2)', 'secondary': '(5@4)'},
             'duration': 'Sixteenth Note',
-            'note': 60,
+            'note': 64,
         },
+        # 'snare2': {
+        #     'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+        #     'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
+        #     'duration': 'Sixteenth Note',
+        #     'note': 64,
+        # },
         # 'kick1': {
         #     'sieve': '(10@0|12@0|15@0)',
         #     'accent_dict': {'primary': '10@0', 'secondary': '12@0'},
-        #     'duration': 'Sixteenth Note',
-        #     'note': 60,
+        #     'duration': 'Half Note',
+        #     'note': 36,
         # },
     },
 }
@@ -50,20 +50,9 @@ def ensure_directory(path):
     """Ensure a directory exists."""
     os.makedirs(path, exist_ok=True)
 
-def clear_directory(path):
-    """Clear all files in the directory."""
-    if os.path.exists(path):
-        for file in os.listdir(path):
-            file_path = os.path.join(path, file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)  # Remove the file
-            except Exception as e:
-                print(f"Error deleting file {file_path}: {e}")
-
 def sieve_to_binary(sieve):
     """Convert a sieve to binary representation."""
-    return numpy.array(sieve.segment(segmentFormat='binary'))
+    return np.array(sieve.segment(segmentFormat='binary'))
 
 def create_midi(binary, filename, velocities, note, duration_multiplier, time_signature):
     """Generate and save a MIDI file."""
@@ -89,7 +78,7 @@ def create_velocities(binary, accent_binaries, velocity_profile):
     """Generate velocities based on binary patterns and accents."""
     primary = accent_binaries.get('primary', [])
     secondary = accent_binaries.get('secondary', [])
-    velocities = numpy.zeros(len(binary), dtype=int)
+    velocities = np.zeros(len(binary), dtype=int)
 
     for i, value in enumerate(binary):
         if value:
@@ -127,10 +116,9 @@ def process_instrument(name, config):
 
 # Main Execution
 def main():
-    clear_directory(CONFIG['OUTPUT_DIR'])  # Clear the output directory
-    ensure_directory(CONFIG['OUTPUT_DIR'])  # Ensure the directory exists
+    ensure_directory(CONFIG['OUTPUT_DIR'])
     for name, instrument_config in CONFIG['INSTRUMENTS'].items():
         process_instrument(name, instrument_config)
 
 if __name__ == '__main__':
-    main()      
+    main()

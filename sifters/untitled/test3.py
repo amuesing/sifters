@@ -29,30 +29,30 @@ INSTRUMENT_DICT = {
         },
         'duration': 'Quarter Note',
     },
-    'snare2': {
-        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
-        'accent_dict': {
-            'primary': '(5@2)',
-            'secondary': '(5@3)',
-        },
-        'duration': 'Sixteenth Note',
-    },
-    'snare3': {
-        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
-        'accent_dict': {
-            'primary': '(5@2)',
-            'secondary': '(5@3)',
-        },
-        'duration': 'Sixteenth Note',
-    },
-    'kick1': {
-        'sieve': '(10@0|12@0|15@0)',
-        'accent_dict': {
-            'primary': '10@0',
-            'secondary': '12@0',
-        },
-        'duration': 'Half Note',
-    },
+    # 'snare2': {
+    #     'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+    #     'accent_dict': {
+    #         'primary': '(5@2)',
+    #         'secondary': '(5@3)',
+    #     },
+    #     'duration': 'Sixteenth Note',
+    # },
+    # 'snare3': {
+    #     'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+    #     'accent_dict': {
+    #         'primary': '(5@2)',
+    #         'secondary': '(5@3)',
+    #     },
+    #     'duration': 'Sixteenth Note',
+    # },
+    # 'kick1': {
+    #     'sieve': '(10@0|12@0|15@0)',
+    #     'accent_dict': {
+    #         'primary': '10@0',
+    #         'secondary': '12@0',
+    #     },
+    #     'duration': 'Half Note',
+    # },
 }
 
 # Utility Functions

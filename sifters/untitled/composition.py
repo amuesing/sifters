@@ -23,13 +23,13 @@ INSTRUMENT_DICT = {
             'secondary': '(5@4)'
         }
     },
-    '(10@0|12@0|15@0)': {
-        'sieve': '(10@0|12@0|15@0)',
-        'accent_dict': {
-            'primary': '10@0',
-            'secondary': '12@0'
-        }
-    },
+    # '(10@0|12@0|15@0)': {
+    #     'sieve': '(10@0|12@0|15@0)',
+    #     'accent_dict': {
+    #         'primary': '10@0',
+    #         'secondary': '12@0'
+    #     }
+    # },
 }
 
 
