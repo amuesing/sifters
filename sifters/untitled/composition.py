@@ -4,7 +4,6 @@ import music21
 import numpy
 import glob
 
-
 # Configuration
 TITLE = 'untitled'
 OUTPUT_DIR = f'sifters/{TITLE}/mid/'
@@ -14,21 +13,39 @@ DURATION_MULTIPLIER_KEY = {'Whole Note': 4, 'Half Note': 2, 'Quarter Note': 1, '
 DURATION_TO_DENOMINATOR = {'Whole Note': 1, 'Half Note': 2, 'Quarter Note': 4, 'Eighth Note': 8, 'Sixteenth Note': 16}
 
 INSTRUMENT_DICT = {
-    'snare1': {
+    '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)': {
         'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
         'duration': 'Sixteenth Note',
         'note': 60,
     },
-    'snare2': {
+    '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@4)'},
         'duration': 'Sixteenth Note',
         'note': 60,
     },
-    'kick1': {
+    '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)': {
+        'sieve': '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)',
+        'accent_dict': {'primary': '(5@0)', 'secondary': '(5@2)'},
+        'duration': 'Sixteenth Note',
+        'note': 60,
+    },
+    '(10@0|12@0|15@0)': {
         'sieve': '(10@0|12@0|15@0)',
         'accent_dict': {'primary': '10@0', 'secondary': '12@0'},
+        'duration': 'Sixteenth Note',
+        'note': 60,
+    },
+    '(10@1|12@2|15@3)': {
+        'sieve': '(10@1|12@2|15@3)',
+        'accent_dict': {'primary': '10@1', 'secondary': '12@2'},
+        'duration': 'Sixteenth Note',
+        'note': 60,
+    },
+    '(10@2|12@3|15@4)': {
+        'sieve': '(10@2|12@3|15@4)',
+        'accent_dict': {'primary': '10@2', 'secondary': '12@3'},
         'duration': 'Sixteenth Note',
         'note': 60,
     },
@@ -98,23 +115,23 @@ def process_sieve(name, sieve, period, accent_binaries, velocity_profile, note):
     duration_multiplier = get_duration_multiplier(duration)
     time_signature = generate_time_signature(period, duration)
     
-    print(f"Processing {name}: Duration = {duration}, Time Signature = {time_signature}")
+    print(f"Processing {name}: Period = {period}, Duration = {duration}, Time Signature = {time_signature}")
     create_midi(base_binary, f'{name}_base', velocities, note, duration_multiplier, time_signature)
-
 
 def main():
     ensure_directory(OUTPUT_DIR)
     clear_directory(OUTPUT_DIR)  # Clear the output directory before processing
     sieve_objs = [(name, music21.sieve.Sieve(info['sieve'])) for name, info in INSTRUMENT_DICT.items()]
-    largest_period = min(max(sieve.period() for _, sieve in sieve_objs), 255)
-    
+
     for name, sieve in sieve_objs:
-        sieve.setZRange(0, largest_period - 1)
+        period = sieve.period()  # Use each sieve's individual period
+        sieve.setZRange(0, period - 1)  # Adjust the range accordingly
+        
         config = INSTRUMENT_DICT.get(name, {})
-        accent_binaries = create_accent_binaries(config.get('accent_dict', {}), largest_period)
+        accent_binaries = create_accent_binaries(config.get('accent_dict', {}), period)
         velocity_profile = config.get('velocity_profile', DEFAULT_VELOCITY_PROFILE)
         note = config.get('note', 64)
-        process_sieve(name, sieve, largest_period, accent_binaries, velocity_profile, note)
+        process_sieve(name, sieve, period, accent_binaries, velocity_profile, note)
 
 if __name__ == '__main__':
     main()
