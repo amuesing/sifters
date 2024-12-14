@@ -14,21 +14,39 @@ DURATION_MULTIPLIER_KEY = {'Whole Note': 4, 'Half Note': 2, 'Quarter Note': 1, '
 DURATION_TO_DENOMINATOR = {'Whole Note': 1, 'Half Note': 2, 'Quarter Note': 4, 'Eighth Note': 8, 'Sixteenth Note': 16}
 
 INSTRUMENT_DICT = {
-    'snare1': {
-        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+    '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)': {
+        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
         'duration': 'Sixteenth Note',
         'note': 60,
     },
-    'snare2': {
+    '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@4)'},
         'duration': 'Sixteenth Note',
         'note': 60,
     },
-    'kick1': {
+    '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)': {
+        'sieve': '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)',
+        'accent_dict': {'primary': '(5@0)', 'secondary': '(5@2)'},
+        'duration': 'Sixteenth Note',
+        'note': 60,
+    },
+    '(10@0|12@0|15@0)': {
         'sieve': '(10@0|12@0|15@0)',
         'accent_dict': {'primary': '10@0', 'secondary': '12@0'},
+        'duration': 'Sixteenth Note',
+        'note': 60,
+    },
+    '(10@1|12@2|15@3)': {
+        'sieve': '(10@1|12@2|15@3)',
+        'accent_dict': {'primary': '10@1', 'secondary': '12@2'},
+        'duration': 'Sixteenth Note',
+        'note': 60,
+    },
+    '(10@2|12@3|15@4)': {
+        'sieve': '(10@2|12@3|15@4)',
+        'accent_dict': {'primary': '10@2', 'secondary': '12@3'},
         'duration': 'Sixteenth Note',
         'note': 60,
     },
