@@ -13,8 +13,8 @@ DURATION_MULTIPLIER_KEY = {'Whole Note': 4, 'Half Note': 2, 'Quarter Note': 1, '
 DURATION_TO_DENOMINATOR = {'Whole Note': 1, 'Half Note': 2, 'Quarter Note': 4, 'Eighth Note': 8, 'Sixteenth Note': 16}
 
 INSTRUMENT_DICT = {
-    '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)': {
-        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@3|5@2)',
+    '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)': {
+        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
         'duration': 'Sixteenth Note',
         'note': 60,
