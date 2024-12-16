@@ -17,19 +17,19 @@ INSTRUMENT_DICT = {
         'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
         'duration': 'Sixteenth Note',
-        'note': 60,
+        'note': 48,
     },
     '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@4)'},
         'duration': 'Sixteenth Note',
-        'note': 60,
+        'note': 48,
     },
     '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)': {
         'sieve': '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)',
         'accent_dict': {'primary': '(5@0)', 'secondary': '(5@2)'},
         'duration': 'Sixteenth Note',
-        'note': 60,
+        'note': 48,
     },
     '(10@0|12@0|15@0)': {
         'sieve': '(10@0|12@0|15@0)',
