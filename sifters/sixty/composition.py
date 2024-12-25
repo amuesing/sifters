@@ -5,7 +5,7 @@ import numpy
 import glob
 
 # Configuration
-TITLE = 'untitled'
+TITLE = 'sixty'
 OUTPUT_DIR = f'sifters/{TITLE}/mid/'
 TICKS_PER_QUARTER_NOTE = 480
 DEFAULT_VELOCITY_PROFILE = {'gap': 64, 'primary': 96, 'secondary': 64, 'overlap': 32}
@@ -16,39 +16,46 @@ INSTRUMENT_DICT = {
     '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)': {
         'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@3)'},
-        'duration': 'Sixteenth Note',
+        'duration': 'Eighth Note',
         'note': 48,
     },
     '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)': {
         'sieve': '(3@1|3@2)&(4@0|4@3)&(5@2|5@4)',
         'accent_dict': {'primary': '(5@2)', 'secondary': '(5@4)'},
-        'duration': 'Sixteenth Note',
+        'duration': 'Eighth Note',
+        'note': 48,
+    },
+    '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)': {
+        'sieve': '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)',
+        'accent_dict': {'primary': '(5@0)', 'secondary': '(5@2)'},
+        'duration': 'Eighth Note',
+        'note': 48,
+    },
+    '(10@0|12@0|15@0)': {
+        'sieve': '(10@0|12@0|15@0)',
+        'accent_dict': {'primary': '10@0', 'secondary': '12@0'},
+        'duration': 'Eighth Note',
+        'note': 60,
+    },
+    '(10@1|12@2|15@3)': {
+        'sieve': '(10@1|12@2|15@3)',
+        'accent_dict': {'primary': '10@1', 'secondary': '12@2'},
+        'duration': 'Eighth Note',
+        'note': 60,
+    },
+    '(3@1|3@2)|(4@0|4@3)': {
+        'sieve': '(3@1|3@2)&(4@0|4@3)',
+        'accent_dict': {'primary': '10@2', 'secondary': '12@3'},
+        'duration': 'Eighth Note',
         'note': 48,
     },
     '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)': {
         'sieve': '(3@2|3@0)&(4@1|4@2)&(5@0|5@2)',
         'accent_dict': {'primary': '(5@0)', 'secondary': '(5@2)'},
         'duration': 'Sixteenth Note',
-        'note': 48,
+        'note': 36,
     },
-    '(10@0|12@0|15@0)': {
-        'sieve': '(10@0|12@0|15@0)',
-        'accent_dict': {'primary': '10@0', 'secondary': '12@0'},
-        'duration': 'Sixteenth Note',
-        'note': 60,
-    },
-    '(10@1|12@2|15@3)': {
-        'sieve': '(10@1|12@2|15@3)',
-        'accent_dict': {'primary': '10@1', 'secondary': '12@2'},
-        'duration': 'Sixteenth Note',
-        'note': 60,
-    },
-    '(10@2|12@3|15@4)': {
-        'sieve': '(10@2|12@3|15@4)',
-        'accent_dict': {'primary': '10@2', 'secondary': '12@3'},
-        'duration': 'Sixteenth Note',
-        'note': 60,
-    },
+    
 }
 
 # Utility Functions
