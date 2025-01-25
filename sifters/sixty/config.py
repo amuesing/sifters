@@ -35,39 +35,12 @@ DURATION_TO_DENOMINATOR = {
 # List of instrument config dictionaries
 INSTRUMENT_CONFIGS = [
     {
-        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
-        'accent_dict': {
-            'primary': '(5@2)',
-            'secondary': '(5@3)',
-        },
-        'duration': 'Sixteenth Note',
-        'note': 36,
-    },
-    {
-        'sieve': '(10@0|12@0|15@0)',
-        'accent_dict': {
-            'primary': '(10@0)',
-            'secondary': '(12@0)',
-        },
-        'duration': 'Sixteenth Note',
-        'note': 37,
-    },
-    {
-        'sieve': '(3@1|3@2)&(4@0|4@3)',
-        'accent_dict': {
-            'primary': '(3@2)',
-            'secondary': '(4@3)',
-        },
-        'duration': 'Sixteenth Note',
-        'note': 38,
-    },
-    {
         'sieve': '(4@2|4@3)&(5@1|5@4)&(6@0|6@5)',
         'accent_dict': {
             'primary': '(5@4)',
             'secondary': '(6@5)'
         },
-        'duration': 'Eighth Note',
+        'duration': 'Quarter Note',
         'note': 39,
     },
     {
@@ -76,7 +49,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '(5@4)',
             'secondary': '(6@5)'
         },
-        'duration': 'Eighth Note',
+        'duration': 'Quarter Note',
         'note': 40,
     },
     {
@@ -85,16 +58,61 @@ INSTRUMENT_CONFIGS = [
             'primary': '(5@4)',
             'secondary': '(6@5)'
         },
-        'duration': 'Eighth Note',
+        'duration': 'Quarter Note',
         'note': 41,
     },
     {
-        'sieve': '4@1&5@3&6@5',
+        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
+        'accent_dict': {
+            'primary': '(5@2)',
+            'secondary': '(5@3)',
+        },
+        'duration': 'Eighth Note',
+        'note': 36,
+    },
+    {
+        'sieve': '(10@0|12@0|15@0)',
+        'accent_dict': {
+            'primary': '(10@0)',
+            'secondary': '(12@0)',
+        },
+        'duration': 'Eighth Note',
+        'note': 37,
+    },
+    {
+        'sieve': '(3@1|3@2)&(4@0|4@3)',
+        'accent_dict': {
+            'primary': '(3@2)',
+            'secondary': '(4@3)',
+        },
+        'duration': 'Eighth Note',
+        'note': 38,
+    },
+    {
+        'sieve': '(3@0|3@2)&(4@1|4@3)&(5@2|5@3)',
         'accent_dict': {
             'primary': '(5@4)',
             'secondary': '(6@5)'
         },
-        'duration': 'Eighth Note',
+        'duration': 'Sixteenth Note',
+        'note': 42,
+    },
+        {
+        'sieve': '(4@2|4@3)&(5@1|5@4)&(6@0|6@5)',
+        'accent_dict': {
+            'primary': '(5@4)',
+            'secondary': '(6@5)'
+        },
+        'duration': 'Sixteenth Note',
+        'note': 42,
+    },
+        {
+        'sieve': '(10@0|12@0|15@0)',
+        'accent_dict': {
+            'primary': '(5@4)',
+            'secondary': '(6@5)'
+        },
+        'duration': 'Sixteenth Note',
         'note': 42,
     },
 ]

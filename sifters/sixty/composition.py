@@ -115,7 +115,7 @@ def process_sieve(config):
     duration_multiplier = get_duration_multiplier(duration)
     time_signature = generate_time_signature(period, duration)
     
-    filename = f"{sieve_str}_{duration}"
+    filename = f"{duration}_{sieve_str}"
     
     print("Processing Sieve:", sieve_str)
     print("  --> Period =", period)
