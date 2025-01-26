@@ -6,12 +6,12 @@ OUTPUT_DIR = f'sifters/{TITLE}/mid/'
 # MIDI constants
 TICKS_PER_QUARTER_NOTE = 480
 
-# Default velocity profile
+# # Default velocity profile
 DEFAULT_VELOCITY_PROFILE = {
-    'gap': 64,
-    'primary': 127,
-    'secondary': 64,
-    'overlap': 1
+    'gap': 31,
+    'primary': 95,
+    'secondary': 63,
+    'overlap': 127
 }
 
 # Note duration multipliers

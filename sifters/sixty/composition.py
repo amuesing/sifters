@@ -115,16 +115,18 @@ def process_sieve(config):
     duration_multiplier = get_duration_multiplier(duration)
     time_signature = generate_time_signature(period, duration)
     
-    filename = f"{duration}_{sieve_str}"
+    # Use the duration multiplier value directly in the filename
+    filename = f"{duration_multiplier}_{sieve_str}"
     
     print("Processing Sieve:", sieve_str)
     print("  --> Period =", period)
     print("  --> Duration =", duration)
+    print("  --> Duration Multiplier =", duration_multiplier)
     print("  --> Time Signature =", time_signature)
     print("  --> MIDI Filename =", filename + ".mid")
     
     create_midi(base_binary, filename, velocities, note, duration_multiplier, time_signature)
-
+    
 def main():
     ensure_directory(OUTPUT_DIR)
     clear_directory(OUTPUT_DIR)
