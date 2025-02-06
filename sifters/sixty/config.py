@@ -109,8 +109,8 @@ INSTRUMENT_CONFIGS = [
         {
         'sieve': '(10@0|12@0|15@0)',
         'accent_dict': {
-            'primary': '(5@4)',
-            'secondary': '(6@5)'
+            'primary': '(10@0)',
+            'secondary': '(12@0)',
         },
         'duration': 'Sixteenth Note',
         'note': 42,
