@@ -52,6 +52,15 @@ INSTRUMENT_CONFIGS = [
         'duration': 'Quarter Note',
         'note': 36,
     },
+        {
+        'sieve': '5@0',
+        'accent_dict': {
+            'primary': '4@0',
+            'secondary': '4@0'
+        },
+        'duration': 'Quarter Note',
+        'note': 36,
+    },
     {
         'sieve': '4@1|5@3|6@5',
         'accent_dict': {
