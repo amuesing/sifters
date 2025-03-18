@@ -49,7 +49,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '4@0',
             'secondary': '4@0'
         },
-        'duration': 'Quarter Note',
+        'duration': 'Whole Note',
         'note': 36,
     },
         {
