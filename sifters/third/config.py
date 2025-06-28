@@ -14,7 +14,8 @@ DURATION_MULTIPLIER_KEY = {
     'Half Note': 2,
     'Quarter Note': 1,
     'Eighth Note': 0.5,
-    'Sixteenth Note': 0.25
+    'Sixteenth Note': 0.25,
+    'Thirty-Second Note': 0.125,
 }
 
 DURATION_TO_DENOMINATOR = {
@@ -33,7 +34,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '5@0|5@2|5@1|5@3',
             'secondary': '8@0|8@1|8@2|8@5|8@6|8@7'
         },
-        'duration': 'Sixteenth Note',
+        'duration': 'Thirty-Second Note',
         'note': 36,
         # 'transformations': ['invert', 'reverse'],
         'apply_shift': True
@@ -45,7 +46,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '5@0|5@1|5@2|5@3|5@4',
             'secondary': '8@0|8@1|8@2|8@3|8@4|8@5|8@6|8@7'
         },
-        'duration': 'Sixteenth Note',
+        'duration': 'Thirty-Second Note',
         'note': 36,
         # 'transformations': ['prime', 'stretch_2'],
         'apply_shift': True
@@ -57,7 +58,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '(8@3)',
             'secondary': '(8@4)'
         },
-        'duration': 'Sixteenth Note',
+        'duration': 'Thirty-Second Note',
         'note': 36,
         # 'transformations': ['invert', 'stretch_2'],
         'apply_shift': True
@@ -69,7 +70,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '5@2',
             'secondary': '8@1'
         },
-        'duration': 'Sixteenth Note',
+        'duration': 'Thirty-Second Note',
         'note': 36,
         'transformations': ['reverse'],
         'apply_shift': True
@@ -81,7 +82,7 @@ INSTRUMENT_CONFIGS = [
             'primary': '5@1',
             'secondary': '8@6',
         },
-        'duration': 'Sixteenth Note',
+        'duration': 'Thirty-Second Note',
         'note': 36,  # C#1 - rim shot
         'apply_shift': True
     },

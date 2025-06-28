@@ -32,7 +32,10 @@ def get_duration_multiplier(duration_name):
 def generate_time_signature(period, duration):
     if period > 255:
         raise ValueError(f"The period {period} exceeds 255.")
-    return period, DURATION_TO_DENOMINATOR.get(duration, 16)
+    if duration == 'Thirty-Second Note':
+        return period//2, DURATION_TO_DENOMINATOR.get(duration, 16)
+    else:
+        return period, DURATION_TO_DENOMINATOR.get(duration, 16)
 
 def create_accent_binaries(accent_dict, period):
     binaries = {}
@@ -118,6 +121,8 @@ def process_instrument(config):
     if config.get('apply_shift', False):
         indices = np.nonzero(base_binary)[0]
         for i in indices:
+            if i == 0:
+                continue  # Skip redundant shift(0), already generated as 'prime'
             shifted = np.roll(base_binary, i)
             velocities = accent_velocity(shifted, primary, secondary, velocity_profile)
             filename = f"{instrument_name}_shift({i+1})"
