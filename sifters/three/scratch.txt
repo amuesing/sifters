@@ -1,0 +1,16 @@
+Choose a Superior Composite Number (60) as the basis for deriving
+modulo and indices of sieves. By choosing from the factors of a 
+Superior Composite Number, I can organize sieves of differing modulo.
+
+Superior Composite Number are noticable in that they are the lowest
+number that have contain an additional number of factors after the
+previous Superior Composite Number.
+
+60 has twelve factors:
+1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60
+
+How can I find all possible combinations of modulo and indices?
+What is a resonable number of permutations for a compostion?
+What is the relationship between modulo, indices, and the sieve framework?
+
+What is get_duration_multiplyer doing?
