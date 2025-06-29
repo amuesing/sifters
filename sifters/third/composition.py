@@ -1,18 +1,11 @@
 import os
 import glob
+import re
 import mido
 import music21
 import numpy as np
 from config import *
 from transformations import *
-
-# Mapping transformation names to functions
-TRANSFORMATION_MAP = {
-    'prime': lambda x: x,
-    'invert': invert_binary,
-    'reverse': reverse_binary,
-    'stretch_2': lambda x: stretch_binary(x, 2),
-}
 
 def ensure_directory(path):
     os.makedirs(path, exist_ok=True)
@@ -31,7 +24,7 @@ def generate_time_signature(period, duration):
     if period > 255:
         raise ValueError(f"The period {period} exceeds 255.")
     if duration == 'Thirty-Second Note':
-        return period//2, DURATION_TO_DENOMINATOR.get(duration, 16)
+        return period // 2, DURATION_TO_DENOMINATOR.get(duration, 16)
     else:
         return period, DURATION_TO_DENOMINATOR.get(duration, 16)
 
@@ -43,25 +36,49 @@ def create_accent_binaries(accent_dict, period):
         binaries[label] = sieve_to_binary(s)
     return binaries
 
-def accent_velocity(binary, primary_binary, secondary_binary, profile):
+def generate_velocity_profile(accent_dict, print_profile=False):
+    num_levels = len(accent_dict)
+    if num_levels == 0:
+        return {}
+
+    gap = 1
+    overlap = 127
+    step = (overlap - gap) // (num_levels + 1)
+
+    profile = {'gap': gap, 'overlap': overlap}
+    for i, label in enumerate(accent_dict.keys()):
+        profile[label] = gap + step * (i + 1)
+
+    if print_profile:
+        print("Generated velocity profile:")
+        for k, v in profile.items():
+            print(f"  {k}: {v}")
+
+    return profile
+
+def accent_velocity(binary, accent_binaries, profile):
     velocities = []
     for i, bit in enumerate(binary):
         if not bit:
             velocities.append(0)
             continue
-        p = primary_binary[i % len(primary_binary)]
-        s = secondary_binary[i % len(secondary_binary)]
-        if p and s:
+
+        active_labels = [label for label, arr in accent_binaries.items() if arr[i % len(arr)]]
+
+        if len(active_labels) > 1:
             velocities.append(profile['overlap'])
-        elif p:
-            velocities.append(profile['primary'])
-        elif s:
-            velocities.append(profile['secondary'])
+        elif len(active_labels) == 1:
+            velocities.append(profile.get(active_labels[0], profile['gap']))
         else:
             velocities.append(profile['gap'])
+
     return velocities
 
 def create_midi(binary, filename, velocities, note, duration_multiplier, time_signature):
+    if not any(binary) or not any(velocities):
+        print(f"Skipping {filename}: no notes to play.")
+        return
+
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_QUARTER_NOTE)
     track = mido.MidiTrack()
     mid.tracks.append(track)
@@ -82,8 +99,25 @@ def create_midi(binary, filename, velocities, note, duration_multiplier, time_si
             accumulated_time += step_ticks
 
     filepath = os.path.join(OUTPUT_DIR, f"{filename}.mid")
-    mid.save(filepath)
-    print(f"Saved: {filepath}")
+    try:
+        mid.save(filepath)
+        print(f"Saved: {filepath}")
+    except Exception as e:
+        print(f"Error saving {filename}: {e}")
+
+def get_transformation_func(name):
+    if name == 'prime':
+        return lambda x: x
+    elif name == 'invert':
+        return invert_binary
+    elif name == 'reverse':
+        return reverse_binary
+    elif name.startswith('stretch_'):
+        m = re.match(r'stretch_(\d+)', name)
+        if m:
+            factor = int(m.group(1))
+            return lambda x: stretch_binary(x, factor)
+    raise ValueError(f"Unknown transformation: {name}")
 
 def process_instrument(config):
     instrument_name = config.get('name', 'unnamed')
@@ -95,47 +129,55 @@ def process_instrument(config):
 
     accent_dict = config.get('accent_dict', {})
     accent_binaries = create_accent_binaries(accent_dict, period)
-    primary = accent_binaries.get('primary', np.zeros(period))
-    secondary = accent_binaries.get('secondary', np.zeros(period))
-    velocity_profile = config.get('velocity_profile', DEFAULT_VELOCITY_PROFILE)
+    velocity_profile = generate_velocity_profile(accent_dict, print_profile=True)
 
     duration = config.get('duration', 'Quarter Note')
     duration_multiplier = get_duration_multiplier(duration)
     time_signature = generate_time_signature(period, duration)
     note = config.get('note', 64)
 
-    # Always include 'prime'
     all_transformations = ['prime'] + config.get('transformations', [])
 
-    # Apply transformations (including always-prime)
     for t_name in all_transformations:
-        t_func = TRANSFORMATION_MAP[t_name]
-        transformed_binary = t_func(base_binary)
-        velocities = accent_velocity(transformed_binary, primary, secondary, velocity_profile)
-        filename = f"{instrument_name}_{t_name}"
-        create_midi(transformed_binary, filename, velocities, note, duration_multiplier, time_signature)
+        try:
+            t_func = get_transformation_func(t_name)
+            transformed_binary = t_func(base_binary)
+            velocities = accent_velocity(transformed_binary, accent_binaries, velocity_profile)
+            filename = f"{instrument_name}_{t_name}"
+            create_midi(transformed_binary, filename, velocities, note, duration_multiplier, time_signature)
+        except Exception as e:
+            print(f"Skipping transformation {t_name} for {instrument_name}: {e}")
 
-    # Apply shifts if requested
     if config.get('apply_shift', False):
         indices = np.nonzero(base_binary)[0]
-        shift_direction = config.get('shift_direction', 'positive')  # NEW LINE
+        shift_direction = config.get('shift_direction', 'positive')
+        seen_shifts = set()
+
         for i in indices:
-            if i == 0:
-                continue  # Skip redundant shift(0), already generated as 'prime'
+            if i == 0 or i >= period:
+                continue
 
-            shifts = []
+            s_values = []
             if shift_direction == 'positive':
-                shifts = [i]
+                s_values = [i]
             elif shift_direction == 'negative':
-                shifts = [-i]
+                s_values = [-i]
             elif shift_direction == 'both':
-                shifts = [i, -i]
+                s_values = [i, -i]
 
-            for s in shifts:
+            for s in s_values:
+                s_mod = s % period
+                if s_mod in seen_shifts:
+                    continue
+                seen_shifts.add(s_mod)
+
                 shifted = np.roll(base_binary, s)
-                label = f"shift(+{i})" if s > 0 else f"shift({s})"
+                shifted_accent_binaries = {
+                    label: np.roll(arr, s) for label, arr in accent_binaries.items()
+                }
+                label = f"shift({s:+})"
                 filename = f"{instrument_name}_{label}"
-                velocities = accent_velocity(shifted, primary, secondary, velocity_profile)
+                velocities = accent_velocity(shifted, shifted_accent_binaries, velocity_profile)
                 create_midi(shifted, filename, velocities, note, duration_multiplier, time_signature)
 
 def main():
