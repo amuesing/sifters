@@ -25,8 +25,7 @@ def generate_time_signature(period, duration):
         raise ValueError(f"The period {period} exceeds 255.")
     if duration == 'Thirty-Second Note':
         return period // 2, DURATION_TO_DENOMINATOR.get(duration, 16)
-    else:
-        return period, DURATION_TO_DENOMINATOR.get(duration, 16)
+    return period, DURATION_TO_DENOMINATOR.get(duration, 16)
 
 def create_accent_binaries(accent_dict, period):
     binaries = {}
@@ -56,26 +55,33 @@ def generate_velocity_profile(accent_dict, print_profile=False):
 
     return profile
 
+# Use numpy to accelerate velocity assignment
 def accent_velocity(binary, accent_binaries, profile):
-    velocities = []
-    for i, bit in enumerate(binary):
-        if not bit:
-            velocities.append(0)
-            continue
+    active_labels_array = np.zeros_like(binary, dtype=object)  # Will store active labels at each index
 
-        active_labels = [label for label, arr in accent_binaries.items() if arr[i % len(arr)]]
+    # Precompute active labels for each index
+    for i in range(len(binary)):
+        active_labels_array[i] = [
+            label for label, arr in accent_binaries.items() if arr[i % len(arr)]
+        ]
 
-        if len(active_labels) > 1:
-            velocities.append(profile['overlap'])
+    velocities = np.zeros_like(binary, dtype=int)  # Store the velocity for each index
+
+    # Using vectorized operations for velocity assignment
+    for i, active_labels in enumerate(active_labels_array):
+        if not binary[i]:
+            velocities[i] = 0
+        elif len(active_labels) > 1:
+            velocities[i] = profile['overlap']
         elif len(active_labels) == 1:
-            velocities.append(profile.get(active_labels[0], profile['gap']))
+            velocities[i] = profile.get(active_labels[0], profile['gap'])
         else:
-            velocities.append(profile['gap'])
+            velocities[i] = profile['gap']
 
     return velocities
 
 def create_midi(binary, filename, velocities, note, duration_multiplier, time_signature):
-    if not any(binary) or not any(velocities):
+    if not np.any(binary) or not np.any(velocities):
         print(f"Skipping {filename}: no notes to play.")
         return
 
@@ -90,6 +96,7 @@ def create_midi(binary, filename, velocities, note, duration_multiplier, time_si
     step_ticks = int(TICKS_PER_QUARTER_NOTE * duration_multiplier)
     accumulated_time = 0
 
+    # Use numpy to avoid multiple individual `note_on`/`note_off` calls
     for val, vel in zip(binary, velocities):
         if val:
             track.append(mido.Message('note_on', note=note, velocity=vel, time=accumulated_time))
