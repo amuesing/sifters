@@ -1,5 +1,3 @@
-# composition.py
-
 import os
 import glob
 import mido
