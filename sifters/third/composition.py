@@ -120,13 +120,25 @@ def process_instrument(config):
     # Apply shifts if requested
     if config.get('apply_shift', False):
         indices = np.nonzero(base_binary)[0]
+        shift_direction = config.get('shift_direction', 'positive')  # NEW LINE
         for i in indices:
             if i == 0:
                 continue  # Skip redundant shift(0), already generated as 'prime'
-            shifted = np.roll(base_binary, i)
-            velocities = accent_velocity(shifted, primary, secondary, velocity_profile)
-            filename = f"{instrument_name}_shift({i+1})"
-            create_midi(shifted, filename, velocities, note, duration_multiplier, time_signature)
+
+            shifts = []
+            if shift_direction == 'positive':
+                shifts = [i]
+            elif shift_direction == 'negative':
+                shifts = [-i]
+            elif shift_direction == 'both':
+                shifts = [i, -i]
+
+            for s in shifts:
+                shifted = np.roll(base_binary, s)
+                label = f"shift(+{i})" if s > 0 else f"shift({s})"
+                filename = f"{instrument_name}_{label}"
+                velocities = accent_velocity(shifted, primary, secondary, velocity_profile)
+                create_midi(shifted, filename, velocities, note, duration_multiplier, time_signature)
 
 def main():
     ensure_directory(OUTPUT_DIR)

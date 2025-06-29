@@ -37,7 +37,8 @@ INSTRUMENT_CONFIGS = [
         'duration': 'Thirty-Second Note',
         'note': 36,
         # 'transformations': ['invert', 'reverse'],
-        'apply_shift': True
+        'apply_shift': True,
+        'shift_direction': 'negative'
     },
     {
         'name': 'B',
@@ -49,7 +50,8 @@ INSTRUMENT_CONFIGS = [
         'duration': 'Thirty-Second Note',
         'note': 36,
         # 'transformations': ['prime', 'stretch_2'],
-        'apply_shift': True
+        'apply_shift': True,
+        'shift_direction': 'negative'
     },
     {
         'name': 'C',
@@ -61,7 +63,8 @@ INSTRUMENT_CONFIGS = [
         'duration': 'Thirty-Second Note',
         'note': 36,
         # 'transformations': ['invert', 'stretch_2'],
-        'apply_shift': True
+        'apply_shift': True,
+        'shift_direction': 'negative'
     },
     {
         'name': 'D',
@@ -73,7 +76,8 @@ INSTRUMENT_CONFIGS = [
         'duration': 'Thirty-Second Note',
         'note': 36,
         'transformations': ['reverse'],
-        'apply_shift': True
+        'apply_shift': True,
+        'shift_direction': 'negative'
     },
     {
         'name': 'E',
@@ -84,6 +88,7 @@ INSTRUMENT_CONFIGS = [
         },
         'duration': 'Thirty-Second Note',
         'note': 36,  # C#1 - rim shot
-        'apply_shift': True
+        'apply_shift': True,
+        'shift_direction': 'negative'
     },
 ]
