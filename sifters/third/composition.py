@@ -158,11 +158,10 @@ def process_instrument(config):
     if config.get('apply_shift', False):
         indices = np.nonzero(base_binary)[0]
         shift_direction = config.get('shift_direction', 'positive')
-        seen_shifts = set()
 
         for i in indices:
             if i == 0:
-                continue
+                continue  # Skip shift of 0
 
             s_values = []
             if shift_direction == 'positive':
@@ -173,7 +172,6 @@ def process_instrument(config):
                 s_values = [i, -i]
 
             for s in s_values:
-
                 shifted = np.roll(base_binary, s)
                 shifted_accent_binaries = {
                     label: np.roll(arr, s) for label, arr in accent_binaries.items()
