@@ -64,7 +64,7 @@ def accent_velocity(binary, accent_binaries, profile):
         active_labels_array[i] = [
             label for label, arr in accent_binaries.items() if arr[i % len(arr)]
         ]
-
+    
     velocities = np.zeros_like(binary, dtype=int)  # Store the velocity for each index
 
     # Using vectorized operations for velocity assignment
@@ -108,7 +108,7 @@ def create_midi(binary, filename, velocities, note, duration_multiplier, time_si
     filepath = os.path.join(OUTPUT_DIR, f"{filename}.mid")
     try:
         mid.save(filepath)
-        print(f"Saved: {filepath}")
+        # print(f"Saved: {filepath}")
     except Exception as e:
         print(f"Error saving {filename}: {e}")
 
@@ -161,7 +161,7 @@ def process_instrument(config):
         seen_shifts = set()
 
         for i in indices:
-            if i == 0 or i >= period:
+            if i == 0:
                 continue
 
             s_values = []
@@ -173,10 +173,6 @@ def process_instrument(config):
                 s_values = [i, -i]
 
             for s in s_values:
-                s_mod = s % period
-                if s_mod in seen_shifts:
-                    continue
-                seen_shifts.add(s_mod)
 
                 shifted = np.roll(base_binary, s)
                 shifted_accent_binaries = {
