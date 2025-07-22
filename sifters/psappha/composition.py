@@ -36,18 +36,17 @@ def create_accent_binaries(accent_dict, period):
     return binaries
 
 def generate_velocity_profile(accent_dict, print_profile=False):
-    if not accent_dict:
-        # Fallback profile if no accents are defined
-        return {'gap': 80, 'overlap': 127}
-
     num_levels = len(accent_dict)
+    if num_levels == 0:
+        return {}
+
     gap = 1
     overlap = 127
     step = (overlap - gap) // (num_levels + 1)
 
     profile = {'gap': gap, 'overlap': overlap}
     for i, label in enumerate(accent_dict.keys()):
-        profile[label] = gap + step * (i + 1)   
+        profile[label] = gap + step * (i + 1)
 
     if print_profile:
         print("Generated velocity profile:")
@@ -56,16 +55,19 @@ def generate_velocity_profile(accent_dict, print_profile=False):
 
     return profile
 
+# Use numpy to accelerate velocity assignment
 def accent_velocity(binary, accent_binaries, profile):
-    active_labels_array = np.zeros_like(binary, dtype=object)
+    active_labels_array = np.zeros_like(binary, dtype=object)  # Will store active labels at each index
 
+    # Precompute active labels for each index
     for i in range(len(binary)):
         active_labels_array[i] = [
             label for label, arr in accent_binaries.items() if arr[i % len(arr)]
         ]
+    
+    velocities = np.zeros_like(binary, dtype=int)  # Store the velocity for each index
 
-    velocities = np.zeros_like(binary, dtype=int)
-
+    # Using vectorized operations for velocity assignment
     for i, active_labels in enumerate(active_labels_array):
         if not binary[i]:
             velocities[i] = 0
@@ -94,6 +96,7 @@ def create_midi(binary, filename, velocities, note, duration_multiplier, time_si
     step_ticks = int(TICKS_PER_QUARTER_NOTE * duration_multiplier)
     accumulated_time = 0
 
+    # Use numpy to avoid multiple individual `note_on`/`note_off` calls
     for val, vel in zip(binary, velocities):
         if val:
             track.append(mido.Message('note_on', note=note, velocity=vel, time=accumulated_time))
@@ -105,6 +108,7 @@ def create_midi(binary, filename, velocities, note, duration_multiplier, time_si
     filepath = os.path.join(OUTPUT_DIR, f"{filename}.mid")
     try:
         mid.save(filepath)
+        # print(f"Saved: {filepath}")
     except Exception as e:
         print(f"Error saving {filename}: {e}")
 
@@ -131,14 +135,8 @@ def process_instrument(config):
     base_binary = sieve_to_binary(sieve)
 
     accent_dict = config.get('accent_dict', {})
-    use_accents = bool(accent_dict)
-
-    if use_accents:
-        accent_binaries = create_accent_binaries(accent_dict, period)
-        velocity_profile = generate_velocity_profile(accent_dict, print_profile=True)
-    else:
-        accent_binaries = {}
-        velocity_profile = {'gap': 80, 'overlap': 127}
+    accent_binaries = create_accent_binaries(accent_dict, period)
+    velocity_profile = generate_velocity_profile(accent_dict, print_profile=True)
 
     duration = config.get('duration', 'Quarter Note')
     duration_multiplier = get_duration_multiplier(duration)
@@ -151,12 +149,7 @@ def process_instrument(config):
         try:
             t_func = get_transformation_func(t_name)
             transformed_binary = t_func(base_binary)
-
-            if use_accents:
-                velocities = accent_velocity(transformed_binary, accent_binaries, velocity_profile)
-            else:
-                velocities = np.where(transformed_binary, velocity_profile['gap'], 0)
-
+            velocities = accent_velocity(transformed_binary, accent_binaries, velocity_profile)
             filename = f"{instrument_name}_{t_name}"
             create_midi(transformed_binary, filename, velocities, note, duration_multiplier, time_signature)
         except Exception as e:
@@ -168,7 +161,7 @@ def process_instrument(config):
 
         for i in indices:
             if i == 0:
-                continue
+                continue  # Skip shift of 0
 
             s_values = []
             if shift_direction == 'positive':
@@ -183,14 +176,9 @@ def process_instrument(config):
                 shifted_accent_binaries = {
                     label: np.roll(arr, s) for label, arr in accent_binaries.items()
                 }
-
-                if use_accents:
-                    velocities = accent_velocity(shifted, shifted_accent_binaries, velocity_profile)
-                else:
-                    velocities = np.where(shifted, velocity_profile['gap'], 0)
-
                 label = f"shift({s:+})"
                 filename = f"{instrument_name}_{label}"
+                velocities = accent_velocity(shifted, shifted_accent_binaries, velocity_profile)
                 create_midi(shifted, filename, velocities, note, duration_multiplier, time_signature)
 
 def main():
