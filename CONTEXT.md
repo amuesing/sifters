@@ -6,6 +6,20 @@
 
 ---
 
+## Instructions for Claude (read this first, every session)
+
+1. **Read this entire file before doing any work** — it is the source of truth for project state.
+2. **At the end of every working session**, update this file with:
+   - Any new decisions made and why
+   - Any bugs found and fixed (with the root cause, not just the fix)
+   - Any new files created or significantly changed
+   - Updated "What's Next" checklist — check off completed items, add new ones
+   - Updated "Last updated" date at the top
+3. **After updating**, commit and push: `git add CONTEXT.md && git commit -m "update CONTEXT.md" && git push origin main`
+4. **Never assume** the code matches what this file says — always verify against the actual files before making claims. This file may be days or weeks old.
+
+---
+
 ## What This Project Is
 
 A generative MIDI composition system based on **Xenakis sieve theory** — a mathematical framework that uses modular congruences to produce boolean rhythmic patterns. The Python code is a **proof of concept**. The eventual target is a **Max for Live MIDI Effect device** (`.amxd`) for distribution to Ableton users, with a possible VST3/CLAP version via JUCE for broader DAW support.
