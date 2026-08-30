@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-08-18
+> Last updated: 2026-08-30
 
 ---
 
@@ -75,12 +75,14 @@ The active project. A stripped-down, plugin-oriented version that generates a si
 
 ### Four Voices
 
-| Voice | Relationship | Density | MIDI Pitch | Step Grid | Cycle |
+| Voice | Relationship | Density | Pitch / Drum Pad | Step Grid | Cycle |
 |-------|-------------|---------|-----------|-----------|-------|
-| A | Base sieve | 15/40 (37.5%) | 36 (C1) | 16th note (120 ticks) | 4800 ticks |
-| B | Complement of A | 25/40 (62.5%) | 55 (G3) | 16th note (120 ticks) | 4800 ticks |
-| C | A shifted +13 steps (canon) | 15/40 (37.5%) | 48 (C3) | 16th note (120 ticks) | 4800 ticks |
-| D | Intersection of A and C | 6/40 (15%) | 60 (C4) | Triplet 8th (160 ticks) | 6400 ticks |
+| A | Base sieve | 15/40 (37.5%) | 36 (C1) — pad 1 | 16th note (120 ticks) | 4800 ticks |
+| B | Complement of A | 25/40 (62.5%) | 37 (C#1) — pad 2 | 16th note (120 ticks) | 4800 ticks |
+| C | A shifted +13 steps (canon) | 15/40 (37.5%) | 38 (D1) — pad 3 | 16th note (120 ticks) | 4800 ticks |
+| D | Intersection of A and C | 6/40 (15%) | 39 (D#1) — pad 4 | Triplet 8th (160 ticks) | 6400 ticks |
+
+Each voice has **one** pitch, used by every output. See "Pad assignment is derived" below.
 
 A + B always fill all 40 steps with no gaps and no collisions (they are complements).
 C is a rhythmic canon of A — same pattern, delayed by 13 steps.
@@ -137,6 +139,134 @@ A/B/C repeat **4 times**, D repeats **3 times** before all voices land on beat 1
 - `dois_ten_C_prime.mid` — 4800 ticks
 - `dois_ten_D_prime.mid` — 6400 ticks
 - `dois_ten_arrangement.mid` — 19200 ticks, one full LCM cycle, all four voices on separate tracks
+- `dois_ten_drumrack.mid` — 19200 ticks (10 bars of 4/4), one full LCM cycle, all four voices merged onto a **single track** at Drum Rack pitches 36/37/38/39. This is the plugin-ready format: drop it on one Ableton track holding a Drum Rack.
+
+### Drum Rack Output (added 2026-08-27)
+
+`save_drum_rack_loop` writes the same LCM cycle as the arrangement, but merged onto
+one MIDI track. It is the only difference from `save_ensemble_loop` that matters —
+same notes, same pitches, one track instead of four:
+
+- **One track, not four.** All voices become a single absolute-time event stream.
+- **Meter and tempo come from the shared header**, same as every other track — see
+  "Uniform meter and tempo" below. The LCM cycle is exactly 10 bars of 4/4.
+- **Event ordering matters.** Events sort by `(tick, kind)` with `note_off` (kind 0)
+  ahead of `note_on` (kind 1), so a pad retriggering on consecutive steps releases
+  before it strikes again instead of being cut short by the previous note's release.
+
+### Pad assignment is derived (2026-08-28)
+
+Each voice has exactly one pitch, and it is **not written per instrument**. `config.py`
+assigns it from the voice's position in `INSTRUMENT_CONFIGS`:
+
+```python
+DRUM_RACK_BASE = 36  # C1 = Drum Rack pad 1
+for _i, _cfg in enumerate(INSTRUMENT_CONFIGS):
+    _cfg.setdefault('root', DRUM_RACK_BASE + _i)
+```
+
+A → 36, B → 37, C → 38, D → 39, and a fifth voice would get 40 for free. A voice can
+still pin its own by setting `'root'` explicitly.
+
+**Why derived rather than two values.** The first version of this carried both `root`
+(a pitched voicing: 36/55/48/60, inherited from dois_three) and `drum_root` (the pad).
+That meant the prime clips and the drum rack clip played *different notes* for the same
+voice — B was G3 in `B_prime.mid` but C#1 in the drum rack — so comparing them in
+Ableton showed the same rhythm on different rows, and the two values could drift apart
+silently. One derived value makes every output agree by construction; there is no
+second place for the mapping to be wrong.
+
+The pitched voicing is gone. If it is ever wanted back, it belongs as a separate render
+target (a `pitched=True` flag on the save call), not as a parallel field that has to be
+kept in sync by hand.
+
+Verified on 2026-08-27 by reading the file back with mido: 1 track, 19200 ticks,
+4/4, no hanging notes, no same-pitch overlaps, hits per pad 60/100/60/18 (= 4×15,
+4×25, 4×15, 3×6), onset positions equal to the documented sieve steps on each voice's
+own grid, and per-pad velocities identical to the `vel_A`–`vel_D` arrays hardcoded in
+`max/sieve.js`. The Python output and the Max engine are therefore in sync.
+
+### Time Signature Bug Fixed (2026-08-27)
+
+**Symptom:** `dois_ten_D_prime.mid` declared `40/16`, but that meter describes a
+4800-tick bar while D's clip is 6400 ticks — the file asserted it was 1-1/3 bars long.
+
+**Root cause:** `generate_time_signature` did
+`STEP_TICKS_TO_DENOMINATOR.get(step_ticks, 16)`. That table holds only power-of-two
+divisions (1920 → 60). D's 160-tick triplet-eighth step is not in it, so the silent
+`, 16` default fabricated a sixteenth-note meter for a triplet grid.
+
+**Why it cannot be fixed by choosing better numbers:** a meter `N/D` spans
+`N * (4 * TPQ / D)` ticks with `D` a power of two. D's cycle is 6400 ticks = 13-1/3
+quarter notes, needing `N/D = 3.333…` — N = 13.33 at D=4, 26.67 at D=8, 53.33 at D=16.
+No power-of-two meter expresses a third of a beat, so **no time signature describes
+D's cycle at all.** That is inherent to the triplet grid, and it is the same 4:3
+relationship that produces the 19200-tick LCM.
+
+**First fix (2026-08-27):** the fallback stopped guessing — an unlisted step size
+returned `4, 4`, so D read as 3-1/3 bars of 4/4 (honest) rather than 1-1/3 bars of
+40/16 (false).
+
+**Superseded (2026-08-30):** `generate_time_signature` no longer exists. Every track
+now declares the same meter, so there is nothing left to derive per voice. See below.
+
+### Uniform meter and tempo (2026-08-30)
+
+**Every track of every generated file declares 4/4 at 120 BPM.** Both values live in
+`config.py` and are written by one helper in `composition.py`:
+
+```python
+TIME_SIGNATURE = (4, 4)
+TEMPO_BPM = 120
+
+def append_header(track, name):
+    """Name, meter and tempo — written identically at the head of every track."""
+    track.append(mido.MetaMessage('track_name', name=name, time=0))
+    num, den = TIME_SIGNATURE
+    track.append(mido.MetaMessage('time_signature', numerator=num, denominator=den, time=0))
+    track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(TEMPO_BPM), time=0))
+```
+
+All three save functions call it, so no code path can emit a track whose metadata
+disagrees with another's. Verified across all 9 tracks in the 6 files: exactly one
+distinct time signature `(4, 4)` and one distinct tempo `500000` µs/quarter.
+
+**Why 4/4 and not the old per-voice meters.** 4/4 is the only meter all four voices can
+share. A triplet cycle cannot be expressed as any power-of-two meter (see the bug above),
+so per-voice meters must differ by definition — uniformity and per-voice meters are
+mutually exclusive here.
+
+**What this cost.** A/B/C no longer read as one bar of 40/16, which was genuinely elegant
+(40 steps of 120 ticks *is* exactly one bar of that meter). They are now 2.5 bars of 4/4.
+Clip lengths did not change — 4800 ticks either way — only the declared meter. If that
+one-bar property is ever wanted back it cannot coexist with uniform meter.
+
+**Tempo was previously absent entirely.** The files played at 120 BPM only because that
+is MIDI's default with no `set_tempo` event. It is now stated rather than assumed.
+
+**Also retired by this change:** the `STEP_TICKS_TO_DENOMINATOR` table, and the
+unreachable `step_ticks == 60` branch that would have declared `20/32` (1200 ticks)
+against a true 2400-tick cycle — the same halving bug, now moot. Writing the meter on
+every track of the arrangement is non-standard for a type-1 file (conventionally the
+conductor track's job) but is now deliberate: it is what makes every track self-describing
+and identical.
+
+**Verified:** regenerating after this change moved no notes. A dump of every note in every
+file — onset, gate length, pitch, velocity — is identical before and after. Only metadata
+differs.
+
+### Clip lengths in 4/4 (worth knowing before you open these in Ableton)
+
+| File | Ticks | Quarter notes | Bars of 4/4 |
+|---|---|---|---|
+| A/B/C_prime | 4800 | 10 | 2.5 |
+| D_prime | 6400 | 13-1/3 | 3-1/3 |
+| arrangement, drumrack | 19200 | 40 | **10 (exact)** |
+
+**No prime clip is a whole number of 4/4 bars**, and none can be: 40 sixteenths is 2.5
+bars and 40 triplet-eighths is 3-1/3. Only the 19200-tick LCM files land on whole bars.
+For dropping onto a grid-locked session, use `dois_ten_drumrack.mid` (or the arrangement);
+the prime clips are the honest statement of a single voice, not grid-friendly loops.
 
 ### Important Bug Fixed
 
@@ -176,6 +306,10 @@ Voices are **derived** from a single base sieve, not independently designed. The
 - No cross-track routing needed
 
 ### Drum Rack Pitch Mapping
+
+Derived in `config.py` from each voice's position, not written per instrument — see
+"Pad assignment is derived" above.
+
 ```
 Voice A → pitch 36 (C1)   — Drum Rack pad 1
 Voice B → pitch 37 (C#1)  — Drum Rack pad 2
@@ -202,6 +336,14 @@ Voice D → pitch 39 (D#1)  — Drum Rack pad 4
 - Velocity lookup from precomputed arrays
 - Outputs pitch on outlet 0, velocity on outlet 1 (velocity must arrive at noteout before pitch)
 
+Its `PITCH_A`–`PITCH_D` constants (36/37/38/39) match the derived `root` values in
+`config.py`, and its velocity arrays were verified equal to the Python output.
+Re-verified 2026-08-28 by parsing the constants straight out of `sieve.js`.
+
+**Known gap:** `fireNote` sends note-ons but never note-offs. Fine for one-shot Drum
+Rack samples, but it will hang notes on any sustaining device — worth addressing when
+the patch is assembled.
+
 ### VST Alternative
 If broader DAW support is needed beyond Ableton: JUCE framework in C++. Same architecture, rewritten in C++. More work but works in Logic, FL Studio, Reaper, etc.
 
@@ -221,10 +363,49 @@ If broader DAW support is needed beyond Ableton: JUCE framework in C++. Same arc
 
 ---
 
-## What's Next (as of 2026-08-18)
+## Verified Clip Integrity (2026-08-27)
 
-- [ ] Update `dois_ten` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format
-- [ ] Test dois_ten in Ableton with a Drum Rack to validate the musical result
+Every file was re-read with mido and walked event-by-event in absolute ticks — checking
+the bytes on disk, not the code that wrote them:
+
+- Every track's `end_of_track` lands on its cycle boundary; padding after the last note
+  is exactly one step of silence (120 or 160 ticks) or zero because a note genuinely
+  reaches the boundary. Never an arbitrary amount.
+- Folding each voice onto its own cycle gives **byte-identical repeats** (A/B/C 4x4800,
+  D 3x6400) — the repetition is in phase, not drifting.
+- No notes past `end_of_track`, no hanging notes, no same-pitch overlaps, no notes
+  straddling a loop seam in any file.
+- A and B are complements, so their gates should tile time continuously: across the full
+  19200 ticks there are **zero gaps and zero overlaps**, 160 notes covering every tick.
+
+Meter and tempo are now uniform — 4/4 at 120 BPM on every track of every file. See
+"Uniform meter and tempo" above for the clip lengths that implies.
+
+## Output Consistency (verified 2026-08-28)
+
+Every output now plays the same note for the same voice. Checked by re-reading the
+files and comparing note-for-note **including pitch**:
+
+- Each prime clip vs. its pad in the drum rack clip (folding the drum rack's repeats
+  back onto one cycle): fully identical — pitch, onset, gate length, velocity.
+- Each arrangement track vs. its drum rack pad: fully identical, 60/100/60/18 notes.
+- Pitches present per file: A_prime [36], B_prime [37], C_prime [38], D_prime [39],
+  arrangement and drum rack [36,37,38,39].
+- `max/sieve.js` `PITCH_A`–`PITCH_D` parsed and compared against `config.py`: match.
+
+The only remaining difference between a prime clip and the drum rack clip is **length** —
+a prime clip is one cycle (4800, or 6400 for D), the drum rack clip is the full 19200-tick
+LCM, so voices repeat 4x/4x/4x/3x inside it. Compare a prime clip against the drum rack
+and it will agree on the first pass, then repeat at its own rate.
+
+## What's Next (as of 2026-08-30)
+
+- [x] Update `dois_ten` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format *(done 2026-08-27: `dois_ten_drumrack.mid`)*
+- [ ] Test dois_ten in Ableton with a Drum Rack to validate the musical result — load `mid/dois_ten_drumrack.mid` onto one track with a Drum Rack; pads 1-4 are A/B/C/D
+- [x] Write an explicit `set_tempo` into the generated files *(done 2026-08-30 — 120 BPM on every track)*
+- [x] Give every generated track the same time signature *(done 2026-08-30 — 4/4 everywhere)*
+- [ ] Consider rendering each voice at the full 19200-tick LCM as well, so all four
+      individual files are whole-bar loops that stay locked against each other
 - [ ] Decide on next layer of complexity to add (form/arrangement, parameter variation, sieve formula controls)
 - [ ] Eventually: assemble the Max for Live patch using `max/sieve.js`
 
@@ -238,6 +419,10 @@ python composition.py
 ```
 
 Output appears in `mid/`. Requires: `mido`, `music21`, `numpy`.
+
+**Gotcha:** the first run after a reboot can take ~60s before printing anything. That
+is macOS code-signing verification of numpy's compiled extensions on first load — not
+music21, which imports in well under a second. Subsequent runs are immediate.
 
 ---
 

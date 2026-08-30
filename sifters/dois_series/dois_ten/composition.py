@@ -23,13 +23,12 @@ def get_step_ticks(config):
     duration = config.get('duration', 'Quarter Note')
     return int(TICKS_PER_QUARTER_NOTE * DURATION_MULTIPLIER_KEY.get(duration, 0.25))
 
-def generate_time_signature(period, step_ticks):
-    if period > 255:
-        raise ValueError(f"Period {period} exceeds 255.")
-    denominator = STEP_TICKS_TO_DENOMINATOR.get(step_ticks, 16)
-    if step_ticks == 60:
-        return period // 2, denominator
-    return period, denominator
+def append_header(track, name):
+    """Name, meter and tempo — written identically at the head of every track."""
+    track.append(mido.MetaMessage('track_name', name=name, time=0))
+    num, den = TIME_SIGNATURE
+    track.append(mido.MetaMessage('time_signature', numerator=num, denominator=den, time=0))
+    track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(TEMPO_BPM), time=0))
 
 # ---------------------------------------------------------------------------
 # Binary construction
@@ -135,11 +134,9 @@ def append_note_events(track, notes_per_step, velocities, step_ticks):
 
 def save_midi(tracks_data, filename):
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_QUARTER_NOTE)
-    for name, notes_per_step, velocities, step_ticks, time_sig in tracks_data:
+    for name, notes_per_step, velocities, step_ticks in tracks_data:
         track = mido.MidiTrack()
-        track.append(mido.MetaMessage('track_name', name=name, time=0))
-        num, den = time_sig
-        track.append(mido.MetaMessage('time_signature', numerator=num, denominator=den, time=0))
+        append_header(track, name)
 
         cycle_ticks = len(velocities) * step_ticks
         active_indices = np.flatnonzero(velocities)
@@ -167,12 +164,12 @@ def save_midi(tracks_data, filename):
 def save_ensemble_loop(tracks_data, filename):
     """Write all voices out for exactly one LCM cycle so every rhythm realigns at the end."""
     cycle_lengths = [len(velocities) * step_ticks
-                     for (_, _, velocities, step_ticks, _) in tracks_data]
+                     for (_, _, velocities, step_ticks) in tracks_data]
     total_ticks = math.lcm(*cycle_lengths)
 
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_QUARTER_NOTE)
 
-    for name, notes_per_step, velocities, step_ticks, time_sig in tracks_data:
+    for name, notes_per_step, velocities, step_ticks in tracks_data:
         active = np.flatnonzero(velocities)
         if active.size == 0:
             continue
@@ -194,9 +191,7 @@ def save_ensemble_loop(tracks_data, filename):
         events.sort(key=lambda e: (e[0], e[1]))
 
         track = mido.MidiTrack()
-        track.append(mido.MetaMessage('track_name', name=name, time=0))
-        num, den = time_sig
-        track.append(mido.MetaMessage('time_signature', numerator=num, denominator=den, time=0))
+        append_header(track, name)
 
         prev = 0
         for abs_tick, kind, pitch, vel in events:
@@ -223,6 +218,66 @@ def save_ensemble_loop(tracks_data, filename):
     except OSError as e:
         print(f"  Error saving {filename}: {e}")
 
+def save_drum_rack_loop(tracks_data, filename):
+    """Merge every voice onto ONE track at Drum Rack pitches, for one LCM cycle.
+
+    This is the plugin-ready output: drop it on a single Ableton track holding a
+    Drum Rack and all four voices play from pads 1-4. Because the voices share a
+    track, notes are emitted as one absolute-time stream rather than per-voice.
+    """
+    cycle_lengths = [len(velocities) * step_ticks
+                     for (_, _, velocities, step_ticks) in tracks_data]
+    total_ticks = math.lcm(*cycle_lengths)
+
+    events = []
+    for name, notes_per_step, velocities, step_ticks in tracks_data:
+        active = np.flatnonzero(velocities)
+        if active.size == 0:
+            continue
+        cycle_ticks = len(velocities) * step_ticks
+        for rep in range(total_ticks // cycle_ticks):
+            rep_start = rep * cycle_ticks
+            for idx in active:
+                on_tick  = rep_start + int(idx) * step_ticks
+                velocity = int(velocities[idx])
+                for pitch in notes_per_step[idx]:
+                    events.append((on_tick,              1, int(pitch), velocity))
+                    events.append((on_tick + step_ticks, 0, int(pitch), 0))
+
+    if not events:
+        return
+
+    # note_off (kind 0) sorts ahead of note_on at the same tick, so a pad that
+    # retriggers on consecutive steps releases before it strikes again.
+    events.sort(key=lambda e: (e[0], e[1]))
+
+    mid = mido.MidiFile(ticks_per_beat=TICKS_PER_QUARTER_NOTE)
+    track = mido.MidiTrack()
+    append_header(track, f"{TITLE} drum rack")
+
+    prev = 0
+    for abs_tick, kind, pitch, vel in events:
+        track.append(mido.Message('note_on' if kind == 1 else 'note_off',
+                                  note=pitch, velocity=vel, time=abs_tick - prev))
+        prev = abs_tick
+
+    track.append(mido.MetaMessage('end_of_track', time=total_ticks - prev))
+    mid.tracks.append(track)
+
+    filepath = os.path.join(OUTPUT_DIR, f"{filename}.mid")
+    try:
+        mid.save(filepath)
+        bars = total_ticks / (TICKS_PER_QUARTER_NOTE * 4)
+        hits = {}
+        for _, _, pitch, vel in events:
+            if vel:
+                hits[pitch] = hits.get(pitch, 0) + 1
+        print(f"  Saved: {filename}.mid  "
+              f"({total_ticks} ticks = {bars:.0f} bars of 4/4, "
+              f"hits per pad: {dict(sorted(hits.items()))})")
+    except OSError as e:
+        print(f"  Error saving {filename}: {e}")
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -246,6 +301,7 @@ def main():
     # Render one prime clip per instrument + collect for ensemble.
     print()
     ensemble_tracks = []
+    drum_tracks = []
     for cfg in INSTRUMENT_CONFIGS:
         name        = cfg['name']
         accent_dict = cfg.get('accent_dict', {})
@@ -253,7 +309,6 @@ def main():
         binary      = base_binaries[name]
         period      = len(binary)
         step_ticks  = get_step_ticks(cfg)
-        time_sig    = generate_time_signature(period, step_ticks)
 
         accent_bins = create_accent_binaries(accent_dict, period)
         if cfg.get('relationship') == 'shift':
@@ -267,12 +322,19 @@ def main():
 
         notes_per_step, velocities = accent_voicing(binary, accent_bins, profile, root_note)
         filename = f"{TITLE}_{name}_prime"
-        save_midi([(name, notes_per_step, velocities, step_ticks, time_sig)], filename)
-        ensemble_tracks.append((name, notes_per_step, velocities, step_ticks, time_sig))
+        save_midi([(name, notes_per_step, velocities, step_ticks)], filename)
+        ensemble_tracks.append((name, notes_per_step, velocities, step_ticks))
+
+        # Same notes, same pitch — the drum rack clip differs from the arrangement
+        # only in being one merged track rather than four.
+        drum_tracks.append((name, notes_per_step, velocities, step_ticks))
 
     # Arrangement: one full LCM cycle — A/B/C × 4, D × 3, all realign at the end.
     print()
     save_ensemble_loop(ensemble_tracks, f"{TITLE}_arrangement")
+
+    # Plugin-ready: same LCM cycle, one track, all four voices on Drum Rack pads.
+    save_drum_rack_loop(drum_tracks, f"{TITLE}_drumrack")
 
 if __name__ == '__main__':
     main()
