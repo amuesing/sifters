@@ -101,7 +101,7 @@ sifters/
         transformations.py
         mid/              ← generated MIDI files (git-tracked)
         max/
-          sieve.js        ← JavaScript port of sieve engine for Max for Live
+          sieve.js        ← PARKED 2026-08-31 — not part of the pipeline, ignore
 ```
 
 ---
@@ -153,11 +153,10 @@ B uses flat velocity 64. D uses flat velocity 64.
 
 ### Velocity Arrays
 
-A and C now carry **120-step** velocity arrays, B and D 40-step. They are no longer
-transcribed into this file, because they are long and were drifting out of date. The
-authority is `max/sieve.js`, which is **generated from the MIDI files** rather than
-hand-written — see "Max for Live" below. To read them, open that file or run
-`composition.py` and inspect `mid/`.
+A and C carry **120-step** velocity arrays, B and D 40-step. They are not transcribed
+into this file — they are long, and every past attempt to keep a copy here drifted out
+of date. **The authority is `composition.py` and the `mid/` files it writes.** To read
+the arrays, run the script and inspect the output.
 
 ### Polyrhythm and LCM
 
@@ -343,6 +342,20 @@ Voices are **derived** from a single base sieve, not independently designed. The
 
 ---
 
+## Plugin Architecture (PARKED as of 2026-08-31)
+
+> **The user has parked all Max-patch work: "ignore any files created for creating a max
+> patch for now."** Do not maintain, regenerate, verify or update `max/sieve.js` or
+> anything else in `max/` until the user reopens this. It is not part of the working
+> pipeline — nothing in `composition.py` reads it, and no Max device exists to host it.
+>
+> `max/sieve.js` currently matches the 2026-08-31 render and **will silently go stale**
+> the next time the sieves, accents or durations change. That is expected and acceptable
+> while parked. When the work resumes, regenerate it from the MIDI files rather than
+> editing it, and verify it by *executing* it (see the note at the end of this section).
+
+The plan below is retained for when that happens.
+
 ## Plugin Architecture (Future)
 
 ### Target: Max for Live MIDI Effect
@@ -382,8 +395,9 @@ Voice D → pitch 39 (D#1)  — Drum Rack pad 4
 - Outputs pitch on outlet 0, velocity on outlet 1 (velocity must arrive at noteout before pitch)
 
 **`max/sieve.js` is generated from `mid/dois_ten_*_prime.mid` — do not hand-edit it.**
-Regenerate it whenever the sieves, accents or durations change; otherwise it silently
-describes an older version of the piece.
+*(Parked — see the notice above. The generator that produced it was not committed, so
+it will need rewriting when this work resumes. That is deliberate: there was no point
+committing a generator for a file nobody is maintaining.)*
 
 It now carries a `VOICES` table instead of loose constants. Each entry holds the voice's
 pitch, step size in ticks, and velocity array — and **the array's length is that voice's
@@ -524,7 +538,8 @@ rhythm. Not done; worth considering.
 - [ ] Listen to the 30-bar ensemble and judge whether 3 iterations is the right depth, or
       whether a longer accent span (mod 9, or adding mod 7) serves the piece better
 - [ ] Decide on next layer of complexity to add (form/arrangement, parameter variation, sieve formula controls)
-- [ ] Eventually: assemble the Max for Live patch using `max/sieve.js`
+- [ ] ~~Assemble the Max for Live patch using `max/sieve.js`~~ — **parked 2026-08-31**
+      at the user's request; ignore `max/` entirely until they reopen it
 
 ---
 
@@ -550,4 +565,4 @@ music21, which imports in well under a second. Subsequent runs are immediate.
 3. The key files to read are:
    - `sifters/dois_series/dois_ten/config.py` — voice definitions
    - `sifters/dois_series/dois_ten/composition.py` — full pipeline
-   - `sifters/dois_series/dois_ten/max/sieve.js` — Max for Live JS engine
+   - ~~`sifters/dois_series/dois_ten/max/sieve.js`~~ — parked; ignore for now
