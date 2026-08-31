@@ -26,6 +26,43 @@ A generative MIDI composition system based on **Xenakis sieve theory** — a mat
 
 ---
 
+## Governing Principle: What a Duration Must Express
+
+> Stated by the user on 2026-08-31. **This governs every duration decision in the project.
+> Read it before changing any length, and do not trade it away for convenience.**
+
+The sieve is **a catalyst for artistic expression**. Interpreting one musically means:
+**where numbers occur as a result of the sieve, so do sounds.**
+
+**The graph-paper analogy.** Picture the sieve plotted on graph paper. The **basic unit of
+duration is the equal spacing between the lines**. The **dots are the integers the sieve
+produces**, and each dot is a sound. Two things must hold:
+
+1. **Micro — the basic unit.** Every voice places its sounds on a chosen unit of duration,
+   so all sounds correspond to equal and matching numerical values expressed by the sieve.
+2. **Macro — the periodicity.** A voice's **overall duration must equal the periodicity of
+   the sieve**, normally found as the **LCM of all its moduli**. Correct overall duration is
+   "essential to maintaining accuracy of the sieve and deeply tied into my artistic goals."
+
+**Equal track lengths are NOT a goal.** In the user's words: *"it is not necessarily
+important that every track is exactly the same length."* When voices use different basic
+units to create a polyrhythm — as D does with its triplet grid against A/B/C's sixteenths —
+they **will** have different total durations. That is correct. Do not "fix" it.
+
+**Two failure modes to avoid:**
+
+- **Extending a voice to match another's length**, or rendering everything at a cross-voice
+  LCM so all files match. That makes a voice N periods long rather than one, which no longer
+  states the sieve's periodicity. *This mistake was made on 2026-08-31 — see "Every output is
+  one LCM span" below, which is now superseded.*
+- **Truncating at a length that is not the true period**, cutting the structure
+  mid-statement.
+
+Before choosing any duration, ask: **which moduli are actually in play, and what is their
+LCM?** Include the accent sieves in that question — see the open issue below.
+
+---
+
 ## Core Concept: How Sieves Work
 
 A sieve is expressed as boolean combinations of modular congruences. For example:
@@ -75,12 +112,15 @@ The active project. A stripped-down, plugin-oriented version that generates a si
 
 ### Four Voices
 
-| Voice | Relationship | Density | Pitch / Drum Pad | Step Grid | Cycle |
-|-------|-------------|---------|-----------|-----------|-------|
-| A | Base sieve | 15/40 (37.5%) | 36 (C1) — pad 1 | 16th note (120 ticks) | 4800 ticks |
-| B | Complement of A | 25/40 (62.5%) | 37 (C#1) — pad 2 | 16th note (120 ticks) | 4800 ticks |
-| C | A shifted +13 steps (canon) | 15/40 (37.5%) | 38 (D1) — pad 3 | 16th note (120 ticks) | 4800 ticks |
-| D | Intersection of A and C | 6/40 (15%) | 39 (D#1) — pad 4 | Triplet 8th (160 ticks) | 6400 ticks |
+| Voice | Relationship | Density | Pitch / Drum Pad | Step Grid | Note layer | Full statement |
+|-------|-------------|---------|-----------|-----------|------|------|
+| A | Base sieve | 15/40 (37.5%) | 36 (C1) — pad 1 | 16th (120 ticks) | 40 steps | **120 steps = 14400 ticks** |
+| B | Complement of A | 25/40 (62.5%) | 37 (C#1) — pad 2 | 16th (120 ticks) | 40 steps | 40 steps = 4800 ticks |
+| C | A shifted +13 steps (canon) | 15/40 (37.5%) | 38 (D1) — pad 3 | 16th (120 ticks) | 40 steps | **120 steps = 14400 ticks** |
+| D | Intersection of A and C | 6/40 (15%) | 39 (D#1) — pad 4 | Triplet 8th (160 ticks) | 40 steps | 40 steps = 6400 ticks |
+
+A and C run three times as long because their accent layer spans three iterations of the
+note layer — see "The accent layer spans the note layer" below.
 
 Each voice has **one** pitch, used by every output. See "Pad assignment is derived" below.
 
@@ -111,38 +151,42 @@ Three independent accent sieves overlay the main binary. The count of overlappin
 
 B uses flat velocity 64. D uses flat velocity 64.
 
-### Precomputed Velocity Arrays (exact, from Python)
+### Velocity Arrays
 
-```javascript
-vel_A = [127,127,0,0,0,0,0,0,63,0,127,0,0,127,63,0,127,0,0,0,0,0,127,1,0,127,0,0,0,63,0,127,0,127,0,0,0,127,63,0]
-vel_B = [0,0,64,64,64,64,64,64,0,64,0,64,64,0,0,64,0,64,64,64,64,64,0,0,64,0,64,64,64,0,64,0,64,0,64,64,64,0,0,64]
-vel_C = [0,0,63,0,127,0,127,0,0,0,127,63,0,127,127,0,0,0,0,0,0,63,0,127,0,0,127,63,0,127,0,0,0,0,0,127,1,0,127,0]
-vel_D = [0,0,0,0,0,0,0,0,0,0,64,0,0,64,64,0,0,0,0,0,0,0,0,64,0,0,0,0,0,64,0,0,0,0,0,0,0,0,64,0]
-```
+A and C now carry **120-step** velocity arrays, B and D 40-step. They are no longer
+transcribed into this file, because they are long and were drifting out of date. The
+authority is `max/sieve.js`, which is **generated from the MIDI files** rather than
+hand-written — see "Max for Live" below. To read them, open that file or run
+`composition.py` and inspect `mid/`.
 
 ### Polyrhythm and LCM
 
 D uses triplet eighth notes (160 ticks/step) while A/B/C use sixteenth notes (120 ticks/step). This creates a 4:3 polyrhythm. Full alignment:
 
 ```
-A/B/C cycle: 40 × 120 = 4800 ticks
-D cycle:     40 × 160 = 6400 ticks
-LCM:         19200 ticks = 40 quarter notes = 10 bars at 4/4, 120 BPM
+A full statement: 120 × 120 = 14400 ticks   (accents span 3 note-layer iterations)
+B full statement:  40 × 120 =  4800 ticks
+C full statement: 120 × 120 = 14400 ticks
+D full statement:  40 × 160 =  6400 ticks
+Ensemble period (LCM):       57600 ticks = 120 quarter notes = 30 bars at 4/4, 120 BPM
 ```
 
-A/B/C repeat **4 times**, D repeats **3 times** before all voices land on beat 1 together. This is not coincidental — 40 quarter notes mirrors the 40-step sieve period.
+A ×4, B ×12, C ×4, D ×9 before every voice has completed a whole number of statements
+and they land on beat 1 together. The 4:3 relationship between the 16th and triplet-8th
+grids is still what drives the polyrhythm; the accent span is what multiplies it out to
+30 bars.
 
 ### Generated Files
 
-**Every file is 19200 ticks — 10 bars of 4/4 at 120 BPM.** See "Every output is one
-LCM span" below.
+Each per-voice file is **exactly one full statement** of that voice — which means they
+are deliberately different lengths. See the Governing Principle at the top.
 
-- `dois_ten_A_prime.mid` — voice A alone, its 4800-tick cycle repeated 4x
-- `dois_ten_B_prime.mid` — voice B alone, 4x
-- `dois_ten_C_prime.mid` — voice C alone, 4x
-- `dois_ten_D_prime.mid` — voice D alone, its 6400-tick cycle repeated 3x
-- `dois_ten_arrangement.mid` — 19200 ticks, one full LCM cycle, all four voices on separate tracks
-- `dois_ten_drumrack.mid` — 19200 ticks (10 bars of 4/4), one full LCM cycle, all four voices merged onto a **single track** at Drum Rack pitches 36/37/38/39. This is the plugin-ready format: drop it on one Ableton track holding a Drum Rack.
+- `dois_ten_A_prime.mid` — 14400 ticks (7.5 bars), 120 steps, 45 notes
+- `dois_ten_B_prime.mid` —  4800 ticks (2.5 bars),  40 steps, 25 notes
+- `dois_ten_C_prime.mid` — 14400 ticks (7.5 bars), 120 steps, 45 notes
+- `dois_ten_D_prime.mid` —  6400 ticks (3-1/3 bars), 40 steps, 6 notes
+- `dois_ten_arrangement.mid` — 57600 ticks (30 bars), one full ensemble period, four separate tracks
+- `dois_ten_drumrack.mid` — 57600 ticks (30 bars), one full ensemble period, all four voices merged onto a **single track** at Drum Rack pitches 36/37/38/39. This is the plugin-ready format: drop it on one Ableton track holding a Drum Rack.
 
 ### Drum Rack Output (added 2026-08-27)
 
@@ -151,7 +195,7 @@ track. Same notes, same pitches, one track instead of four:
 
 - **One track, not four.** All voices become a single absolute-time event stream.
 - **Meter and tempo come from the shared header**, same as every other track — see
-  "Uniform meter and tempo" below. The LCM cycle is exactly 10 bars of 4/4.
+  "Uniform meter and tempo" below. The ensemble period is exactly 30 bars of 4/4.
 - **Event ordering matters.** Events sort by `(tick, kind)` with `note_off` (kind 0)
   ahead of `note_on` (kind 1), so a pad retriggering on consecutive steps releases
   before it strikes again instead of being cut short by the previous note's release.
@@ -182,11 +226,11 @@ The pitched voicing is gone. If it is ever wanted back, it belongs as a separate
 target (a `pitched=True` flag on the save call), not as a parallel field that has to be
 kept in sync by hand.
 
-Verified on 2026-08-27 by reading the file back with mido: 1 track, 19200 ticks,
-4/4, no hanging notes, no same-pitch overlaps, hits per pad 60/100/60/18 (= 4×15,
-4×25, 4×15, 3×6), onset positions equal to the documented sieve steps on each voice's
-own grid, and per-pad velocities identical to the `vel_A`–`vel_D` arrays hardcoded in
-`max/sieve.js`. The Python output and the Max engine are therefore in sync.
+Verified on 2026-08-27 by reading the file back with mido: 1 track, correct span, 4/4,
+no hanging notes, no same-pitch overlaps, onset positions equal to the sieve steps on
+each voice's own grid, and per-pad velocities identical to the arrays in `max/sieve.js`.
+*(Tick counts in that check were the then-current 19200; the structure of the check
+still holds and was re-run on 2026-08-31 against the current 57600-tick files.)*
 
 ### Time Signature Bug Fixed (2026-08-27)
 
@@ -203,7 +247,7 @@ divisions (1920 → 60). D's 160-tick triplet-eighth step is not in it, so the s
 quarter notes, needing `N/D = 3.333…` — N = 13.33 at D=4, 26.67 at D=8, 53.33 at D=16.
 No power-of-two meter expresses a third of a beat, so **no time signature describes
 D's cycle at all.** That is inherent to the triplet grid, and it is the same 4:3
-relationship that produces the 19200-tick LCM.
+relationship that drives the polyrhythm.
 
 **First fix (2026-08-27):** the fallback stopped guessing — an unlisted step size
 returned `4, 4`, so D read as 3-1/3 bars of 4/4 (honest) rather than 1-1/3 bars of
@@ -257,40 +301,17 @@ and identical.
 file — onset, gate length, pitch, velocity — is identical before and after. Only metadata
 differs.
 
-### Every output is one LCM span (2026-08-31)
+### Superseded: "every output is one LCM span" (2026-08-31, reverted same day)
 
-**Every generated file is 19200 ticks — 10 bars of 4/4 at 120 BPM.** No exceptions:
-the four per-voice files, the 4-track arrangement and the merged drum rack clip are all
-the same length, meter and tempo, so any combination of them can be dropped onto tracks
-and looped side by side forever without drifting.
+For part of 2026-08-31 every file was rendered at a single cross-voice LCM (19200 ticks,
+10 bars) so all outputs matched in length. **This was wrong** and has been reverted. A
+cross-voice LCM makes each voice N periods long rather than one, which states a DAW
+convenience instead of the sieve's periodicity — see the Governing Principle at the top
+of this file. Per-voice files are now one full statement each, at deliberately different
+lengths.
 
-Each voice fills that span by repeating its own cycle a whole number of times:
-
-| Voice | Cycle | Reps | Total | Notes |
-|---|---|---|---|---|
-| A | 4800 | 4x | 19200 | 60 |
-| B | 4800 | 4x | 19200 | 100 |
-| C | 4800 | 4x | 19200 | 60 |
-| D | 6400 | **3x** | 19200 | 18 |
-
-**Why the LCM and not something shorter.** A voice's cycle is 40 steps of its own grid:
-4800 ticks at a 16th (120) and 6400 at a triplet 8th (160). A shared length must be a
-common multiple of both or it cuts someone mid-cycle — at 4800, D is cut 75% through its
-first pass; at 6400, A/B/C are cut a third into their second. 19200 is the smallest
-length that holds whole cycles of all four, and it is exactly 10 bars.
-
-**"Prime" now means un-shifted, not one cycle.** Previously each `_prime` file was a
-single cycle (hence 4800/4800/4800/6400, which are 2.5, 2.5, 2.5 and 3-1/3 bars — none a
-whole number of bars, and none can be). They are now the full span. The name still
-distinguishes the prime form from the shifted variants used in earlier dois versions.
-
-**One code path builds all of it.** `voice_events` produces a voice's absolute-time
-events repeated to fill the span; `make_track` turns any event list into a track with
-the shared header and `end_of_track` on the boundary; `save_tracks` writes a file. A
-per-voice file is one track from one voice, the arrangement is four tracks, the drum
-rack is one track from all four voices' events merged. This replaced `save_midi`,
-`save_ensemble_loop` and `save_drum_rack_loop`, which duplicated the same event-building
-and delta-time logic three times over — composition.py went from 340 to 239 lines.
+The refactor that shipped alongside it was kept, because it was independently good:
+`voice_events` / `make_track` / `save_tracks` replaced three near-duplicate writers.
 
 ### Important Bug Fixed
 
@@ -360,9 +381,18 @@ Voice D → pitch 39 (D#1)  — Drum Rack pad 4
 - Velocity lookup from precomputed arrays
 - Outputs pitch on outlet 0, velocity on outlet 1 (velocity must arrive at noteout before pitch)
 
-Its `PITCH_A`–`PITCH_D` constants (36/37/38/39) match the derived `root` values in
-`config.py`, and its velocity arrays were verified equal to the Python output.
-Re-verified 2026-08-28 by parsing the constants straight out of `sieve.js`.
+**`max/sieve.js` is generated from `mid/dois_ten_*_prime.mid` — do not hand-edit it.**
+Regenerate it whenever the sieves, accents or durations change; otherwise it silently
+describes an older version of the piece.
+
+It now carries a `VOICES` table instead of loose constants. Each entry holds the voice's
+pitch, step size in ticks, and velocity array — and **the array's length is that voice's
+period**, so A and C are 120 long while B and D are 40. Step position comes from absolute
+transport ticks (`floor(ticks / step) % vel.length`), which keeps every voice phase-locked
+to the piece start even though their periods differ.
+
+Verified 2026-08-31 by parsing the table back out of the JS and comparing against every
+MIDI file: pitches, step sizes, array lengths and all velocities match exactly.
 
 **Known gap:** `fireNote` sends note-ons but never note-offs. Fine for one-shot Drum
 Rack samples, but it will hang notes on any sustaining device — worth addressing when
@@ -399,8 +429,10 @@ the bytes on disk, not the code that wrote them:
   D 3x6400) — the repetition is in phase, not drifting.
 - No notes past `end_of_track`, no hanging notes, no same-pitch overlaps, no notes
   straddling a loop seam in any file.
-- A and B are complements, so their gates should tile time continuously: across the full
-  19200 ticks there are **zero gaps and zero overlaps**, 160 notes covering every tick.
+- A and B are complements, so their gates tile time continuously within any shared span:
+  checked across 19200 ticks at the time, **zero gaps and zero overlaps**, every tick
+  covered. (A and B now have different periods — 14400 vs 4800 — so the tiling holds
+  per 40-step cycle rather than per file.)
 
 Meter and tempo are now uniform — 4/4 at 120 BPM on every track of every file. See
 "Uniform meter and tempo" above for the clip lengths that implies.
@@ -417,9 +449,55 @@ files and comparing note-for-note **including pitch**:
   arrangement and drum rack [36,37,38,39].
 - `max/sieve.js` `PITCH_A`–`PITCH_D` parsed and compared against `config.py`: match.
 
-As of 2026-08-31 there is no remaining difference: every file is the same 19200-tick
-span, so a per-voice file, its arrangement track and its drum rack pad are now identical
-note-for-note. Verified again after that change — all three match for all four voices.
+As of 2026-08-31 a per-voice file holds exactly one full statement of that voice, while
+the arrangement and drum rack hold the ensemble period (57600 ticks). So a per-voice file
+matches the **first statement** of its arrangement track and drum rack pad note-for-note,
+and the ensemble files then continue repeating it. Lengths differ by design.
+
+## The accent layer spans the note layer (resolved 2026-08-31)
+
+What was logged as an open issue — the mod-3 accent not fitting the 40-step note layer —
+is now the mechanism, at the user's direction: *"it would be interesting to have an accent
+layer that spans multiple iterations of the note layer, creating depth and dimensionality."*
+
+**How it works.** The note layer's period is 40 steps (moduli 8, 5). The accent sieves add
+modulus 3, and 3 does not divide 40, so the accents land on *different notes* on each pass.
+A voice has not stated itself until the two realign:
+
+```
+voice_span = LCM(rhythm period, *accent periods) = LCM(40, 5, 8, 3) = 120 steps
+```
+
+Three iterations of the same rhythm, re-accented each time. Previously the accents were
+evaluated over only 40 steps and restarted at every repeat, which flattened this away.
+
+**The audible result** — voice A, identical note positions on all three passes:
+
+```
+step:  0    1    8   10   13   14   16   22   23   25   29   31   33   37   38
+it 1: 127  127   63  127  127   63  127  127    1  127   63  127  127  127   63
+it 2: 127  127  127  127   63  127  127   63   94  127  127   32  127   63  127
+it 3: 127  127  127  127  127  127  127  127   94  127  127  127   63  127  127
+```
+
+**10 of the 15 hits per iteration are re-accented across passes.** Step 23 is the clearest:
+a ghost at velocity 1 on the first pass, 94 on the other two. Verified that the note layer
+is bit-identical across the three iterations, so every difference is the accent layer.
+
+**The span is derived, not set.** `voice_span(rhythm_period, accent_dict)` takes the LCM of
+the rhythm period and every accent modulus, so it follows whatever accents are written.
+**This is the lever for more depth:** any accent modulus coprime to 40 lengthens the span.
+
+| accents | span | iterations | per-voice length |
+|---|---|---|---|
+| mod 3 (current) | 120 steps | 3 | 14400 ticks (7.5 bars) |
+| mod 9 | 360 steps | 9 | 43200 ticks (22.5 bars) |
+| mod 3 + mod 7 | 840 steps | 21 | 100800 ticks (52.5 bars) |
+
+**B and D have no accent layer** — both are flat at velocity 64, so both close after 40
+steps. Giving them accent sieves would extend their periods too, and because D is on the
+triplet grid its accent span would interact with the polyrhythm rather than just the
+rhythm. Not done; worth considering.
 
 ## What's Next (as of 2026-08-31)
 
@@ -427,8 +505,16 @@ note-for-note. Verified again after that change — all three match for all four
 - [ ] Test dois_ten in Ableton with a Drum Rack to validate the musical result — load `mid/dois_ten_drumrack.mid` onto one track with a Drum Rack; pads 1-4 are A/B/C/D
 - [x] Write an explicit `set_tempo` into the generated files *(done 2026-08-30 — 120 BPM on every track)*
 - [x] Give every generated track the same time signature *(done 2026-08-30 — 4/4 everywhere)*
-- [x] Render each voice at the full 19200-tick LCM *(done 2026-08-31 — every file is now
-      10 bars of 4/4; the one-cycle prime clips are gone)*
+- [x] Render each voice at the full 19200-tick LCM *(done 2026-08-31, then **superseded**
+      the same day — a cross-voice LCM makes each voice N periods long, which violates the
+      governing principle above. Needs reverting to one period per voice.)*
+- [x] **Revert per-voice files to one sieve period each** *(done 2026-08-31)*
+- [x] **Resolve the accent modulus issue** *(done 2026-08-31 — the accent layer now spans
+      3 iterations of the note layer, by design; see the section above)*
+- [ ] Consider giving B and D accent layers of their own, with moduli chosen for how their
+      spans would interact (D's would cross the triplet grid)
+- [ ] Listen to the 30-bar ensemble and judge whether 3 iterations is the right depth, or
+      whether a longer accent span (mod 9, or adding mod 7) serves the piece better
 - [ ] Decide on next layer of complexity to add (form/arrangement, parameter variation, sieve formula controls)
 - [ ] Eventually: assemble the Max for Live patch using `max/sieve.js`
 

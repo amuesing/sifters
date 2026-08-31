@@ -65,13 +65,34 @@ def build_binary(config, base_binaries):
 # Accent voicing
 # ---------------------------------------------------------------------------
 
-def create_accent_binaries(accent_dict, period):
+def create_accent_binaries(accent_dict, span):
+    """Accent masks evaluated across the voice's FULL span, not just one rhythm period.
+
+    Evaluating them over the rhythm period alone would restart every accent at each
+    repeat; carrying them across the span is what lets them land differently on each
+    pass of the note layer.
+    """
     binaries = {}
     for label, pattern in accent_dict.items():
         s = music21.sieve.Sieve(pattern)
-        s.setZRange(0, period - 1)
+        s.setZRange(0, span - 1)
         binaries[label] = sieve_to_binary(s)
     return binaries
+
+def voice_span(rhythm_period, accent_dict):
+    """Steps in one full statement of a voice: LCM of the rhythm and accent periods.
+
+    The note layer repeats every `rhythm_period` steps, but an accent sieve whose
+    modulus does not divide that lands differently on each pass. The voice has not
+    stated itself completely until the two agree again. For the psappha voices the
+    rhythm is 40 steps (moduli 8, 5) and the accents add modulus 3, so a full
+    statement is LCM(40, 3) = 120 steps — the accent layer spans three iterations
+    of the note layer, re-accenting the same figure each time.
+    """
+    periods = [rhythm_period]
+    for pattern in accent_dict.values():
+        periods.append(music21.sieve.Sieve(pattern).period())
+    return math.lcm(*periods)
 
 def generate_velocity_profile(accent_dict):
     if not accent_dict:
@@ -110,9 +131,11 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
 # ---------------------------------------------------------------------------
 # MIDI rendering
 # ---------------------------------------------------------------------------
-# Every file spans the same length: the LCM of all voice cycles. Each voice therefore
-# repeats a whole number of times and they all land on beat 1 together at the end, so
-# any combination of these files can be looped side by side without drifting.
+# Duration states periodicity — see "Governing Principle" in CONTEXT.md. A per-voice file
+# is exactly ONE period of that voice's sieve, at that voice's own basic unit, so voices on
+# different units come out at different lengths (that is correct, not a defect). The
+# ensemble files span the LCM of the voice periods, which is the period of the combined
+# structure — the point at which every voice has completed a whole number of statements.
 
 def voice_events(notes_per_step, velocities, step_ticks, total_ticks):
     """Absolute-time events for one voice, repeated to fill total_ticks.
@@ -195,41 +218,54 @@ def main():
         accent_dict = cfg.get('accent_dict', {})
         root_note   = cfg['root']
         binary      = base_binaries[name]
-        period      = len(binary)
+        rhythm      = len(binary)
         step_ticks  = get_step_ticks(cfg)
 
-        accent_bins = create_accent_binaries(accent_dict, period)
+        # One statement = rhythm and accents realigned. Tile the note layer across it.
+        span         = voice_span(rhythm, accent_dict)
+        binary_full  = np.resize(binary, span)
+        accent_bins  = create_accent_binaries(accent_dict, span)
         if cfg.get('relationship') == 'shift':
             shift_amount = cfg.get('shift_amount', 0)
             accent_bins  = {k: np.roll(v, shift_amount) for k, v in accent_bins.items()}
 
         profile = generate_velocity_profile(accent_dict)
         if accent_dict:
-            print(f"  {name} velocity profile: " +
+            print(f"  {name}: rhythm {rhythm} steps, accents span {span} "
+                  f"({span // rhythm} iterations of the note layer) — " +
                   ", ".join(f"{k}={v}" for k, v in profile.items()))
 
-        notes_per_step, velocities = accent_voicing(binary, accent_bins, profile, root_note)
+        notes_per_step, velocities = accent_voicing(binary_full, accent_bins, profile, root_note)
         voices.append((name, notes_per_step, velocities, step_ticks))
 
-    # One span for every file, so no output ever cuts a voice mid-cycle.
-    total_ticks = math.lcm(*(len(vel) * st for _, _, vel, st in voices))
-    print(f"\n  Every file spans {total_ticks} ticks "
-          f"({total_ticks / (TICKS_PER_QUARTER_NOTE * 4):g} bars) — the LCM of the voice cycles:")
+    # A voice's period is its own; the ensemble's period is the LCM of those.
+    periods     = {name: len(vel) * st for name, _, vel, st in voices}
+    total_ticks = math.lcm(*periods.values())
+
+    print(f"\n  Voice periods (one full statement at that voice's basic unit):")
     for name, _, velocities, step_ticks in voices:
-        cycle = len(velocities) * step_ticks
-        print(f"    {name}: cycle {cycle} x {total_ticks // cycle} reps = {total_ticks}")
+        print(f"    {name}: {len(velocities)} steps x {step_ticks} ticks = {periods[name]} ticks"
+              f"  ({periods[name] / (TICKS_PER_QUARTER_NOTE * 4):g} bars)")
+    print(f"  Ensemble period (LCM): {total_ticks} ticks "
+          f"({total_ticks / (TICKS_PER_QUARTER_NOTE * 4):g} bars) — "
+          f"{', '.join(f'{n} x{total_ticks // c}' for n, c in periods.items())}")
     print()
 
-    # One file per voice, each covering the full span.
+    # One file per voice: exactly one period of that voice.
+    for name, notes_per_step, velocities, step_ticks in voices:
+        period_ticks = periods[name]
+        events = voice_events(notes_per_step, velocities, step_ticks, period_ticks)
+        save_tracks([make_track(name, events, period_ticks)],
+                    f"{TITLE}_{name}_prime", period_ticks)
+
+    # Ensemble files span the LCM, so every voice completes a whole number of statements.
+    print()
     arrangement, merged = [], []
     for name, notes_per_step, velocities, step_ticks in voices:
         events = voice_events(notes_per_step, velocities, step_ticks, total_ticks)
-        save_tracks([make_track(name, events, total_ticks)],
-                    f"{TITLE}_{name}_prime", total_ticks)
         arrangement.append(make_track(name, events, total_ticks))
         merged.extend(events)
 
-    print()
     save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks,
                 note=f", {len(arrangement)} tracks")
     save_tracks([make_track(f"{TITLE} drum rack", merged, total_ticks)],

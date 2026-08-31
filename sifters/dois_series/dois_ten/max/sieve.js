@@ -3,51 +3,71 @@ inlets  = 1;  // beat position (float) from [transport]
 outlets = 2;  // 0: pitch, 1: velocity
 
 // ---------------------------------------------------------------------------
-// Precomputed from Python — dois_ten sieve binaries and velocity profiles
+// dois_ten — generated from mid/dois_ten_*_prime.mid, do not hand-edit
 // ---------------------------------------------------------------------------
+// Each voice carries its own velocity array, and the array's LENGTH is that voice's
+// period in steps. A and C run 120 steps because their accent sieves include modulus
+// 3, which does not divide the 40-step note layer: the accents land differently on
+// each of three passes, so the voice does not fully state itself until step 120.
+// B and D carry no accents and close after 40 steps. Positions are taken from
+// absolute transport ticks, so every voice stays phase-locked to the piece start.
 
-var vel_A = [127,127,0,0,0,0,0,0,63,0,127,0,0,127,63,0,127,0,0,0,0,0,127,1,0,127,0,0,0,63,0,127,0,127,0,0,0,127,63,0];
-var vel_B = [0,0,64,64,64,64,64,64,0,64,0,64,64,0,0,64,0,64,64,64,64,64,0,0,64,0,64,64,64,0,64,0,64,0,64,64,64,0,0,64];
-var vel_C = [0,0,63,0,127,0,127,0,0,0,127,63,0,127,127,0,0,0,0,0,0,63,0,127,0,0,127,63,0,127,0,0,0,0,0,127,1,0,127,0];
-var vel_D = [0,0,0,0,0,0,0,0,0,0,64,0,0,64,64,0,0,0,0,0,0,0,0,64,0,0,0,0,0,64,0,0,0,0,0,0,0,0,64,0];
+var TPQ = 480;
 
-// Drum Rack pad pitches — one pad per voice
-var PITCH_A = 36; // C1
-var PITCH_B = 37; // C#1
-var PITCH_C = 38; // D1
-var PITCH_D = 39; // D#1
-
-// Step sizes in ticks (480 ticks = 1 quarter note)
-var STEP_ABC = 120; // sixteenth note
-var STEP_D   = 160; // triplet eighth note
-var PERIOD   = 40;
-
-// Track which step each voice is on to detect crossings
-var last_step_ABC = -1;
-var last_step_D   = -1;
+var VOICES = [
+    {
+        name:  "A",
+        pitch: 36,          // Drum Rack pad 1
+        step:  120,          // ticks per step
+        // 120 steps = one full statement (3 iterations of the 40-step note layer)
+        vel: [
+            127,127,0,0,0,0,0,0,63,0,127,0,0,127,63,0,127,0,0,0,0,0,127,1,0,127,0,0,0,63,0,127,0,127,0,0,0,127,63,0,127,127,0,0,0,0,0,0,127,0,127,0,0,63,127,0,127,0,0,0,0,0,63,94,0,127,0,0,0,127,0,32,0,127,0,0,0,63,127,0,127,127,0,0,0,0,0,0,127,0,127,0,0,127,127,0,127,0,0,0,0,0,127,94,0,127,0,0,0,127,0,127,0,63,0,0,0,127,127,0
+        ],
+        last: -1
+    },\n    {
+        name:  "B",
+        pitch: 37,          // Drum Rack pad 2
+        step:  120,          // ticks per step
+        // 40 steps = one full statement (1 iteration of the 40-step note layer)
+        vel: [
+            0,0,64,64,64,64,64,64,0,64,0,64,64,0,0,64,0,64,64,64,64,64,0,0,64,0,64,64,64,0,64,0,64,0,64,64,64,0,0,64
+        ],
+        last: -1
+    },\n    {
+        name:  "C",
+        pitch: 38,          // Drum Rack pad 3
+        step:  120,          // ticks per step
+        // 120 steps = one full statement (3 iterations of the 40-step note layer)
+        vel: [
+            0,0,127,0,127,0,63,0,0,0,127,127,0,127,127,0,0,0,0,0,0,63,0,127,0,0,127,63,0,127,0,0,0,0,0,127,1,0,127,0,0,0,63,0,127,0,127,0,0,0,127,63,0,127,127,0,0,0,0,0,0,127,0,127,0,0,63,127,0,127,0,0,0,0,0,63,94,0,127,0,0,0,127,0,32,0,127,0,0,0,63,127,0,127,127,0,0,0,0,0,0,127,0,127,0,0,127,127,0,127,0,0,0,0,0,127,94,0,127,0
+        ],
+        last: -1
+    },\n    {
+        name:  "D",
+        pitch: 39,          // Drum Rack pad 4
+        step:  160,          // ticks per step
+        // 40 steps = one full statement (1 iteration of the 40-step note layer)
+        vel: [
+            0,0,0,0,0,0,0,0,0,0,64,0,0,64,64,0,0,0,0,0,0,0,0,64,0,0,0,0,0,64,0,0,0,0,0,0,0,0,64,0
+        ],
+        last: -1
+    }
+];
 
 // ---------------------------------------------------------------------------
 // Called on every bang from the metro — receives current beat position
 // ---------------------------------------------------------------------------
 
 function msg_float(beats) {
-    var ticks = Math.floor(beats * 480);
+    var ticks = Math.floor(beats * TPQ);
 
-    var step_ABC = Math.floor(ticks / STEP_ABC) % PERIOD;
-    var step_D   = Math.floor(ticks / STEP_D)   % PERIOD;
-
-    // Fire A, B, C — they share the same grid
-    if (step_ABC !== last_step_ABC) {
-        last_step_ABC = step_ABC;
-        fireNote(PITCH_A, vel_A[step_ABC]);
-        fireNote(PITCH_B, vel_B[step_ABC]);
-        fireNote(PITCH_C, vel_C[step_ABC]);
-    }
-
-    // Fire D — triplet-eighth grid, independent of A/B/C
-    if (step_D !== last_step_D) {
-        last_step_D = step_D;
-        fireNote(PITCH_D, vel_D[step_D]);
+    for (var i = 0; i < VOICES.length; i++) {
+        var v = VOICES[i];
+        var step = Math.floor(ticks / v.step) % v.vel.length;
+        if (step !== v.last) {
+            v.last = step;
+            fireNote(v.pitch, v.vel[step]);
+        }
     }
 }
 
@@ -60,6 +80,5 @@ function fireNote(pitch, velocity) {
 
 // Reset step tracking when transport stops or loops
 function reset() {
-    last_step_ABC = -1;
-    last_step_D   = -1;
+    for (var i = 0; i < VOICES.length; i++) VOICES[i].last = -1;
 }
