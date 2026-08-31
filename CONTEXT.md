@@ -391,8 +391,16 @@ period**, so A and C are 120 long while B and D are 40. Step position comes from
 transport ticks (`floor(ticks / step) % vel.length`), which keeps every voice phase-locked
 to the piece start even though their periods differ.
 
-Verified 2026-08-31 by parsing the table back out of the JS and comparing against every
-MIDI file: pitches, step sizes, array lengths and all velocities match exactly.
+**Verify it by RUNNING it, not by parsing it.** `node` is not installed on this machine,
+but macOS ships JavaScriptCore via `osascript -l JavaScript`, which will execute the file:
+stub Max's `outlet()`, sweep `msg_float()` across one ensemble period, and compare the
+notes it fires against `mid/dois_ten_drumrack.mid`. Verified 2026-08-31 this way — **714
+notes, identical in tick, pitch and velocity** (pads 36/37/38/39 = 180/300/180/54).
+
+This matters: an earlier version of the generator emitted a literal `\n` between voice
+entries instead of a newline, producing invalid JavaScript. A regex check of the file's
+*data* passed anyway, because it never asked whether the file would parse. Only executing
+it caught the bug. Do not verify generated code by inspecting it.
 
 **Known gap:** `fireNote` sends note-ons but never note-offs. Fine for one-shot Drum
 Rack samples, but it will hang notes on any sustaining device — worth addressing when
