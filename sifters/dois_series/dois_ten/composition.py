@@ -131,12 +131,17 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
 # ---------------------------------------------------------------------------
 # MIDI rendering
 # ---------------------------------------------------------------------------
-# Duration states periodicity — see "Governing Principle" in CONTEXT.md. A voice appears
-# as EXACTLY ONE period of its sieve, at its own basic unit, in every file it appears in:
-# the per-voice file, the arrangement and the drum rack all carry the same single statement.
-# Voices on different basic units therefore have different durations, which is correct and
-# not a defect. Keeping them identical across files is what makes the per-voice files usable
-# as a reference to check the ensemble files against.
+# Duration states periodicity — see "Governing Principle" in CONTEXT.md.
+#
+# A per-voice file is EXACTLY ONE period of that voice's sieve, at its own basic unit.
+# Voices on different units, or with different accent spans, therefore have different
+# lengths — correct, not a defect.
+#
+# The ensemble files repeat each voice a WHOLE number of its own periods, enough for
+# every voice to finish together: the LCM of the voice periods. A voice's internal
+# period is never altered to fit — it simply recurs. So one cycle inside an ensemble
+# file is identical to that voice's own file, which is what makes the per-voice files
+# usable as a reference for checking the ensemble.
 
 def voice_events(notes_per_step, velocities, step_ticks, total_ticks):
     """Absolute-time events for one voice, repeated to fill total_ticks.
@@ -247,32 +252,31 @@ def main():
     for name, _, velocities, step_ticks in voices:
         print(f"    {name}: {len(velocities)} steps x {step_ticks} ticks = {periods[name]} ticks"
               f"  ({periods[name] / (TICKS_PER_QUARTER_NOTE * 4):g} bars)")
-    print(f"  (For reference only — every voice is stated ONCE, never repeated to fill a")
-    print(f"   common length. All voices would realign after {total_ticks} ticks "
-          f"= {total_ticks / (TICKS_PER_QUARTER_NOTE * 4):g} bars: "
-          f"{', '.join(f'{n} x{total_ticks // c}' for n, c in periods.items())}.)")
+    print(f"  Ensemble length {total_ticks} ticks "
+          f"({total_ticks / (TICKS_PER_QUARTER_NOTE * 4):g} bars) — LCM of the voice periods, "
+          f"so every voice completes whole cycles and all end together:")
+    for name, _, _, _ in voices:
+        print(f"    {name}: {periods[name]} x {total_ticks // periods[name]} = {total_ticks}")
     print()
 
-    # Build each voice's single statement once, then use that same statement everywhere.
+    # Per-voice file: one period. Ensemble: that same period recurring a whole number
+    # of times, so cycle k of the ensemble equals the per-voice file exactly.
     arrangement, merged = [], []
     for name, notes_per_step, velocities, step_ticks in voices:
-        period_ticks = periods[name]
-        events = voice_events(notes_per_step, velocities, step_ticks, period_ticks)
+        events = voice_events(notes_per_step, velocities, step_ticks, periods[name])
+        save_tracks([make_track(name, events, periods[name])],
+                    f"{TITLE}_{name}_prime", periods[name])
 
-        save_tracks([make_track(name, events, period_ticks)],
-                    f"{TITLE}_{name}_prime", period_ticks)
-        arrangement.append(make_track(name, events, period_ticks))
-        merged.extend(events)
+        repeated = voice_events(notes_per_step, velocities, step_ticks, total_ticks)
+        arrangement.append(make_track(name, repeated, total_ticks))
+        merged.extend(repeated)
 
-    # The ensemble files hold the same statements, so each voice's track and pad is
-    # identical to its own file. The file is as long as the longest voice; tracks keep
-    # their own end_of_track, so no voice is padded out to match another.
-    longest = max(periods.values())
     print()
-    save_tracks(arrangement, f"{TITLE}_arrangement", longest,
-                note=f", {len(arrangement)} tracks, each one period")
-    save_tracks([make_track(f"{TITLE} drum rack", merged, longest)],
-                f"{TITLE}_drumrack", longest, note=", all voices on one track, one period each")
+    reps = ", ".join(f"{n} x{total_ticks // c}" for n, c in periods.items())
+    save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks,
+                note=f", {len(arrangement)} tracks — {reps}")
+    save_tracks([make_track(f"{TITLE} drum rack", merged, total_ticks)],
+                f"{TITLE}_drumrack", total_ticks, note=", all voices on one track")
 
 if __name__ == '__main__':
     main()
