@@ -167,13 +167,13 @@ A full statement: 120 × 120 = 14400 ticks   (accents span 3 note-layer iteratio
 B full statement:  40 × 120 =  4800 ticks
 C full statement: 120 × 120 = 14400 ticks
 D full statement:  40 × 160 =  6400 ticks
-Ensemble period (LCM):       57600 ticks = 120 quarter notes = 30 bars at 4/4, 120 BPM
 ```
 
-A ×4, B ×12, C ×4, D ×9 before every voice has completed a whole number of statements
-and they land on beat 1 together. The 4:3 relationship between the 16th and triplet-8th
-grids is still what drives the polyrhythm; the accent span is what multiplies it out to
-30 bars.
+**Nothing is rendered at the ensemble LCM.** For reference, the voices would all realign
+after LCM(14400, 4800, 6400) = 57600 ticks (30 bars) — A ×4, B ×12, C ×4, D ×9 — but no
+file repeats a voice to reach it. Every file states each voice **once**. The 4:3 relation
+between the 16th and triplet-8th grids drives the polyrhythm; the accent span multiplies
+the theoretical realignment out to 30 bars.
 
 ### Generated Files
 
@@ -184,8 +184,13 @@ are deliberately different lengths. See the Governing Principle at the top.
 - `dois_ten_B_prime.mid` —  4800 ticks (2.5 bars),  40 steps, 25 notes
 - `dois_ten_C_prime.mid` — 14400 ticks (7.5 bars), 120 steps, 45 notes
 - `dois_ten_D_prime.mid` —  6400 ticks (3-1/3 bars), 40 steps, 6 notes
-- `dois_ten_arrangement.mid` — 57600 ticks (30 bars), one full ensemble period, four separate tracks
-- `dois_ten_drumrack.mid` — 57600 ticks (30 bars), one full ensemble period, all four voices merged onto a **single track** at Drum Rack pitches 36/37/38/39. This is the plugin-ready format: drop it on one Ableton track holding a Drum Rack.
+**Every file carries each voice exactly once, at that voice's own period.** A voice's
+track in the arrangement, its pad in the drum rack, and its own file are identical
+note-for-note — which is what makes the per-voice files usable to check the others.
+
+- `dois_ten_arrangement.mid` — four tracks with their own lengths, `[14400, 4800, 14400, 6400]`
+- `dois_ten_drumrack.mid` — all four voices merged onto a **single track** at Drum Rack
+  pitches 36/37/38/39, each stated once; file runs 14400 ticks (the longest voice)
 
 ### Drum Rack Output (added 2026-08-27)
 
@@ -229,7 +234,7 @@ Verified on 2026-08-27 by reading the file back with mido: 1 track, correct span
 no hanging notes, no same-pitch overlaps, onset positions equal to the sieve steps on
 each voice's own grid, and per-pad velocities identical to the arrays in `max/sieve.js`.
 *(Tick counts in that check were the then-current 19200; the structure of the check
-still holds and was re-run on 2026-08-31 against the current 57600-tick files.)*
+still holds and has been re-run against each later version of the files.)*
 
 ### Time Signature Bug Fixed (2026-08-27)
 
@@ -303,7 +308,10 @@ differs.
 ### Superseded: "every output is one LCM span" (2026-08-31, reverted same day)
 
 For part of 2026-08-31 every file was rendered at a single cross-voice LCM (19200 ticks,
-10 bars) so all outputs matched in length. **This was wrong** and has been reverted. A
+10 bars) so all outputs matched in length. A later version kept per-voice files at one
+period but still filled the *ensemble* files to the LCM by repeating each voice — same
+mistake, smaller scope, and it broke the per-voice-vs-ensemble comparison. **Both were
+wrong** and have been reverted. A
 cross-voice LCM makes each voice N periods long rather than one, which states a DAW
 convenience instead of the sieve's periodicity — see the Governing Principle at the top
 of this file. Per-voice files are now one full statement each, at deliberately different
@@ -471,10 +479,15 @@ files and comparing note-for-note **including pitch**:
   arrangement and drum rack [36,37,38,39].
 - `max/sieve.js` `PITCH_A`–`PITCH_D` parsed and compared against `config.py`: match.
 
-As of 2026-08-31 a per-voice file holds exactly one full statement of that voice, while
-the arrangement and drum rack hold the ensemble period (57600 ticks). So a per-voice file
-matches the **first statement** of its arrangement track and drum rack pad note-for-note,
-and the ensemble files then continue repeating it. Lengths differ by design.
+As of 2026-08-31 every file holds exactly one full statement of each voice, so a per-voice
+file, its arrangement track and its drum rack pad are **identical note-for-note and equal
+in length**. Verified three-way for all four voices: 45 / 25 / 45 / 6 notes, ending at
+14400 / 4800 / 14400 / 6400 ticks respectively.
+
+**This is the point of the per-voice files** — they exist to be checked against the
+ensemble files, which only works if both state the same thing. Never render a voice as
+repetitions inside an ensemble file: it breaks the comparison and states a length that is
+not the voice's period.
 
 ## The accent layer spans the note layer (resolved 2026-08-31)
 
