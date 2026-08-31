@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-08-30
+> Last updated: 2026-08-31
 
 ---
 
@@ -134,18 +134,20 @@ A/B/C repeat **4 times**, D repeats **3 times** before all voices land on beat 1
 
 ### Generated Files
 
-- `dois_ten_A_prime.mid` — 4800 ticks, loops cleanly
-- `dois_ten_B_prime.mid` — 4800 ticks
-- `dois_ten_C_prime.mid` — 4800 ticks
-- `dois_ten_D_prime.mid` — 6400 ticks
+**Every file is 19200 ticks — 10 bars of 4/4 at 120 BPM.** See "Every output is one
+LCM span" below.
+
+- `dois_ten_A_prime.mid` — voice A alone, its 4800-tick cycle repeated 4x
+- `dois_ten_B_prime.mid` — voice B alone, 4x
+- `dois_ten_C_prime.mid` — voice C alone, 4x
+- `dois_ten_D_prime.mid` — voice D alone, its 6400-tick cycle repeated 3x
 - `dois_ten_arrangement.mid` — 19200 ticks, one full LCM cycle, all four voices on separate tracks
 - `dois_ten_drumrack.mid` — 19200 ticks (10 bars of 4/4), one full LCM cycle, all four voices merged onto a **single track** at Drum Rack pitches 36/37/38/39. This is the plugin-ready format: drop it on one Ableton track holding a Drum Rack.
 
 ### Drum Rack Output (added 2026-08-27)
 
-`save_drum_rack_loop` writes the same LCM cycle as the arrangement, but merged onto
-one MIDI track. It is the only difference from `save_ensemble_loop` that matters —
-same notes, same pitches, one track instead of four:
+The drum rack clip holds the same material as the arrangement, merged onto one MIDI
+track. Same notes, same pitches, one track instead of four:
 
 - **One track, not four.** All voices become a single absolute-time event stream.
 - **Meter and tempo come from the shared header**, same as every other track — see
@@ -255,22 +257,44 @@ and identical.
 file — onset, gate length, pitch, velocity — is identical before and after. Only metadata
 differs.
 
-### Clip lengths in 4/4 (worth knowing before you open these in Ableton)
+### Every output is one LCM span (2026-08-31)
 
-| File | Ticks | Quarter notes | Bars of 4/4 |
-|---|---|---|---|
-| A/B/C_prime | 4800 | 10 | 2.5 |
-| D_prime | 6400 | 13-1/3 | 3-1/3 |
-| arrangement, drumrack | 19200 | 40 | **10 (exact)** |
+**Every generated file is 19200 ticks — 10 bars of 4/4 at 120 BPM.** No exceptions:
+the four per-voice files, the 4-track arrangement and the merged drum rack clip are all
+the same length, meter and tempo, so any combination of them can be dropped onto tracks
+and looped side by side forever without drifting.
 
-**No prime clip is a whole number of 4/4 bars**, and none can be: 40 sixteenths is 2.5
-bars and 40 triplet-eighths is 3-1/3. Only the 19200-tick LCM files land on whole bars.
-For dropping onto a grid-locked session, use `dois_ten_drumrack.mid` (or the arrangement);
-the prime clips are the honest statement of a single voice, not grid-friendly loops.
+Each voice fills that span by repeating its own cycle a whole number of times:
+
+| Voice | Cycle | Reps | Total | Notes |
+|---|---|---|---|---|
+| A | 4800 | 4x | 19200 | 60 |
+| B | 4800 | 4x | 19200 | 100 |
+| C | 4800 | 4x | 19200 | 60 |
+| D | 6400 | **3x** | 19200 | 18 |
+
+**Why the LCM and not something shorter.** A voice's cycle is 40 steps of its own grid:
+4800 ticks at a 16th (120) and 6400 at a triplet 8th (160). A shared length must be a
+common multiple of both or it cuts someone mid-cycle — at 4800, D is cut 75% through its
+first pass; at 6400, A/B/C are cut a third into their second. 19200 is the smallest
+length that holds whole cycles of all four, and it is exactly 10 bars.
+
+**"Prime" now means un-shifted, not one cycle.** Previously each `_prime` file was a
+single cycle (hence 4800/4800/4800/6400, which are 2.5, 2.5, 2.5 and 3-1/3 bars — none a
+whole number of bars, and none can be). They are now the full span. The name still
+distinguishes the prime form from the shifted variants used in earlier dois versions.
+
+**One code path builds all of it.** `voice_events` produces a voice's absolute-time
+events repeated to fill the span; `make_track` turns any event list into a track with
+the shared header and `end_of_track` on the boundary; `save_tracks` writes a file. A
+per-voice file is one track from one voice, the arrangement is four tracks, the drum
+rack is one track from all four voices' events merged. This replaced `save_midi`,
+`save_ensemble_loop` and `save_drum_rack_loop`, which duplicated the same event-building
+and delta-time logic three times over — composition.py went from 340 to 239 lines.
 
 ### Important Bug Fixed
 
-MIDI clips were previously ending at the last note-off tick instead of the true cycle boundary. `end_of_track` was being placed at `time=0` after the last note. Fixed by computing `remaining = cycle_ticks - last_note_off` and explicitly appending `end_of_track` with that delta. Without this fix, Ableton reads clips as slightly short and loops drift over time. This fix is in both `save_midi` (individual clips) and `save_ensemble_loop` (arrangement).
+MIDI clips were previously ending at the last note-off tick instead of the true cycle boundary. `end_of_track` was being placed at `time=0` after the last note. Fixed by computing `remaining = cycle_ticks - last_note_off` and explicitly appending `end_of_track` with that delta. Without this fix, Ableton reads clips as slightly short and loops drift over time. This fix now lives in `make_track`, which every output goes through.
 
 ---
 
@@ -291,7 +315,7 @@ This ensures scripts run correctly from any working directory.
 All generated MIDI files are prefixed with the project TITLE (e.g. `dois_ten_A_prime.mid`) so versions can be differentiated when multiple projects are loaded in Ableton simultaneously.
 
 ### LCM Arrangement
-`save_ensemble_loop` computes `math.lcm(*cycle_lengths)` and writes each voice out for exactly that many ticks. Handles any combination of step durations. Each track padded to `total_ticks` with explicit `end_of_track`.
+`main` computes `math.lcm(*cycle_lengths)` once across all voices and every file is written to exactly that length. Handles any combination of step durations. Each track padded to `total_ticks` with an explicit `end_of_track`.
 
 ### Voice Derivation Philosophy
 Voices are **derived** from a single base sieve, not independently designed. The user explicitly preferred this approach — complement, canon (shift), and intersection relationships produce a coherent ensemble that is mathematically unified. Do not propose independently-designed sieves as separate voices.
@@ -393,19 +417,18 @@ files and comparing note-for-note **including pitch**:
   arrangement and drum rack [36,37,38,39].
 - `max/sieve.js` `PITCH_A`–`PITCH_D` parsed and compared against `config.py`: match.
 
-The only remaining difference between a prime clip and the drum rack clip is **length** —
-a prime clip is one cycle (4800, or 6400 for D), the drum rack clip is the full 19200-tick
-LCM, so voices repeat 4x/4x/4x/3x inside it. Compare a prime clip against the drum rack
-and it will agree on the first pass, then repeat at its own rate.
+As of 2026-08-31 there is no remaining difference: every file is the same 19200-tick
+span, so a per-voice file, its arrangement track and its drum rack pad are now identical
+note-for-note. Verified again after that change — all three match for all four voices.
 
-## What's Next (as of 2026-08-30)
+## What's Next (as of 2026-08-31)
 
 - [x] Update `dois_ten` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format *(done 2026-08-27: `dois_ten_drumrack.mid`)*
 - [ ] Test dois_ten in Ableton with a Drum Rack to validate the musical result — load `mid/dois_ten_drumrack.mid` onto one track with a Drum Rack; pads 1-4 are A/B/C/D
 - [x] Write an explicit `set_tempo` into the generated files *(done 2026-08-30 — 120 BPM on every track)*
 - [x] Give every generated track the same time signature *(done 2026-08-30 — 4/4 everywhere)*
-- [ ] Consider rendering each voice at the full 19200-tick LCM as well, so all four
-      individual files are whole-bar loops that stay locked against each other
+- [x] Render each voice at the full 19200-tick LCM *(done 2026-08-31 — every file is now
+      10 bars of 4/4; the one-cycle prime clips are gone)*
 - [ ] Decide on next layer of complexity to add (form/arrangement, parameter variation, sieve formula controls)
 - [ ] Eventually: assemble the Max for Live patch using `max/sieve.js`
 
