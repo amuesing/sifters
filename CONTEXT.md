@@ -265,10 +265,53 @@ returned `4, 4`, so D read as 3-1/3 bars of 4/4 (honest) rather than 1-1/3 bars 
 **Superseded (2026-08-30):** `generate_time_signature` no longer exists. Every track
 now declares the same meter, so there is nothing left to derive per voice. See below.
 
-### Uniform meter and tempo (2026-08-30)
+### Meter states the period (2026-09-01)
 
-**Every track of every generated file declares 4/4 at 120 BPM.** Both values live in
-`config.py` and are written by one helper in `composition.py`:
+**A clip must end on a bar line, or the host extends it.** Ableton fills the remainder of
+the measure, so a clip whose length is not a whole number of bars is silently padded and
+no longer ends at the sieve's period. The fix is to give each voice **its own meter,
+derived from its own grid**: the beat is the voice's basic unit, and the bar is one pass
+of the 40-step note layer.
+
+```python
+meter_for_unit(step_ticks, NOTE_LAYER_STEPS)   # 120-tick unit -> 4*480/120 = 16 -> 40/16
+```
+
+| Voice | Unit | Meter | Bar | Period | Bars |
+|---|---|---|---|---|---|
+| A | 16th (120) | **40/16** | 4800 | 14400 | 3 — exact |
+| B | 16th (120) | **40/16** | 4800 | 4800 | 1 — exact |
+| C | 16th (120) | **40/16** | 4800 | 14400 | 3 — exact |
+| D | triplet 8th (160) | 4/4 *(fallback)* | 1920 | 6400 | 3-1/3 — **padded to 7680** |
+
+Ensemble files use 40/16, in which 57600 ticks is 12 bars exactly.
+
+**This restores something that was removed and should not have been.** The project used
+40/16 from the start, precisely because 40 sixteenths *is* one period. It was flattened to
+a uniform 4/4 on 2026-08-30 at the user's request for consistent metadata — which was a
+real request, but the cost was that every prime clip stopped landing on a bar line. Meter
+here is not decoration; it is what makes the host agree with the sieve about where the
+period ends.
+
+### Voice D has no meter, and cannot have one
+
+D's basic unit is a triplet eighth, and **no meter can make its period whole bars.** A bar
+is `N * (4*TPQ/Den)` ticks with `Den` a power of two, and `4*480 = 1920 = 2^7 x 3 x 5`
+always carries a factor of 3. D's period is `6400 = 2^8 x 5^2` and has none, so no bar
+length can ever divide it. Independent of TPQ, and confirmed by exhaustive search over
+every valid denominator. D therefore falls back to 4/4 and a host pads it 6400 -> 7680.
+
+**The one thing that would fix it:** D's period needs a factor of 3 in *steps*. Giving D a
+mod-3 accent layer, as A and C have, makes its period LCM(40,3) = 120 steps x 160 ticks =
+19200 ticks — which is **exactly one bar of 40/4**. That would resolve the meter and give D
+the accent depth it currently lacks, in one move. It changes the music, so it is the user's
+call and is left open.
+
+### Uniform meter and tempo (2026-08-30, meter part superseded)
+
+**Tempo is still uniform: 120 BPM on every track.** The *meter* half of this is
+superseded — see "Meter states the period" above. `TIME_SIGNATURE` remains in `config.py`
+as the fallback for a voice whose unit has no valid meter. Both are written by one helper:
 
 ```python
 TIME_SIGNATURE = (4, 4)

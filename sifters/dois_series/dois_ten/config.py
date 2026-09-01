@@ -16,7 +16,13 @@ DURATION_MULTIPLIER_KEY = {
 # so no two outputs can disagree about them. 4/4 because it is the only meter all
 # four voices can share: a triplet cycle cannot be expressed as any power-of-two
 # meter (see CONTEXT.md), so a per-voice meter would have to differ by definition.
+# Fallback meter, used only for a voice whose basic unit is not a power-of-two
+# subdivision (a triplet grid) and therefore has no meter of its own.
 TIME_SIGNATURE = (4, 4)
+
+# Steps in one pass of the note layer — the sieve's own period, LCM(8, 5). This is
+# the bar length for each voice's meter, so one bar = one statement of the rhythm.
+NOTE_LAYER_STEPS = 40
 TEMPO_BPM = 120
 
 # Same four voices as dois_three — base sieve, complement, canon, polyrhythm.

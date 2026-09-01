@@ -23,10 +23,34 @@ def get_step_ticks(config):
     duration = config.get('duration', 'Quarter Note')
     return int(TICKS_PER_QUARTER_NOTE * DURATION_MULTIPLIER_KEY.get(duration, 0.25))
 
-def append_header(track, name):
-    """Name, meter and tempo — written identically at the head of every track."""
+def meter_for_unit(step_ticks, steps_per_bar):
+    """The meter whose BEAT is this voice's basic unit, and whose bar is
+    `steps_per_bar` of them.
+
+    A sixteenth grid (120 ticks) gives denominator 4*TPQ/120 = 16, so a 40-step bar
+    is 40/16 — one bar per pass of the note layer, which is why a clip in this meter
+    ends exactly on the period instead of being padded out to the next bar.
+
+    Returns None when the unit is not a power-of-two subdivision. A triplet grid
+    (160 ticks) gives 4*TPQ/160 = 12, which is not a valid MIDI denominator, and no
+    other meter helps: a bar is always N * (4*TPQ/Den), which always carries a factor
+    of 3 (1920 = 2^7 * 3 * 5), while a triplet period like 6400 = 2^8 * 5^2 has none.
+    So no bar length can divide it. This is independent of TPQ.
+    """
+    den = (4 * TICKS_PER_QUARTER_NOTE) / step_ticks
+    if den != int(den):
+        return None
+    den = int(den)
+    if den & (den - 1):            # not a power of two
+        return None
+    if not (1 <= steps_per_bar <= 99):   # Ableton caps the numerator at 99
+        return None
+    return steps_per_bar, den
+
+def append_header(track, name, meter):
+    """Name, meter and tempo at the head of a track."""
     track.append(mido.MetaMessage('track_name', name=name, time=0))
-    num, den = TIME_SIGNATURE
+    num, den = meter
     track.append(mido.MetaMessage('time_signature', numerator=num, denominator=den, time=0))
     track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(TEMPO_BPM), time=0))
 
@@ -164,10 +188,10 @@ def voice_events(notes_per_step, velocities, step_ticks, total_ticks):
                 events.append((on_tick + step_ticks, 0, int(pitch), 0))
     return events
 
-def make_track(name, events, total_ticks):
-    """One MIDI track: shared header, events in delta time, end_of_track on the boundary."""
+def make_track(name, events, total_ticks, meter):
+    """One MIDI track: header, events in delta time, end_of_track on the boundary."""
     track = mido.MidiTrack()
-    append_header(track, name)
+    append_header(track, name, meter)
 
     # note_off (kind 0) sorts ahead of note_on at the same tick, so a pitch that
     # retriggers on consecutive steps releases before it strikes again.
@@ -182,17 +206,19 @@ def make_track(name, events, total_ticks):
     track.append(mido.MetaMessage('end_of_track', time=total_ticks - prev))
     return track
 
-def save_tracks(tracks, filename, total_ticks, note=''):
+def save_tracks(tracks, filename, total_ticks, meter, note=''):
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_QUARTER_NOTE)
     mid.tracks.extend(tracks)
 
     filepath = os.path.join(OUTPUT_DIR, f"{filename}.mid")
+    num, den = meter
+    bar_ticks = num * (4 * TICKS_PER_QUARTER_NOTE) // den
+    bars = total_ticks / bar_ticks
+    exact = "" if total_ticks % bar_ticks == 0 else "  <-- NOT whole bars, host will pad"
     try:
         mid.save(filepath)
-        bars = total_ticks / (TICKS_PER_QUARTER_NOTE * 4)
-        num, den = TIME_SIGNATURE
         print(f"  Saved: {filename}.mid  ({total_ticks} ticks = {bars:g} bars "
-              f"of {num}/{den}{note})")
+              f"of {num}/{den}{note}){exact}")
     except OSError as e:
         print(f"  Error saving {filename}: {e}")
 
@@ -261,22 +287,36 @@ def main():
 
     # Per-voice file: one period. Ensemble: that same period recurring a whole number
     # of times, so cycle k of the ensemble equals the per-voice file exactly.
+    # A voice's meter has its own basic unit as the beat, and one pass of the 40-step
+    # note layer as the bar — so the clip ends exactly on the period.
+    meters = {}
+    for name, _, _, step_ticks in voices:
+        m = meter_for_unit(step_ticks, NOTE_LAYER_STEPS)
+        if m is None:
+            m = TIME_SIGNATURE
+            print(f"  !! {name}: basic unit {step_ticks} ticks has no valid meter "
+                  f"(not a power-of-two subdivision) — falling back to "
+                  f"{m[0]}/{m[1]}; a host will pad this clip to the next bar.")
+        meters[name] = m
+
     arrangement, merged = [], []
     for name, notes_per_step, velocities, step_ticks in voices:
         events = voice_events(notes_per_step, velocities, step_ticks, periods[name])
-        save_tracks([make_track(name, events, periods[name])],
-                    f"{TITLE}_{name}_prime", periods[name])
+        save_tracks([make_track(name, events, periods[name], meters[name])],
+                    f"{TITLE}_{name}_prime", periods[name], meters[name])
 
         repeated = voice_events(notes_per_step, velocities, step_ticks, total_ticks)
-        arrangement.append(make_track(name, repeated, total_ticks))
+        arrangement.append(make_track(name, repeated, total_ticks, meters[name]))
         merged.extend(repeated)
 
+    # The ensemble runs on the majority grid, in which its length is whole bars.
+    ens = meter_for_unit(min(st for _, _, _, st in voices), NOTE_LAYER_STEPS) or TIME_SIGNATURE
     print()
     reps = ", ".join(f"{n} x{total_ticks // c}" for n, c in periods.items())
-    save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks,
+    save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks, ens,
                 note=f", {len(arrangement)} tracks — {reps}")
-    save_tracks([make_track(f"{TITLE} drum rack", merged, total_ticks)],
-                f"{TITLE}_drumrack", total_ticks, note=", all voices on one track")
+    save_tracks([make_track(f"{TITLE} drum rack", merged, total_ticks, ens)],
+                f"{TITLE}_drumrack", total_ticks, ens, note=", all voices on one track")
 
 if __name__ == '__main__':
     main()
