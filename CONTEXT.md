@@ -26,6 +26,39 @@ A generative MIDI composition system based on **Xenakis sieve theory** — a mat
 
 ---
 
+## Governing Principle II: Parity Through Accent Choice (2026-09-02)
+
+> Stated by the user: *"it is important to try to create accent sieves that create parity
+> between durations in the event where the base unit of one voice differs from another."*
+
+This refines — it does not contradict — the principle below. Equal lengths must never be
+**imposed** by padding or repeating. But they can be **earned**, by choosing accent moduli
+so that voices on different basic units arrive at the same period on their own.
+
+**Identical accent sets cannot do it.** A and D both carried `{5,8,3}` and both landed on
+120 steps — but 120x120 = 14400 and 120x160 = 19200. The accent moduli must scale
+**inversely to the basic unit**:
+
+```
+16th voices  (unit 120): LCM(40, 5, 8, 3, 32) = 480 steps x 120 = 57600
+triplet voice (unit 160): LCM(40, 5, 8, 3,  9) = 360 steps x 160 = 57600
+
+480 / 360 = 4/3 = 160 / 120     <- the step counts invert the unit ratio exactly
+```
+
+**There is a floor.** A sixteenth voice's minimum period is 40x120 = 4800 and a triplet
+voice's is 40x160 = 6400, so any shared duration must be a multiple of
+LCM(4800, 6400) = **19200 ticks**. Parity below 4 bars of 40/16 is impossible. 57600 is
+the multiple that also lets the sixteenth voices keep their mod-3 accent.
+
+**Parity depends only on the moduli — the residues are free.** Change residues freely for
+musical reasons; parity survives. But keep them **irreducible**: a set that repeats at a
+smaller modulus (`32@0|32@1|32@16|32@17` is really mod 16) silently halves the period, and
+**`music21`'s `Sieve.period()` returns the nominal modulus and will not catch it.** Always
+confirm with the measured minimal period read back from the rendered MIDI.
+
+---
+
 ## Governing Principle: What a Duration Must Express
 
 > Stated by the user on 2026-08-31. **This governs every duration decision in the project.
@@ -289,13 +322,17 @@ meter_for_unit(step_ticks, NOTE_LAYER_STEPS)   # 120-tick unit -> 4*480/120 = 16
 **Everything is 40/16** — one meter across every voice and every file, with every clip
 still ending exactly on a bar line:
 
-| Voice | Unit | Meter | Bar | Period | Bars |
+| Voice | Unit | Steps | Meter | Period | Bars |
 |---|---|---|---|---|---|
-| A | 16th (120) | 40/16 | 4800 | 14400 | 3 — exact |
-| B | 16th (120) | 40/16 | 4800 | 4800 | 1 — exact |
-| C | 16th (120) | 40/16 | 4800 | 14400 | 3 — exact |
-| D | triplet 8th (160) | 40/16 | 4800 | 19200 | 4 — exact |
-| arrangement, drumrack | — | 40/16 | 4800 | 57600 | 12 — exact |
+| A | 16th (120) | 480 | 40/16 | 57600 | 12 — exact |
+| B | 16th (120) | 480 | 40/16 | 57600 | 12 — exact |
+| C | 16th (120) | 480 | 40/16 | 57600 | 12 — exact |
+| D | triplet 8th (160) | 360 | 40/16 | 57600 | 12 — exact |
+| arrangement, drumrack | — | — | 40/16 | 57600 | 12 — exact |
+
+**All four voices are now in duration parity at 57600 ticks** — see Governing Principle II
+at the top. The ensemble is therefore exactly **one statement of every voice**: each
+appears x1, nothing repeats.
 
 **A shared meter only became possible when D gained its accent layer.** The bar must
 divide every period, and `gcd(14400, 4800, 19200) = 4800` — so 40/16 fits. With D's old
@@ -646,7 +683,8 @@ rhythm. Not done; worth considering.
       3 iterations of the note layer, by design; see the section above)*
 - [x] Give D an accent layer *(done 2026-09-02 — it supplied the factor of 3 its meter
       needed, and accents the beat on the triplet grid)*
-- [ ] Consider an accent layer for B, the last flat voice (still 40 steps, velocity 64)
+- [x] Accent layer for B *(done 2026-09-02 — B is no longer flat; all four voices now
+      carry accents and share the 57600-tick period)*
 - [ ] Decide whether the files should carry a MIDI `key_signature` meta event. There is
       currently **none** in any file. These are Drum Rack parts on pitches 36-39, where a
       key signature is musically inert, but it affects how a notation program renders them.
