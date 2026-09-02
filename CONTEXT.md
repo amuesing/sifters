@@ -170,19 +170,37 @@ C: [2,4,6,10,11,13,14,21,23,26,27,29,35,36,38]
 D: [10, 13, 14, 23, 29, 38]
 ```
 
-### Accent Voicing (A and C only)
+### Accent Voicing (all four voices)
 
-Three independent accent sieves overlay the main binary. The count of overlapping accents at each active step determines velocity:
+Four accent sieves overlay each voice's binary — three shared, plus that voice's parity
+accent. **Every distinct outcome gets its own velocity**, spread evenly from ghost to full:
+no accent, exactly one (which one sets the level), then two, three or four agreeing.
 
-| Overlap count | Velocity |
+| Outcome | Velocity |
 |---|---|
-| 0 | 1 (ghost) |
-| 1 — low5 (`5@0\|5@1`) | 32 |
-| 1 — wide8 (`8@0\|8@1\|8@2\|8@5\|8@6`) | 63 |
-| 1 — mod3 (`3@0\|3@1`) | 94 |
-| 2+ | 127 |
+| 0 — ghost | 1 |
+| 1 — low5 (`5@0\|5@1`) | 19 |
+| 1 — wide8 (`8@0\|8@1\|8@2\|8@5\|8@6`) | 37 |
+| 1 — mod3 (`3@0\|3@1`) | 55 |
+| 1 — parity accent (span32 / span9) | 73 |
+| 2 agreeing | 91 |
+| 3 agreeing | 109 |
+| 4 agreeing | 127 |
 
-B uses flat velocity 64. D uses flat velocity 64.
+**Overlaps used to collapse to 127**, which was tolerable with three accent layers and
+badly wrong with four: two-or-more became the common case, so **78% of A's notes came out
+at full velocity** and the fourth accent's own level never sounded at all. Grading the
+counts fixed it — full velocity is now 5.6% on A and C, 3.3% on B, 3.7% on D, with the
+distribution centred on the two- and three-accent overlaps (44% and 28% for A).
+
+Measured distribution for A, 180 notes: ghost 2.2%, low5 2.2%, wide8 13.3%, mod3 4.4%,
+x2 43.9%, x3 28.3%, x4 5.6%.
+
+**The parity accent never fires alone** in any voice, so level 73 is unused. That is
+expected — it is sparse (5 of 32) while the other three are dense (40%, 62.5%, 67%), so it
+essentially never occurs by itself. It still does real work through the overlap counts;
+under the old profile that work was invisible, because everything above one accent was the
+same 127.
 
 ### Velocity Arrays
 

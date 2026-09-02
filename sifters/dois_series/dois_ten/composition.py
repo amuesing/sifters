@@ -153,13 +153,30 @@ def voice_span(rhythm_period, accent_dict):
     return math.lcm(*periods)
 
 def generate_velocity_profile(accent_dict):
-    if not accent_dict:
-        return {'gap': 64, 'overlap': 127}
-    gap, overlap = 1, 127
-    step = (overlap - gap) // (len(accent_dict) + 1)
-    profile = {'gap': gap, 'overlap': overlap}
-    for i, label in enumerate(accent_dict.keys()):
-        profile[label] = gap + step * (i + 1)
+    """One velocity per distinct outcome, evenly spread from ghost to full.
+
+    Outcomes are: no accent (ghost), exactly one accent (which one sets the level),
+    then two, three, ... accents agreeing — each its own level.
+
+    Previously every overlap of two or more collapsed to 127. With three accent
+    layers that was tolerable; with four it is the common case, and 78% of A's notes
+    came out at full velocity while the fourth accent's own level never sounded at
+    all. Grading the counts uses the information the sieves actually carry.
+    """
+    n = len(accent_dict)
+    if not n:
+        return {'gap': 64}
+
+    levels = 1 + n + max(n - 1, 0)          # ghost, singles, then counts 2..n
+    lo, hi = 1, 127
+    span = (hi - lo) / (levels - 1) if levels > 1 else 0
+    at = lambda i: int(round(lo + span * i))
+
+    profile = {'gap': at(0)}
+    for i, label in enumerate(accent_dict):
+        profile[label] = at(1 + i)
+    for count in range(2, n + 1):
+        profile[f'x{count}'] = at(1 + n + count - 2)
     return profile
 
 def accent_voicing(binary, accent_binaries, profile, root_note):
@@ -175,10 +192,15 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
 
     velocities = np.zeros(n, dtype=int)
     velocities[on & (active_count == 0)] = profile['gap']
-    velocities[on & (active_count > 1)]  = profile['overlap']
-    single_mask = on & (active_count == 1)
+
+    single = on & (active_count == 1)
     for label, mask in label_masks.items():
-        velocities[single_mask & mask] = profile.get(label, profile['gap'])
+        velocities[single & mask] = profile[label]
+
+    # Each overlap count gets its own level, rather than everything above one
+    # collapsing to full velocity.
+    for count in range(2, len(label_masks) + 1):
+        velocities[on & (active_count == count)] = profile[f'x{count}']
 
     notes_per_step = [[] for _ in range(n)]
     for i in np.flatnonzero(on):
