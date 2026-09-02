@@ -56,6 +56,31 @@ def meter_for_voice(step_ticks, note_layer_ticks, period_ticks):
                 return n, den
     return None
 
+def shared_meter(lengths, units):
+    """One meter for every voice, when one exists.
+
+    The natural bar is one pass of the note layer at the finest basic unit
+    (40 x 120 = 4800 ticks), which is the project's original 40/16. It can be shared
+    only if EVERY length given is a whole number of those bars — otherwise some clip
+    would not end on a bar line and the host would pad it.
+
+    This became possible only once D gained its accent layer: D's period was 6400,
+    which 4800 does not divide, so no shared meter existed. At 19200 it does (4 bars).
+    """
+    bar = NOTE_LAYER_STEPS * min(units)
+    if any(length % bar for length in lengths):
+        return None
+    for den in (16, 8, 4, 32, 2, 64, 1):
+        beat = (4 * TICKS_PER_QUARTER_NOTE) / den
+        if beat != int(beat):
+            continue
+        beat = int(beat)
+        if bar % beat == 0:
+            n = bar // beat
+            if 1 <= n <= MAX_METER_NUMERATOR:
+                return n, den
+    return None
+
 def append_header(track, name, meter):
     """Name, meter and tempo at the head of a track."""
     track.append(mido.MetaMessage('track_name', name=name, time=0))
@@ -296,16 +321,29 @@ def main():
 
     # Per-voice file: one period. Ensemble: that same period recurring a whole number
     # of times, so cycle k of the ensemble equals the per-voice file exactly.
-    # A voice's meter has its own basic unit as the beat, and one pass of the 40-step
-    # note layer as the bar — so the clip ends exactly on the period.
-    meters = {}
-    for name, _, _, step_ticks in voices:
-        m = meter_for_voice(step_ticks, NOTE_LAYER_STEPS * step_ticks, periods[name])
-        if m is None:
-            m = TIME_SIGNATURE
-            print(f"  !! {name}: no meter puts a bar line on {periods[name]} ticks — "
-                  f"falling back to {m[0]}/{m[1]}; a host will pad this clip.")
-        meters[name] = m
+    # Prefer ONE meter for everything: every clip still ends on a bar line, and the
+    # voices agree, which is easier to work with in a host. Fall back to per-voice
+    # meters only if no single meter fits every length.
+    units    = [st for _, _, _, st in voices]
+    lengths  = list(periods.values()) + [total_ticks]
+    one      = shared_meter(lengths, units)
+
+    if one:
+        bar = one[0] * (4 * TICKS_PER_QUARTER_NOTE) // one[1]
+        print(f"\n  Shared meter {one[0]}/{one[1]} (bar = {bar} ticks) — every voice's "
+              f"period is a whole number of bars: "
+              + ", ".join(f"{n} {p // bar}" for n, p in periods.items()))
+        meters = {name: one for name in periods}
+    else:
+        print(f"\n  No single meter fits every period; using per-voice meters.")
+        meters = {}
+        for name, _, _, step_ticks in voices:
+            m = meter_for_voice(step_ticks, NOTE_LAYER_STEPS * step_ticks, periods[name])
+            if m is None:
+                m = TIME_SIGNATURE
+                print(f"  !! {name}: no meter puts a bar line on {periods[name]} ticks — "
+                      f"falling back to {m[0]}/{m[1]}; a host will pad this clip.")
+            meters[name] = m
 
     arrangement, merged = [], []
     for name, notes_per_step, velocities, step_ticks in voices:
@@ -319,7 +357,8 @@ def main():
 
     # The ensemble runs on the majority grid, in which its length is whole bars.
     smallest = min(st for _, _, _, st in voices)
-    ens = meter_for_voice(smallest, NOTE_LAYER_STEPS * smallest, total_ticks) or TIME_SIGNATURE
+    ens = one or meter_for_voice(smallest, NOTE_LAYER_STEPS * smallest,
+                                 total_ticks) or TIME_SIGNATURE
     print()
     reps = ", ".join(f"{n} x{total_ticks // c}" for n, c in periods.items())
     save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks, ens,

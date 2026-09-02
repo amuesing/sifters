@@ -265,7 +265,7 @@ returned `4, 4`, so D read as 3-1/3 bars of 4/4 (honest) rather than 1-1/3 bars 
 **Superseded (2026-08-30):** `generate_time_signature` no longer exists. Every track
 now declares the same meter, so there is nothing left to derive per voice. See below.
 
-### Meter states the period (2026-09-01)
+### Meter states the period (2026-09-01, unified 2026-09-02)
 
 **A clip must end on a bar line, or the host extends it.** Ableton fills the remainder of
 the measure, so a clip whose length is not a whole number of bars is silently padded and
@@ -286,15 +286,27 @@ meter_for_unit(step_ticks, NOTE_LAYER_STEPS)   # 120-tick unit -> 4*480/120 = 16
    is exactly 40 quarter notes, so **40/4**: the beat is no longer D's own unit, but the
    bar still lands precisely on the period, which is all that stops the host padding.
 
+**Everything is 40/16** — one meter across every voice and every file, with every clip
+still ending exactly on a bar line:
+
 | Voice | Unit | Meter | Bar | Period | Bars |
 |---|---|---|---|---|---|
-| A | 16th (120) | **40/16** | 4800 | 14400 | 3 — exact |
-| B | 16th (120) | **40/16** | 4800 | 4800 | 1 — exact |
-| C | 16th (120) | **40/16** | 4800 | 14400 | 3 — exact |
-| D | triplet 8th (160) | **40/4** | 19200 | 19200 | **1 — exact** |
+| A | 16th (120) | 40/16 | 4800 | 14400 | 3 — exact |
+| B | 16th (120) | 40/16 | 4800 | 4800 | 1 — exact |
+| C | 16th (120) | 40/16 | 4800 | 14400 | 3 — exact |
+| D | triplet 8th (160) | 40/16 | 4800 | 19200 | 4 — exact |
+| arrangement, drumrack | — | 40/16 | 4800 | 57600 | 12 — exact |
 
-Ensemble files use 40/16, in which 57600 ticks is 12 bars exactly. **Every clip in the
-project now ends precisely on a bar line**; nothing is padded.
+**A shared meter only became possible when D gained its accent layer.** The bar must
+divide every period, and `gcd(14400, 4800, 19200) = 4800` — so 40/16 fits. With D's old
+6400-tick period the gcd was 1600 and no meter with a 4800-tick bar could work, which is
+why per-voice meters were needed on 2026-09-01. Extending D's period to 19200 removed the
+obstruction.
+
+`shared_meter()` is tried first and used when it fits every length; `meter_for_voice()`
+remains as the per-voice fallback if a future change breaks the shared case. D is a triplet
+voice inside a sixteenth-based meter, which is simply how triplets are always notated — the
+bar lines land correctly, the subdivisions sit between them.
 
 **This restores something that was removed and should not have been.** The project used
 40/16 from the start, precisely because 40 sixteenths *is* one period. It was flattened to
@@ -635,6 +647,9 @@ rhythm. Not done; worth considering.
 - [x] Give D an accent layer *(done 2026-09-02 — it supplied the factor of 3 its meter
       needed, and accents the beat on the triplet grid)*
 - [ ] Consider an accent layer for B, the last flat voice (still 40 steps, velocity 64)
+- [ ] Decide whether the files should carry a MIDI `key_signature` meta event. There is
+      currently **none** in any file. These are Drum Rack parts on pitches 36-39, where a
+      key signature is musically inert, but it affects how a notation program renders them.
 - [ ] Listen to the 30-bar ensemble and judge whether 3 iterations is the right depth, or
       whether a longer accent span (mod 9, or adding mod 7) serves the piece better
 - [ ] Decide on next layer of complexity to add (form/arrangement, parameter variation, sieve formula controls)
