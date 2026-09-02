@@ -277,14 +277,24 @@ of the 40-step note layer.
 meter_for_unit(step_ticks, NOTE_LAYER_STEPS)   # 120-tick unit -> 4*480/120 = 16 -> 40/16
 ```
 
+`meter_for_voice` has two preferences:
+
+1. **The beat is the voice's basic unit**, bar = one pass of the note layer. A 16th grid
+   gives `4*480/120 = 16`, so 40 steps is **40/16** — one bar per statement of the rhythm.
+2. **For a grid that cannot be a beat** (a triplet gives `4*480/160 = 12`, not a valid
+   denominator), any meter whose **bar equals the voice's full period**. D's 19200 ticks
+   is exactly 40 quarter notes, so **40/4**: the beat is no longer D's own unit, but the
+   bar still lands precisely on the period, which is all that stops the host padding.
+
 | Voice | Unit | Meter | Bar | Period | Bars |
 |---|---|---|---|---|---|
 | A | 16th (120) | **40/16** | 4800 | 14400 | 3 — exact |
 | B | 16th (120) | **40/16** | 4800 | 4800 | 1 — exact |
 | C | 16th (120) | **40/16** | 4800 | 14400 | 3 — exact |
-| D | triplet 8th (160) | 4/4 *(fallback)* | 1920 | 6400 | 3-1/3 — **padded to 7680** |
+| D | triplet 8th (160) | **40/4** | 19200 | 19200 | **1 — exact** |
 
-Ensemble files use 40/16, in which 57600 ticks is 12 bars exactly.
+Ensemble files use 40/16, in which 57600 ticks is 12 bars exactly. **Every clip in the
+project now ends precisely on a bar line**; nothing is padded.
 
 **This restores something that was removed and should not have been.** The project used
 40/16 from the start, precisely because 40 sixteenths *is* one period. It was flattened to
@@ -293,19 +303,37 @@ real request, but the cost was that every prime clip stopped landing on a bar li
 here is not decoration; it is what makes the host agree with the sieve about where the
 period ends.
 
-### Voice D has no meter, and cannot have one
+### Voice D's accent layer (added 2026-09-02) — and why it was the fix
 
-D's basic unit is a triplet eighth, and **no meter can make its period whole bars.** A bar
-is `N * (4*TPQ/Den)` ticks with `Den` a power of two, and `4*480 = 1920 = 2^7 x 3 x 5`
-always carries a factor of 3. D's period is `6400 = 2^8 x 5^2` and has none, so no bar
-length can ever divide it. Independent of TPQ, and confirmed by exhaustive search over
-every valid denominator. D therefore falls back to 4/4 and a host pads it 6400 -> 7680.
+D used to be flat velocity 64 with a 40-step period of 6400 ticks, and **no meter could
+put a bar line there.** A bar is `N * (4*TPQ/Den)` with `Den` a power of two, and
+`4*480 = 1920 = 2^7 x 3 x 5` always carries a factor of 3, while `6400 = 2^8 x 5^2` has
+none — so no bar length could divide it, independent of TPQ. Ableton padded it to 7680.
 
-**The one thing that would fix it:** D's period needs a factor of 3 in *steps*. Giving D a
-mod-3 accent layer, as A and C have, makes its period LCM(40,3) = 120 steps x 160 ticks =
-19200 ticks — which is **exactly one bar of 40/4**. That would resolve the meter and give D
-the accent depth it currently lacks, in one move. It changes the music, so it is the user's
-call and is left open.
+**The fix was to give D the same accent set as A and C.** That is not a workaround; the
+factor of 3 the meter needs is exactly the factor the mod-3 accent supplies:
+
+```
+D period = LCM(40 rhythm, 5, 8, 3 accents) = 120 steps x 160 ticks = 19200 ticks
+         = 40 quarter notes = one bar of 40/4     <- exact
+```
+
+On D's triplet grid the mod-3 accent falls every 3 steps = 480 ticks = **exactly one
+quarter note**, so it accents the beat. The same modulus that fixes the meter is also
+musically the most natural accent D could carry.
+
+D now has 18 notes over 120 steps (was 6 flat notes over 40), re-accented on each of three
+passes of its 6-hit rhythm:
+
+```
+steps:  10   13   14   23   29   38
+it 1:  127  127   63    1   63   63
+it 2:  127   63  127   94  127  127
+it 3:  127  127  127   94  127  127
+```
+
+The ensemble length did not change — D simply repeats 3x instead of 9x within the same
+57600 ticks.
 
 ### Uniform meter and tempo (2026-08-30, meter part superseded)
 
@@ -604,8 +632,9 @@ rhythm. Not done; worth considering.
 - [x] **Revert per-voice files to one sieve period each** *(done 2026-08-31)*
 - [x] **Resolve the accent modulus issue** *(done 2026-08-31 — the accent layer now spans
       3 iterations of the note layer, by design; see the section above)*
-- [ ] Consider giving B and D accent layers of their own, with moduli chosen for how their
-      spans would interact (D's would cross the triplet grid)
+- [x] Give D an accent layer *(done 2026-09-02 — it supplied the factor of 3 its meter
+      needed, and accents the beat on the triplet grid)*
+- [ ] Consider an accent layer for B, the last flat voice (still 40 steps, velocity 64)
 - [ ] Listen to the 30-bar ensemble and judge whether 3 iterations is the right depth, or
       whether a longer accent span (mod 9, or adding mod 7) serves the piece better
 - [ ] Decide on next layer of complexity to add (form/arrangement, parameter variation, sieve formula controls)

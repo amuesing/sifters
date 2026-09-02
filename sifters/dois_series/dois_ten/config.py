@@ -23,6 +23,9 @@ TIME_SIGNATURE = (4, 4)
 # Steps in one pass of the note layer — the sieve's own period, LCM(8, 5). This is
 # the bar length for each voice's meter, so one bar = one statement of the rhythm.
 NOTE_LAYER_STEPS = 40
+
+# Ableton accepts time-signature numerators up to 99.
+MAX_METER_NUMERATOR = 99
 TEMPO_BPM = 120
 
 # Same four voices as dois_three — base sieve, complement, canon, polyrhythm.
@@ -61,6 +64,16 @@ INSTRUMENT_CONFIGS = [
         'derives_from': ['A', 'C'],
         'relationship': 'intersection',
         'step_ticks': 160,
+        # Same accent set as A and C. On D's triplet grid the mod-3 accent falls
+        # every 3 steps = 480 ticks = exactly one quarter note, so it accents the
+        # beat. It also carries the factor of 3 that D's period needs: LCM(40,3)
+        # = 120 steps x 160 ticks = 19200, which IS one bar of 40/4 — the only way
+        # a triplet voice can end on a bar line.
+        'accent_dict': {
+            'low5':  '5@0|5@1',
+            'wide8': '8@0|8@1|8@2|8@5|8@6',
+            'mod3':  '3@0|3@1',
+        },
     },
 ]
 

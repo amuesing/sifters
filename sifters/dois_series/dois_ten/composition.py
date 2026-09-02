@@ -23,29 +23,38 @@ def get_step_ticks(config):
     duration = config.get('duration', 'Quarter Note')
     return int(TICKS_PER_QUARTER_NOTE * DURATION_MULTIPLIER_KEY.get(duration, 0.25))
 
-def meter_for_unit(step_ticks, steps_per_bar):
-    """The meter whose BEAT is this voice's basic unit, and whose bar is
-    `steps_per_bar` of them.
+def meter_for_voice(step_ticks, note_layer_ticks, period_ticks):
+    """A meter in which this voice's clip ends exactly on a bar line.
 
-    A sixteenth grid (120 ticks) gives denominator 4*TPQ/120 = 16, so a 40-step bar
-    is 40/16 — one bar per pass of the note layer, which is why a clip in this meter
-    ends exactly on the period instead of being padded out to the next bar.
+    Preference 1 — the beat IS the voice's basic unit, and the bar is one pass of the
+    note layer. A sixteenth grid (120 ticks) gives 4*TPQ/120 = 16, so 40 steps is 40/16:
+    one bar per statement of the rhythm, which is the most legible result.
 
-    Returns None when the unit is not a power-of-two subdivision. A triplet grid
-    (160 ticks) gives 4*TPQ/160 = 12, which is not a valid MIDI denominator, and no
-    other meter helps: a bar is always N * (4*TPQ/Den), which always carries a factor
-    of 3 (1920 = 2^7 * 3 * 5), while a triplet period like 6400 = 2^8 * 5^2 has none.
-    So no bar length can divide it. This is independent of TPQ.
+    Preference 2 — for a grid that is not a power-of-two subdivision, no meter can have
+    it as the beat (a triplet gives 4*TPQ/160 = 12, not a valid denominator). Fall back
+    to any meter whose BAR equals the voice's full period. D's 120 x 160 = 19200 ticks is
+    exactly 40 quarter notes, so 40/4 works: the beat is no longer D's own unit, but the
+    bar still lands precisely on the period, which is what stops a host padding the clip.
+    Denominators are tried in order of how conventional the beat is.
+
+    Returns None only if neither is possible.
     """
-    den = (4 * TICKS_PER_QUARTER_NOTE) / step_ticks
-    if den != int(den):
-        return None
-    den = int(den)
-    if den & (den - 1):            # not a power of two
-        return None
-    if not (1 <= steps_per_bar <= 99):   # Ableton caps the numerator at 99
-        return None
-    return steps_per_bar, den
+    beat = (4 * TICKS_PER_QUARTER_NOTE) / step_ticks
+    if beat == int(beat) and not (int(beat) & (int(beat) - 1)):
+        n = note_layer_ticks // step_ticks
+        if 1 <= n <= MAX_METER_NUMERATOR:
+            return int(n), int(beat)
+
+    for den in (4, 8, 16, 2, 32, 1, 64):
+        beat = (4 * TICKS_PER_QUARTER_NOTE) / den
+        if beat != int(beat):
+            continue
+        beat = int(beat)
+        if period_ticks % beat == 0:
+            n = period_ticks // beat
+            if 1 <= n <= MAX_METER_NUMERATOR:
+                return n, den
+    return None
 
 def append_header(track, name, meter):
     """Name, meter and tempo at the head of a track."""
@@ -291,12 +300,11 @@ def main():
     # note layer as the bar — so the clip ends exactly on the period.
     meters = {}
     for name, _, _, step_ticks in voices:
-        m = meter_for_unit(step_ticks, NOTE_LAYER_STEPS)
+        m = meter_for_voice(step_ticks, NOTE_LAYER_STEPS * step_ticks, periods[name])
         if m is None:
             m = TIME_SIGNATURE
-            print(f"  !! {name}: basic unit {step_ticks} ticks has no valid meter "
-                  f"(not a power-of-two subdivision) — falling back to "
-                  f"{m[0]}/{m[1]}; a host will pad this clip to the next bar.")
+            print(f"  !! {name}: no meter puts a bar line on {periods[name]} ticks — "
+                  f"falling back to {m[0]}/{m[1]}; a host will pad this clip.")
         meters[name] = m
 
     arrangement, merged = [], []
@@ -310,7 +318,8 @@ def main():
         merged.extend(repeated)
 
     # The ensemble runs on the majority grid, in which its length is whole bars.
-    ens = meter_for_unit(min(st for _, _, _, st in voices), NOTE_LAYER_STEPS) or TIME_SIGNATURE
+    smallest = min(st for _, _, _, st in voices)
+    ens = meter_for_voice(smallest, NOTE_LAYER_STEPS * smallest, total_ticks) or TIME_SIGNATURE
     print()
     reps = ", ".join(f"{n} x{total_ticks // c}" for n, c in periods.items())
     save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks, ens,
