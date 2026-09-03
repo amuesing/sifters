@@ -96,6 +96,44 @@ LCM?** Include the accent sieves in that question — see the open issue below.
 
 ---
 
+## `dois_eleven` — hardened rewrite (2026-09-03)
+
+**`dois_eleven` is `dois_ten` with the same music and stricter code.** Verified musically
+identical: all six files match note-for-note in onset, duration, pitch and velocity, and in
+meter, tempo and length. Only the code changed.
+
+What it fixes, each a class of silent wrongness dois_ten was open to:
+
+1. **True periods are measured, not declared.** `true_period()` evaluates a sieve over one
+   nominal period and finds the smallest length the binary actually repeats on.
+   `music21`'s `Sieve.period()` returns the LCM of the moduli written down, which is an
+   upper bound: `32@0|32@1|32@16|32@17` reports 32 and truly repeats every 16. dois_ten
+   would have rendered such a voice at 480 steps — the same material twice, still called
+   one period. dois_eleven measures 240 and prints a warning naming the expression.
+2. **The note layer's period is derived from the base sieve**, not the hardcoded
+   `NOTE_LAYER_STEPS = 40`. Change the sieve to one of period 35 and the bar follows to
+   4200 ticks / 35-16; dois_ten would have kept using a 4800-tick bar.
+3. **Unknown duration names raise.** `'sixteenth note'` or `'Triplet Eighth'` used to
+   silently become a sixteenth — the exact shape of the bug that produced the 40/16 meter
+   error. Now a `KeyError` naming the voice and listing valid durations.
+4. **Derivations dispatch to named operations** in `transformations.py`, which dois_ten
+   imported but never used, reimplementing `1 - src` and `np.roll` inline. Unknown
+   relationships, forward references and mismatched source lengths all raise.
+5. **Every run verifies itself.** `verify()` re-reads the written files and asserts what
+   the project promises: each file is exactly one true minimal period (not a repeat of
+   something shorter, not a truncation), every clip ends on a bar line, every note is one
+   step long and on the grid, no hanging notes or same-pitch overlaps, meter and tempo as
+   intended, and every cycle inside both ensemble files identical to that voice's own file.
+   A failure lists each problem and exits non-zero.
+
+Point 5 is the important one. **Every bug in this project's history was caught by a
+throwaway script that was then discarded**, so the next regression went unnoticed until
+someone thought to look. Those checks now run on every render, against the bytes on disk.
+
+`dois_ten` is left as it stands. New work should happen in `dois_eleven`.
+
+---
+
 ## Current State — read this for the snapshot (2026-09-03)
 
 Verified against the rendered MIDI, not from memory.
@@ -192,7 +230,8 @@ sifters/
       dois_seven/
       dois_eight/
       dois_nine/          ← arrangement version of dois_three (5 movements × 8 sections)
-      dois_ten/           ← CURRENT FOCUS — simplified 40-step beat, plugin-oriented
+      dois_ten/           ← superseded by dois_eleven; kept as it stands
+      dois_eleven/        ← CURRENT FOCUS — same music, self-verifying code
         config.py
         composition.py
         transformations.py
@@ -679,7 +718,8 @@ If broader DAW support is needed beyond Ableton: JUCE framework in C++. Same arc
 | dois_four–six | Explored different instrument configurations |
 | dois_seven–eight | Ensemble and arrangement experiments |
 | dois_nine | Arrangement version of dois_three — fractal form (5 movements × 8 sections = 40 = sieve period), per-instrument presence thresholds, per-movement MIDI tracks |
-| dois_ten | **Current**: duration states periodicity; accent layers span multiple passes of the note layer; accent moduli chosen so all four voices reach the same period; graded overlap velocities; one derived pitch per voice on Drum Rack pads |
+| dois_eleven | **Current**: same music as dois_ten, with measured (not declared) sieve periods, a derived note layer, strict duration lookup, dispatched derivations, and a `verify()` pass that re-reads every rendered file and asserts the invariants |
+| dois_ten | duration states periodicity; accent layers span multiple passes of the note layer; accent moduli chosen so all four voices reach the same period; graded overlap velocities; one derived pitch per voice on Drum Rack pads |
 
 ---
 
