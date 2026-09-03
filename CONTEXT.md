@@ -247,10 +247,10 @@ it says nothing. Weights sum to 126 so ghost = 1 and all four firing = 127.
 
 | accent | density | weight (16th voices) |
 |---|---|---|
-| low5 `5@0\|5@1` | 40.0% | +35 |
-| wide8 `8@0\|8@1\|8@2\|8@5\|8@6` | 62.5% | +22 |
-| mod3 `3@0\|3@1` | 66.7% | +20 |
-| span32 (parity) | 15.6% | **+49** |
+| low5 `5@0\|5@1` | 40.0% | +31 |
+| wide8 `8@0\|8@1\|8@5` | 37.5% | +33 |
+| mod3 `3@0\|3@1` | 66.7% | +17 |
+| span32 (parity) | 15.6% | **+45** |
 | ghost floor | — | 1 |
 
 **Why counting overlaps failed.** It threw away *which* accents fired. Four accents have 16
@@ -272,9 +272,28 @@ Under the weighted sum every accent is audible every time it fires, and adding a
 widens the palette instead of narrowing it. Voice B went from one level holding 34.7% to
 21.3%; D from 38.9% to 29.6%.
 
-**The sieves are still dense** — mod3 at 66.7% and wide8 at 62.5% are closer to a default
-state than an accent. Thinning their residues would sharpen the contrast further, and
-parity would survive because it depends only on the moduli. Not done; worth hearing first.
+### Thinning residues (2026-09-03) — and why only wide8
+
+A sieve's **modulus** sets its period; its **residues** set how often it fires. Thinning
+residues therefore changes an accent's density — and so its derived weight — while leaving
+the period, the duration parity and the main sieve completely untouched. Verified: note
+onsets are byte-identical before and after, only velocities differ.
+
+`wide8` went from `8@0|8@1|8@2|8@5|8@6` (62.5%) to `8@0|8@1|8@5` (37.5%):
+
+| | distinct velocities | most common level | ghost | sd |
+|---|---|---|---|---|
+| before | 12 | 26.7% | 2.2% | 29.6 |
+| **after** | **16** | **16.7%** | 7.2% | **31.7** |
+
+**Thinning mod3 as well was tested and is worse.** Every variant using `3@0` collapsed the
+weight spread from ~2.5 to 1.3-2.3, because making all accents similarly sparse gives them
+all similar rarity — and the weights, being derived from rarity, flatten toward equal. That
+quietly returns the scheme to counting overlaps, which is what the weighted sum exists to
+avoid. **The weights differentiate only because the densities differ**, so keep a mix of
+dense and sparse accents rather than making everything sparse. All twelve combinations of
+mod3 / wide8 / low5 thinnings were measured; this one won on distinct velocities, most
+common level and weight spread simultaneously.
 
 ### Velocity Arrays
 

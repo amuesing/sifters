@@ -53,7 +53,14 @@ TEMPO_BPM = 120
 # shorten the period, and music21's Sieve.period() will not catch it.
 _BASE_ACCENTS = {
     'low5':  '5@0|5@1',
-    'wide8': '8@0|8@1|8@2|8@5|8@6',
+    # Thinned from 8@0|8@1|8@2|8@5|8@6 (62.5% dense) on 2026-09-03. Same modulus, so
+    # the period and duration parity are untouched — only how often it fires, and
+    # therefore its derived weight, change. Chosen by measuring every combination:
+    # this one gave 16 distinct velocities against 12, and dropped the most common
+    # level from 26.7% to 16.7% of notes. Thinning mod3 as well was tested and is
+    # WORSE — it puts every accent at a similar density, so the rarity-derived
+    # weights flatten toward equal and the scheme collapses back toward counting.
+    'wide8': '8@0|8@1|8@5',
     'mod3':  '3@0|3@1',
 }
 # wide8's residue set carried up to modulus 32
