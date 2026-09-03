@@ -234,37 +234,47 @@ C: [2,4,6,10,11,13,14,21,23,26,27,29,35,36,38]
 D: [10, 13, 14, 23, 29, 38]
 ```
 
-### Accent Voicing (all four voices)
+### Accent Voicing — weighted sum (2026-09-03)
 
 Four accent sieves overlay each voice's binary — three shared, plus that voice's parity
-accent. **Every distinct outcome gets its own velocity**, spread evenly from ghost to full:
-no accent, exactly one (which one sets the level), then two, three or four agreeing.
+accent. **Velocity is the sum of the weights of the accents firing, not a count of them.**
 
-| Outcome | Velocity |
-|---|---|
-| 0 — ghost | 1 |
-| 1 — low5 (`5@0\|5@1`) | 19 |
-| 1 — wide8 (`8@0\|8@1\|8@2\|8@5\|8@6`) | 37 |
-| 1 — mod3 (`3@0\|3@1`) | 55 |
-| 1 — parity accent (span32 / span9) | 73 |
-| 2 agreeing | 91 |
-| 3 agreeing | 109 |
-| 4 agreeing | 127 |
+**An accent's weight is how rarely it fires**, proportional to `1 - density`, derived from
+the accent binaries rather than hand-set. An accent covering two thirds of the steps
+carries almost no information and barely lifts a note; a sparse one is genuinely an accent
+and lifts it a lot. An accent firing on every step would earn weight 0, which is correct —
+it says nothing. Weights sum to 126 so ghost = 1 and all four firing = 127.
 
-**Overlaps used to collapse to 127**, which was tolerable with three accent layers and
-badly wrong with four: two-or-more became the common case, so **78% of A's notes came out
-at full velocity** and the fourth accent's own level never sounded at all. Grading the
-counts fixed it — full velocity is now 5.6% on A and C, 3.3% on B, 3.7% on D, with the
-distribution centred on the two- and three-accent overlaps (44% and 28% for A).
+| accent | density | weight (16th voices) |
+|---|---|---|
+| low5 `5@0\|5@1` | 40.0% | +35 |
+| wide8 `8@0\|8@1\|8@2\|8@5\|8@6` | 62.5% | +22 |
+| mod3 `3@0\|3@1` | 66.7% | +20 |
+| span32 (parity) | 15.6% | **+49** |
+| ghost floor | — | 1 |
 
-Measured distribution for A, 180 notes: ghost 2.2%, low5 2.2%, wide8 13.3%, mod3 4.4%,
-x2 43.9%, x3 28.3%, x4 5.6%.
+**Why counting overlaps failed.** It threw away *which* accents fired. Four accents have 16
+combinations but only 5 counts, and because the sieves are dense those counts bunched around
+their mean: 72% of A's notes sat on count 2 or 3, an 18-point spread inside a 127-point
+range. It also made a sparse accent inaudible unless it fired alone — **span32 fired alone
+0 times in 180 notes**, so the accent added for duration parity contributed nothing audible.
+And adding accent layers made it worse: summing more near-independent dense variables
+concentrates the total toward its mean, so depth of layering fought dynamic contrast.
 
-**The parity accent never fires alone** in any voice, so level 73 is unused. That is
-expected — it is sparse (5 of 32) while the other three are dense (40%, 62.5%, 67%), so it
-essentially never occurs by itself. It still does real work through the overlap counts;
-under the old profile that work was invisible, because everything above one accent was the
-same 127.
+**Measured effect on voice A, 180 notes:**
+
+| | distinct velocities | most common level | span32 audible |
+|---|---|---|---|
+| overlap count | 7 | 43.9% | never |
+| **weighted sum** | **12** | **26.7%** | on all 39 notes it touches |
+
+Under the weighted sum every accent is audible every time it fires, and adding a layer
+widens the palette instead of narrowing it. Voice B went from one level holding 34.7% to
+21.3%; D from 38.9% to 29.6%.
+
+**The sieves are still dense** — mod3 at 66.7% and wide8 at 62.5% are closer to a default
+state than an accent. Thinning their residues would sharpen the contrast further, and
+parity would survive because it depends only on the moduli. Not done; worth hearing first.
 
 ### Velocity Arrays
 

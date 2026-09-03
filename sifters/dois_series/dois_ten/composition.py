@@ -152,32 +152,38 @@ def voice_span(rhythm_period, accent_dict):
         periods.append(music21.sieve.Sieve(pattern).period())
     return math.lcm(*periods)
 
-def generate_velocity_profile(accent_dict):
-    """One velocity per distinct outcome, evenly spread from ghost to full.
+def generate_velocity_profile(accent_binaries):
+    """Velocity is a weighted SUM of the accents firing — not a count of them.
 
-    Outcomes are: no accent (ghost), exactly one accent (which one sets the level),
-    then two, three, ... accents agreeing — each its own level.
+    An accent's weight is how rarely it fires: weight is proportional to (1 - density).
+    An accent covering two thirds of the steps carries almost no information and should
+    barely lift a note; a sparse one is genuinely an accent and should lift it a lot. An
+    accent that fired on every step would earn weight 0, which is correct — it says
+    nothing.
 
-    Previously every overlap of two or more collapsed to 127. With three accent
-    layers that was tolerable; with four it is the common case, and 78% of A's notes
-    came out at full velocity while the fourth accent's own level never sounded at
-    all. Grading the counts uses the information the sieves actually carry.
+    Why not count overlaps, as this did before: counting throws away WHICH accents fired.
+    Four accents have 16 combinations but only 5 counts, and because the sieves are dense
+    those counts bunch around their mean — 72% of voice A's notes sat on count 2 or 3, an
+    18-point spread inside a 127-point range. It also made a sparse accent inaudible
+    unless it fired alone, which for span32 never once happened in 180 notes. Under a
+    weighted sum every accent is audible every time it fires, and adding a layer widens
+    the palette instead of narrowing it.
     """
-    n = len(accent_dict)
-    if not n:
-        return {'gap': 64}
+    GHOST, FULL = 1, 127
+    if not accent_binaries:
+        return {'ghost': 64, 'weights': {}}
 
-    levels = 1 + n + max(n - 1, 0)          # ghost, singles, then counts 2..n
-    lo, hi = 1, 127
-    span = (hi - lo) / (levels - 1) if levels > 1 else 0
-    at = lambda i: int(round(lo + span * i))
+    rarity = {label: 1.0 - float(np.mean(arr)) for label, arr in accent_binaries.items()}
+    total  = sum(rarity.values()) or 1.0
+    budget = FULL - GHOST
+    weights = {label: int(round(budget * r / total)) for label, r in rarity.items()}
 
-    profile = {'gap': at(0)}
-    for i, label in enumerate(accent_dict):
-        profile[label] = at(1 + i)
-    for count in range(2, n + 1):
-        profile[f'x{count}'] = at(1 + n + count - 2)
-    return profile
+    # Rounding can miss the budget; settle the difference on the heaviest accent so all
+    # four firing together still reaches exactly FULL.
+    drift = budget - sum(weights.values())
+    if drift:
+        weights[max(weights, key=weights.get)] += drift
+    return {'ghost': GHOST, 'weights': weights}
 
 def accent_voicing(binary, accent_binaries, profile, root_note):
     binary = np.asarray(binary)
@@ -188,19 +194,15 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
         label: np.resize(np.asarray(arr, dtype=bool), n)
         for label, arr in accent_binaries.items()
     }
-    active_count = sum(label_masks.values(), np.zeros(n, dtype=int))
+
+    # Ghost floor, plus each firing accent's own weight — so which accents are
+    # present matters, not merely how many.
+    level = np.full(n, profile['ghost'], dtype=int)
+    for label, weight in profile['weights'].items():
+        level += weight * label_masks[label].astype(int)
 
     velocities = np.zeros(n, dtype=int)
-    velocities[on & (active_count == 0)] = profile['gap']
-
-    single = on & (active_count == 1)
-    for label, mask in label_masks.items():
-        velocities[single & mask] = profile[label]
-
-    # Each overlap count gets its own level, rather than everything above one
-    # collapsing to full velocity.
-    for count in range(2, len(label_masks) + 1):
-        velocities[on & (active_count == count)] = profile[f'x{count}']
+    velocities[on] = np.clip(level[on], 1, 127)
 
     notes_per_step = [[] for _ in range(n)]
     for i in np.flatnonzero(on):
@@ -317,11 +319,11 @@ def main():
             shift_amount = cfg.get('shift_amount', 0)
             accent_bins  = {k: np.roll(v, shift_amount) for k, v in accent_bins.items()}
 
-        profile = generate_velocity_profile(accent_dict)
+        profile = generate_velocity_profile(accent_bins)
         if accent_dict:
+            w = ", ".join(f"{k} +{v}" for k, v in profile['weights'].items())
             print(f"  {name}: rhythm {rhythm} steps, accents span {span} "
-                  f"({span // rhythm} iterations of the note layer) — " +
-                  ", ".join(f"{k}={v}" for k, v in profile.items()))
+                  f"({span // rhythm} iterations) — ghost {profile['ghost']}, {w}")
 
         notes_per_step, velocities = accent_voicing(binary_full, accent_bins, profile, root_note)
         voices.append((name, notes_per_step, velocities, step_ticks))
