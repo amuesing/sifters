@@ -293,66 +293,59 @@ C: [2,4,6,10,11,13,14,21,23,26,27,29,35,36,38]
 D: [10, 13, 14, 23, 29, 38]
 ```
 
-### Accent Voicing — weighted sum (2026-09-03)
+### Accent Voicing — ranked and evenly spaced (2026-09-03)
 
-Four accent sieves overlay each voice's binary — three shared, plus that voice's parity
-accent. **Velocity is the sum of the weights of the accents firing, not a count of them.**
+**Three** accent sieves per voice — two shared, plus that voice's parity accent. Velocity
+is picked by WHICH accents are firing: the 8 achievable combinations are **ordered by
+rarity** and **spaced evenly** from `GHOST_VELOCITY` (24) to `FULL_VELOCITY` (127).
 
-**An accent's weight is how rarely it fires**, proportional to `1 - density`, derived from
-the accent binaries rather than hand-set. An accent covering two thirds of the steps
-carries almost no information and barely lifts a note; a sparse one is genuinely an accent
-and lifts it a lot. An accent firing on every step would earn weight 0, which is correct —
-it says nothing. Weights sum to 126 so ghost = 1 and all four firing = 127.
+```
+levels  24  39  53  68  83  98  112  127        spacing 14-15
+                                                (integer rounding of 103/7 = 14.71)
+rarity order: mod3 (66.7%) < low5 (40%) < span32/span9 (15.6%)
+```
 
-| accent | density | weight (16th voices) |
+Ordering is still derived — an accent contributes its rarity `(1 - density)`, so a sparse
+accent outranks a common one and more accents outrank fewer. Only the **spacing** is
+imposed, for the same reason the ghost floor is: *a distinction the sieve makes must be
+one you can hear.*
+
+**Why not scale velocity proportionally to rarity, as it did first.** Two accents of
+similar density earned near-identical weights — low5 at 40% got 26, wide8 at 37.5% got 27
+— so four genuinely different sieve states rendered **1 velocity apart**, and gaps across
+the range ran from 1 to 14, a 14:1 ratio. "16 distinct velocities" was really about 9
+perceptible ones.
+
+**Why three accents and not four.** Four gave 16 combinations across a 103-velocity range —
+about 7 apart even when perfectly spaced, at the edge of audibility. Three gives 8 levels a
+comfortable ~15 apart.
+
+**`wide8` was the one dropped, and only low5 or wide8 could be.** Their moduli (5 and 8)
+already divide the 40-step note layer, so they contribute nothing to the LCM and removing
+either leaves every period and the duration parity untouched. `mod3` and the parity accent
+are what set the span — remove either and the durations change. So the accent that could be
+spared happened to be one of the two that were colliding. low5 was kept on measurement:
+both give near-identical evenness (entropy 2.643 vs 2.636), but low5 puts full velocity on
+5.6% of notes rather than 10%, keeping the all-agree moment rare.
+
+**Measured, voice A (180 notes):**
+
+| velocity | notes | share |
 |---|---|---|
-| low5 `5@0\|5@1` | 40.0% | +31 |
-| wide8 `8@0\|8@1\|8@5` | 37.5% | +33 |
-| mod3 `3@0\|3@1` | 66.7% | +17 |
-| span32 (parity) | 15.6% | **+45** |
-| ghost floor | — | 1 |
+| 24 (ghost) | 28 | 15.6% |
+| 39 | 56 | 31.1% |
+| 53 | 19 | 10.6% |
+| 68 | 8 | 4.4% |
+| 83 | 38 | 21.1% |
+| 98 | 16 | 8.9% |
+| 112 | 5 | 2.8% |
+| 127 (all three) | 10 | 5.6% |
 
-**Why counting overlaps failed.** It threw away *which* accents fired. Four accents have 16
-combinations but only 5 counts, and because the sieves are dense those counts bunched around
-their mean: 72% of A's notes sat on count 2 or 3, an 18-point spread inside a 127-point
-range. It also made a sparse accent inaudible unless it fired alone — **span32 fired alone
-0 times in 180 notes**, so the accent added for duration parity contributed nothing audible.
-And adding accent layers made it worse: summing more near-independent dense variables
-concentrates the total toward its mean, so depth of layering fought dynamic contrast.
+Entropy 2.643 of a possible 3.000. **Rhythm and pitch are identical to dois_ten in all six
+files** — every change here is velocity only.
 
-**Measured effect on voice A, 180 notes:**
-
-| | distinct velocities | most common level | span32 audible |
-|---|---|---|---|
-| overlap count | 7 | 43.9% | never |
-| **weighted sum** | **12** | **26.7%** | on all 39 notes it touches |
-
-Under the weighted sum every accent is audible every time it fires, and adding a layer
-widens the palette instead of narrowing it. Voice B went from one level holding 34.7% to
-21.3%; D from 38.9% to 29.6%.
-
-### Thinning residues (2026-09-03) — and why only wide8
-
-A sieve's **modulus** sets its period; its **residues** set how often it fires. Thinning
-residues therefore changes an accent's density — and so its derived weight — while leaving
-the period, the duration parity and the main sieve completely untouched. Verified: note
-onsets are byte-identical before and after, only velocities differ.
-
-`wide8` went from `8@0|8@1|8@2|8@5|8@6` (62.5%) to `8@0|8@1|8@5` (37.5%):
-
-| | distinct velocities | most common level | ghost | sd |
-|---|---|---|---|---|
-| before | 12 | 26.7% | 2.2% | 29.6 |
-| **after** | **16** | **16.7%** | 7.2% | **31.7** |
-
-**Thinning mod3 as well was tested and is worse.** Every variant using `3@0` collapsed the
-weight spread from ~2.5 to 1.3-2.3, because making all accents similarly sparse gives them
-all similar rarity — and the weights, being derived from rarity, flatten toward equal. That
-quietly returns the scheme to counting overlaps, which is what the weighted sum exists to
-avoid. **The weights differentiate only because the densities differ**, so keep a mix of
-dense and sparse accents rather than making everything sparse. All twelve combinations of
-mod3 / wide8 / low5 thinnings were measured; this one won on distinct velocities, most
-common level and weight spread simultaneously.
+**Voice D uses 6 of the 8 levels**, not all 8. With only 6 hits per 40 steps, two accent
+combinations never coincide with a D note. Not a defect — a consequence of how sparse D is.
 
 ### Velocity Arrays
 

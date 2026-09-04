@@ -225,34 +225,32 @@ def create_accent_binaries(accent_dict, span):
     return {label: evaluate(pattern, span) for label, pattern in accent_dict.items()}
 
 def generate_velocity_profile(accent_binaries):
-    """Velocity is a weighted SUM of the accents firing — not a count of them.
+    """One velocity per achievable accent combination — ORDERED by rarity, spaced EVENLY.
 
-    An accent's weight is how rarely it fires, proportional to (1 - density). An accent
-    covering two thirds of the steps carries almost no information and should barely
-    lift a note; a sparse one is genuinely an accent. One firing on every step would
-    earn weight 0, which is correct — it says nothing.
+    Which combination is louder is still derived: an accent contributes its rarity
+    (1 - density) to the ordering, so a sparse accent outranks a common one and more
+    accents outrank fewer. Only the SPACING is imposed, for exactly the reason the ghost
+    floor is imposed — a distinction the sieve makes must be one you can hear.
 
-    Levels run from GHOST_VELOCITY (no accent, but still audible — the sieve selected
-    that step, so it must sound) up to FULL_VELOCITY when every accent agrees.
-
-    Counting overlaps instead throws away WHICH accents fired: four accents have 16
-    combinations but only 5 counts, and with dense sieves those counts bunch around
-    their mean. It also leaves a sparse accent inaudible unless it fires alone.
+    Scaling velocity proportionally to rarity did not achieve that. Two accents of
+    similar density earned near-identical weights (26 and 27), so four genuinely
+    different sieve states rendered 1 velocity apart, and the gaps between levels ranged
+    from 1 to 14. Ranking gives a constant gap instead: 15 with three accents.
     """
-    if not accent_binaries:
-        return {'ghost': UNACCENTED_VELOCITY, 'weights': {}}
+    labels = list(accent_binaries)
+    if not labels:
+        return {'labels': [], 'levels': np.array([UNACCENTED_VELOCITY]), 'rarity': {}}
 
     rarity = {label: 1.0 - float(np.mean(arr)) for label, arr in accent_binaries.items()}
-    total = sum(rarity.values()) or 1.0
-    budget = FULL_VELOCITY - GHOST_VELOCITY
-    weights = {label: int(round(budget * r / total)) for label, r in rarity.items()}
+    combinations = range(1 << len(labels))
+    by_rarity = sorted(combinations, key=lambda code: (
+        sum(rarity[l] for i, l in enumerate(labels) if code >> i & 1), code))
 
-    # Rounding can miss the budget; settle the difference on the heaviest accent so
-    # every accent firing together still reaches exactly FULL.
-    drift = budget - sum(weights.values())
-    if drift:
-        weights[max(weights, key=weights.get)] += drift
-    return {'ghost': GHOST_VELOCITY, 'weights': weights}
+    levels = np.zeros(len(by_rarity), dtype=int)
+    reach = FULL_VELOCITY - GHOST_VELOCITY
+    for rank, code in enumerate(by_rarity):
+        levels[code] = round(GHOST_VELOCITY + reach * rank / (len(by_rarity) - 1))
+    return {'labels': labels, 'levels': levels, 'rarity': rarity}
 
 def accent_voicing(binary, accent_binaries, profile, root_note):
     binary = np.asarray(binary)
@@ -263,14 +261,13 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
         if len(arr) != n:
             raise RuntimeError(f"accent {label!r} has {len(arr)} steps, voice has {n}")
 
-    # Ghost floor plus each firing accent's own weight, so WHICH accents are present
-    # matters rather than merely how many.
-    level = np.full(n, profile['ghost'], dtype=int)
-    for label, weight in profile['weights'].items():
-        level += weight * accent_binaries[label].astype(int)
+    # Which accents are present picks the level — not merely how many of them.
+    code = np.zeros(n, dtype=int)
+    for i, label in enumerate(profile['labels']):
+        code += (1 << i) * accent_binaries[label].astype(int)
 
     velocities = np.zeros(n, dtype=int)
-    velocities[on] = np.clip(level[on], 1, 127)
+    velocities[on] = profile['levels'][code[on]]
 
     notes_per_step = [[] for _ in range(n)]
     for i in np.flatnonzero(on):
@@ -593,9 +590,15 @@ def main():
 
         profile = generate_velocity_profile(accent_bins)
         if accent_dict:
-            weights = ", ".join(f"{k} +{v}" for k, v in profile['weights'].items())
+            used = sorted(set(profile['levels'].tolist()))
+            gaps = {b - a for a, b in zip(used, used[1:])}
+            spacing = str(gaps.pop()) if len(gaps) == 1 else f"{min(gaps)}-{max(gaps)}"
+            order = " < ".join(sorted(profile['rarity'], key=profile['rarity'].get))
             print(f"  {name}: rhythm {len(binary)} steps, accents span {span} "
-                  f"({span // len(binary)} iterations) — ghost {profile['ghost']}, {weights}")
+                  f"({span // len(binary)} iterations) — {len(used)} levels "
+                  f"{used[0]}-{used[-1]}, spacing {spacing} (integer rounding of "
+                  f"{(FULL_VELOCITY - GHOST_VELOCITY) / (len(used) - 1):.2f}), "
+                  f"rarity order {order}")
 
         notes_per_step, velocities = accent_voicing(binary_full, accent_bins,
                                                     profile, cfg['root'])

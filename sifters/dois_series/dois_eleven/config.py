@@ -60,16 +60,26 @@ TEMPO_BPM = 120
 # 16, which would halve the period. music21's Sieve.period() reports the nominal
 # modulus and will not catch it; composition.py measures the true period instead and
 # refuses to run if the two disagree.
+# Three accents per voice, not four. Four gave 16 combinations across a 103-velocity
+# range — about 7 apart even when perfectly spaced, at the edge of audibility — and two
+# of them (low5 at 40%, wide8 at 37.5%) were so close in density that they earned
+# near-identical weights and rendered 1 velocity apart. Three gives 8 combinations a
+# comfortable 15 apart.
+#
+# `wide8` was the one dropped, and it was safe to drop because its modulus 8 already
+# DIVIDES the 40-step note layer: it contributed nothing to the LCM, so removing it
+# leaves every period and the duration parity untouched. The same is true of low5
+# (modulus 5). mod3 and the parity accent are what actually set the span — neither can
+# be removed without changing the durations.
+#
+# low5 was kept over wide8 on measurement: both give the same 8 evenly spaced levels
+# and near-identical evenness (entropy 2.643 vs 2.636), but low5 puts full velocity on
+# 5.6% of notes rather than 10%, keeping the moment all three accents agree genuinely
+# rare.
 _BASE_ACCENTS = {
-    'low5':  '5@0|5@1',
-    # Thinned from 8@0|8@1|8@2|8@5|8@6 (62.5%) to 37.5% on 2026-09-03: same modulus,
-    # so period and parity are untouched, but it fires less often and therefore earns
-    # a larger derived weight. Measured best of all twelve thinning combinations.
-    'wide8': '8@0|8@1|8@5',
-    # Deliberately left dense at 66.7%. The weights derive from rarity, so they only
-    # differentiate if the densities DIFFER — making every accent sparse flattens them
-    # toward equal and collapses the scheme back into counting overlaps.
-    'mod3':  '3@0|3@1',
+    'low5': '5@0|5@1',
+    # Deliberately dense at 66.7%. Density spread is what makes the ranking meaningful.
+    'mod3': '3@0|3@1',
 }
 ACCENTS_SIXTEENTH = dict(_BASE_ACCENTS, span32='32@0|32@1|32@2|32@5|32@6')
 # 9 is a multiple of 3, so mod3 survives alongside it and D still accents the beat
