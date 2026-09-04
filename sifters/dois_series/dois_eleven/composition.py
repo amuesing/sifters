@@ -151,6 +151,30 @@ RELATIONSHIPS = {
     'union':        lambda sources, cfg: union_binaries(sources),
 }
 
+def tile_to(binary, span):
+    """Repeat a note layer across `span`, refusing a span it does not divide."""
+    if span % len(binary):
+        raise ValueError(f"span {span} is not a whole number of {len(binary)}-step "
+                         f"note layers")
+    return np.resize(binary, span)
+
+def voice_rhythm(config, base_binaries, span):
+    """A voice's note layer across its full span.
+
+    A voice defined by a sieve is EVALUATED over the span rather than tiled, so no
+    assumption about its period is relied on. A derived voice applies its operation to
+    its sources tiled across the same span — exact, because `tile_to` refuses a span
+    the note layer does not divide.
+    """
+    if 'sieve' in config:
+        return evaluate(config['sieve'], span)
+
+    derives_from = config['derives_from']
+    if isinstance(derives_from, str):
+        derives_from = [derives_from]
+    sources = [tile_to(base_binaries[n], span) for n in derives_from]
+    return RELATIONSHIPS[config['relationship']](sources, config)
+
 def build_binary(config, base_binaries):
     """One voice's note layer, over exactly one period of its own sieve."""
     if 'sieve' in config:
@@ -208,17 +232,19 @@ def generate_velocity_profile(accent_binaries):
     lift a note; a sparse one is genuinely an accent. One firing on every step would
     earn weight 0, which is correct — it says nothing.
 
+    Levels run from GHOST_VELOCITY (no accent, but still audible — the sieve selected
+    that step, so it must sound) up to FULL_VELOCITY when every accent agrees.
+
     Counting overlaps instead throws away WHICH accents fired: four accents have 16
     combinations but only 5 counts, and with dense sieves those counts bunch around
     their mean. It also leaves a sparse accent inaudible unless it fires alone.
     """
-    GHOST, FULL = 1, 127
     if not accent_binaries:
-        return {'ghost': 64, 'weights': {}}
+        return {'ghost': UNACCENTED_VELOCITY, 'weights': {}}
 
     rarity = {label: 1.0 - float(np.mean(arr)) for label, arr in accent_binaries.items()}
     total = sum(rarity.values()) or 1.0
-    budget = FULL - GHOST
+    budget = FULL_VELOCITY - GHOST_VELOCITY
     weights = {label: int(round(budget * r / total)) for label, r in rarity.items()}
 
     # Rounding can miss the budget; settle the difference on the heaviest accent so
@@ -226,7 +252,7 @@ def generate_velocity_profile(accent_binaries):
     drift = budget - sum(weights.values())
     if drift:
         weights[max(weights, key=weights.get)] += drift
-    return {'ghost': GHOST, 'weights': weights}
+    return {'ghost': GHOST_VELOCITY, 'weights': weights}
 
 def accent_voicing(binary, accent_binaries, profile, root_note):
     binary = np.asarray(binary)
@@ -365,7 +391,70 @@ def track_meta(path):
         out.append((name, sig, tempo, t))
     return out
 
-def verify(voices, periods, total_ticks, meters, ensemble_meter):
+def rhythm_from_file(path, step_ticks, note_layer_steps):
+    """Read a voice's note layer back out of its rendered file.
+
+    Returns the note layer, and whether the file is genuinely periodic on it — if the
+    rendered onsets do not repeat every `note_layer_steps`, the file is not a tiling of
+    the sieve at all and the derivation check below would be meaningless.
+    """
+    notes, _, _ = read_track(path)
+    total = max(o + d for o, d, _, _ in notes)
+    grid = np.zeros(-(-total // step_ticks), dtype=int)
+    for onset, _, _, _ in notes:
+        grid[onset // step_ticks] = 1
+    layer = grid[:note_layer_steps]
+    periodic = all(grid[i] == layer[i % note_layer_steps] for i in range(len(grid)))
+    return layer, periodic
+
+def check_derivations(base_binaries, note_layer_steps):
+    """Assert every voice really is what config says it is derived from.
+
+    This is the one class of error the file-level checks cannot see. Change
+    `shift_amount` to 14, or swap `intersection` for `union`, and every clip is still
+    one true period, still ends on a bar line, still matches its ensemble track — and
+    the piece is no longer the structure it claims to be. The project's whole premise
+    is that voices are DERIVED rather than independently authored, so the derivations
+    are what must be checked.
+    """
+    problems = []
+    for cfg in INSTRUMENT_CONFIGS:
+        name = cfg['name']
+        got = base_binaries[name]
+        if 'sieve' in cfg:
+            want = evaluate(cfg['sieve'], len(got))
+            if not np.array_equal(got, want):
+                problems.append(f"{name}: does not match its own sieve expression")
+            continue
+
+        derives_from = cfg['derives_from']
+        if isinstance(derives_from, str):
+            derives_from = [derives_from]
+        sources = [base_binaries[n] for n in derives_from]
+        want = RELATIONSHIPS[cfg['relationship']](sources, cfg)
+        rel = cfg['relationship']
+        if not np.array_equal(got, want):
+            problems.append(f"{name}: is not the {rel} of {derives_from}")
+            continue
+
+        # The relationships also carry structural promises worth stating outright.
+        if rel == 'complement':
+            src = sources[0]
+            if (got & src).any():
+                problems.append(f"{name}: overlaps {derives_from[0]}, so it is not a complement")
+            if not (got | src).all():
+                problems.append(f"{name}: with {derives_from[0]} leaves gaps; a complement "
+                                f"pair must cover every step")
+        elif rel == 'shift':
+            if cfg['shift_amount'] % len(got) == 0:
+                problems.append(f"{name}: shift of {cfg['shift_amount']} is a whole number "
+                                f"of periods — it is a copy, not a canon")
+        elif rel == 'intersection':
+            if not got.any():
+                problems.append(f"{name}: the intersection is empty — the voice is silent")
+    return problems
+
+def verify(voices, periods, total_ticks, note_layer_steps, base_binaries):
     """Re-read every written file and assert what the project actually promises."""
     failures = []
     def check(condition, message):
@@ -375,9 +464,15 @@ def verify(voices, periods, total_ticks, meters, ensemble_meter):
 
     print("\nVerifying the rendered files:")
     steps = {name: len(vel) for name, _, vel, _ in voices}
-    units = {name: st for name, _, _, st in voices}
-    pads  = {name: cfg['root'] for name, cfg in
-             zip([v[0] for v in voices], INSTRUMENT_CONFIGS)}
+    pads  = {cfg['name']: cfg['root'] for cfg in INSTRUMENT_CONFIGS}
+
+    # --- the derivations, before anything about the files -----------------
+    for problem in check_derivations(base_binaries, note_layer_steps):
+        failures.append(problem)
+    if not failures:
+        rels = ", ".join(
+            f"{c['name']}={c.get('relationship', 'base sieve')}" for c in INSTRUMENT_CONFIGS)
+        print(f"  derivations intact: {rels}")
 
     # --- per-voice files -------------------------------------------------
     for name, _, velocities, step_ticks in voices:
@@ -395,6 +490,16 @@ def verify(voices, periods, total_ticks, meters, ensemble_meter):
               f"{name}: some onsets are off the {step_ticks}-tick grid")
         check({p for _, _, p, _ in notes} == {pads[name]},
               f"{name}: expected pitch {pads[name]}")
+        check(min(v for _, _, _, v in notes) >= GHOST_VELOCITY,
+              f"{name}: a hit is quieter than the audible floor {GHOST_VELOCITY} — the "
+              f"sieve selected that step, so it must sound")
+
+        # The rendered rhythm must be the note layer the sieve actually produces.
+        layer, periodic = rhythm_from_file(path, step_ticks, note_layer_steps)
+        check(periodic, f"{name}: onsets are not periodic on {note_layer_steps} steps")
+        if periodic:
+            check(np.array_equal(layer, base_binaries[name]),
+                  f"{name}: the rendered rhythm is not the sieve's note layer")
 
         bar = sig[0] * (4 * TICKS_PER_QUARTER_NOTE) // sig[1]
         check(end % bar == 0,
@@ -480,7 +585,7 @@ def main():
         step_ticks = get_step_ticks(cfg)
 
         span = voice_span(len(binary), accent_dict)
-        binary_full = np.resize(binary, span)
+        binary_full = voice_rhythm(cfg, base_binaries, span)
         accent_bins = create_accent_binaries(accent_dict, span)
         if cfg.get('relationship') == 'shift':
             accent_bins = {k: np.roll(v, cfg['shift_amount'])
@@ -544,7 +649,7 @@ def main():
                 f"{TITLE}_drumrack", total_ticks, ensemble_meter,
                 note=", all voices on one track")
 
-    if not verify(voices, periods, total_ticks, meters, ensemble_meter):
+    if not verify(voices, periods, total_ticks, note_layer_steps, base_binaries):
         sys.exit(1)
 
 if __name__ == '__main__':

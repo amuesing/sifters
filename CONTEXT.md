@@ -98,9 +98,9 @@ LCM?** Include the accent sieves in that question — see the open issue below.
 
 ## `dois_eleven` — hardened rewrite (2026-09-03)
 
-**`dois_eleven` is `dois_ten` with the same music and stricter code.** Verified musically
-identical: all six files match note-for-note in onset, duration, pitch and velocity, and in
-meter, tempo and length. Only the code changed.
+**`dois_eleven` is `dois_ten` with the same rhythms, an audible ghost floor, and code that
+checks itself.** Onsets and pitches are identical to dois_ten in all six files; only
+velocities differ, and only because the ghost floor moved from 1 to 24.
 
 What it fixes, each a class of silent wrongness dois_ten was open to:
 
@@ -119,12 +119,32 @@ What it fixes, each a class of silent wrongness dois_ten was open to:
 4. **Derivations dispatch to named operations** in `transformations.py`, which dois_ten
    imported but never used, reimplementing `1 - src` and `np.roll` inline. Unknown
    relationships, forward references and mismatched source lengths all raise.
-5. **Every run verifies itself.** `verify()` re-reads the written files and asserts what
+5. **The ghost floor is audible.** `GHOST_VELOCITY = 24`, not 1. "Where a number occurs,
+   a sound occurs" — so a step the sieve selects but no accent lands on must still *sound*.
+   At velocity 1, 76 of 714 notes were inaudible on a Drum Rack (a sixth of voice D),
+   which silently subtracted them from the sieve's statement. The cost is nil: the accent
+   weights share a smaller budget and keep the same spread — still 16 distinct velocities,
+   still 16.7% on the most common level, range now 24-127 instead of 1-127.
+6. **The derivations are asserted.** `check_derivations()` proves each voice really is what
+   config says: A matches its own sieve, B is the complement of A (and their union covers
+   every step with no overlap), C is a genuine canon (a shift by a whole period is rejected
+   as a copy), D is the non-empty intersection of A and C. This is the one class of error
+   the file-level checks cannot see — change `shift_amount` to 14 and every clip is still
+   one true period, still ends on a bar line, still matches its ensemble track, and the
+   piece is no longer the structure it claims to be. Tested by sabotage: replacing B with a
+   shift, making D a union, shifting C by a full cycle, and detuning A from its own sieve
+   are each caught and named.
+7. **Rendered rhythms are checked against the sieve.** `verify()` reads each file's note
+   layer back and asserts it equals the binary the sieve produces, and that the file really
+   is periodic on it.
+8. **Every run verifies itself.** `verify()` re-reads the written files and asserts what
    the project promises: each file is exactly one true minimal period (not a repeat of
    something shorter, not a truncation), every clip ends on a bar line, every note is one
    step long and on the grid, no hanging notes or same-pitch overlaps, meter and tempo as
    intended, and every cycle inside both ensemble files identical to that voice's own file.
-   A failure lists each problem and exits non-zero.
+   A failure lists each problem and exits non-zero. A voice defined by a sieve is now
+   EVALUATED over its full span rather than tiled, and `tile_to()` refuses a span a note
+   layer does not divide, so the tiling assumption is removed rather than relied upon.
 
 Point 5 is the important one. **Every bug in this project's history was caught by a
 throwaway script that was then discarded**, so the next regression went unnoticed until

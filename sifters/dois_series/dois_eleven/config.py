@@ -16,6 +16,20 @@ DURATION_MULTIPLIER_KEY = {
     'Thirty-Second Note': 0.125,
 }
 
+# The quietest a sieve hit is allowed to be.
+#
+# "Where a number occurs, a sound occurs" — so a step the sieve selects but no accent
+# lands on must still be AUDIBLE, not merely present. At velocity 1 about a tenth of
+# the piece (and a sixth of voice D) was inaudible on a Drum Rack, which silently
+# subtracted those hits from the sieve's statement. Raising the floor costs almost
+# nothing in contrast: the accent weights simply share a smaller budget and keep the
+# same spread — 16 distinct velocities either way.
+GHOST_VELOCITY = 24
+FULL_VELOCITY  = 127
+
+# A voice with no accent layer at all sits here — neither ghost nor accented.
+UNACCENTED_VELOCITY = 64
+
 # Fallback meter, used only if no meter can put a bar line on a voice's period.
 TIME_SIGNATURE = (4, 4)
 
