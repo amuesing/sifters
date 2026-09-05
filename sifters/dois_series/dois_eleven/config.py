@@ -16,18 +16,22 @@ DURATION_MULTIPLIER_KEY = {
     'Thirty-Second Note': 0.125,
 }
 
-# The quietest a sieve hit is allowed to be.
+# The velocity range, used whole.
 #
-# "Where a number occurs, a sound occurs" — so a step the sieve selects but no accent
-# lands on must still be AUDIBLE, not merely present. At velocity 1 about a tenth of
-# the piece (and a sixth of voice D) was inaudible on a Drum Rack, which silently
-# subtracted those hits from the sieve's statement. Raising the floor costs almost
-# nothing in contrast: the accent weights simply share a smaller budget and keep the
-# same spread — 16 distinct velocities either way.
-GHOST_VELOCITY = 24
-FULL_VELOCITY  = 127
+# MIN_VELOCITY is 1 rather than 0 because MIDI defines a note-on of velocity 0 as a
+# note-off: velocity 0 would delete the note, not sound it faintly. 1 is the quietest a
+# note can be and still exist.
+#
+# The full range is used because **velocity is not volume here**. These parts drive
+# software synths where velocity is mapped to filter cutoff, envelope times, sample
+# layer, or anything else the patch calls for. A low velocity is therefore not a quiet
+# note that might go unheard — it is a different sound. That makes the whole range
+# meaningful and small differences worth keeping, which is why levels are packed as
+# tightly as the range allows rather than spread for audibility.
+MIN_VELOCITY = 1
+MAX_VELOCITY = 127
 
-# A voice with no accent layer at all sits here — neither ghost nor accented.
+# A voice with no accent layer at all has no dynamic information to convey.
 UNACCENTED_VELOCITY = 64
 
 # Fallback meter, used only if no meter can put a bar line on a voice's period.

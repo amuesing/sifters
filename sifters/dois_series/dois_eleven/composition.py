@@ -253,44 +253,36 @@ def accent_code(accent_binaries, labels, n):
         code += (1 << i) * accent_binaries[label].astype(int)
     return code
 
-def generate_velocity_profile(accent_binaries, on):
-    """One velocity per accent state that actually occurs — ranked by rarity, spaced evenly.
+def generate_velocity_profile(accent_binaries):
+    """One velocity per accent state — ranked by rarity, spaced evenly across the range.
 
-    Which state is louder is derived: an accent contributes its rarity (1 - density) to
-    the ordering, so a sparse accent outranks a common one and more accents outrank
-    fewer. Two things are imposed, both for the same reason the ghost floor is — a
-    distinction the sieve makes must be one you can hear.
+    The mapping is SHARED by every voice: it depends only on the accent set, never on
+    which states a particular rhythm happens to reach. So a given combination of accents
+    means the same velocity everywhere in the piece, and velocity is a property of the
+    sieve structure rather than of the notes it lands on.
 
-    EVEN SPACING, rather than velocity proportional to rarity. Proportional spacing let
-    two accents of similar density earn near-identical weights, so genuinely different
-    states rendered 1 velocity apart, and gaps across the range ran 1 to 14.
+    Ordering is derived — an accent contributes its rarity (1 - density), so a sparse
+    accent outranks a common one and more accents outrank fewer. Only the spacing is
+    imposed, and evenly, because proportional spacing let accents of similar density earn
+    near-identical weights and rendered genuinely different states 1 velocity apart.
 
-    ONLY THE STATES THAT OCCUR. Four accents give sixteen combinations, but six of them
-    never coincide with a note in voice A. Spacing all sixteen spent a third of the
-    range on states that never sound: adjacent levels landed 6-7 apart and, merging
-    anything closer than 8, only 5 of 10 levels stayed distinct. Ranking the 10 that do
-    occur spreads them 11-12 apart, every one audible.
-
-    The mapping is therefore per-voice — the same accent state can render at different
-    velocities in different voices, because each voice reaches a different set of states
-    and each is given the whole range. Voices are separate drum sounds whose notes never
-    coincide, so nothing is lost by that; what is gained is that no voice wastes range on
-    a distinction it never makes.
+    All 2^n states are ranked, including any this piece never reaches. Velocity is not
+    volume in this project — it drives synth parameters — so there is no audibility floor
+    to protect and no reason to withhold range from a state merely because the current
+    rhythm misses it. Four accents give 16 levels about 8 apart across 1-127.
     """
     labels = list(accent_binaries)
     if not labels:
         return {'labels': [], 'levels': {0: UNACCENTED_VELOCITY}}
 
     rarity = {label: 1.0 - float(np.mean(arr)) for label, arr in accent_binaries.items()}
-    code = accent_code(accent_binaries, labels, len(on))
-    occurring = sorted(set(code[on].tolist()))
-    by_rarity = sorted(occurring, key=lambda c: (
-        sum(rarity[l] for i, l in enumerate(labels) if c >> i & 1), c))
+    states = range(1 << len(labels))
+    by_rarity = sorted(states, key=lambda code: (
+        sum(rarity[l] for i, l in enumerate(labels) if code >> i & 1), code))
 
-    reach = FULL_VELOCITY - GHOST_VELOCITY
-    levels = {c: (GHOST_VELOCITY if len(by_rarity) == 1
-                  else round(GHOST_VELOCITY + reach * rank / (len(by_rarity) - 1)))
-              for rank, c in enumerate(by_rarity)}
+    reach = MAX_VELOCITY - MIN_VELOCITY
+    levels = {code: round(MIN_VELOCITY + reach * rank / (len(by_rarity) - 1))
+              for rank, code in enumerate(by_rarity)}
     return {'labels': labels, 'levels': levels, 'rarity': rarity}
 
 def accent_voicing(binary, accent_binaries, profile, root_note):
@@ -526,9 +518,9 @@ def verify(voices, periods, total_ticks, note_layers, base_binaries):
               f"{name}: some onsets are off the {step_ticks}-tick grid")
         check({p for _, _, p, _ in notes} == {pads[name]},
               f"{name}: expected pitch {pads[name]}")
-        check(min(v for _, _, _, v in notes) >= GHOST_VELOCITY,
-              f"{name}: a hit is quieter than the audible floor {GHOST_VELOCITY} — the "
-              f"sieve selected that step, so it must sound")
+        check(min(v for _, _, _, v in notes) >= MIN_VELOCITY,
+              f"{name}: a hit has velocity below {MIN_VELOCITY}; MIDI reads velocity 0 "
+              f"as a note-off, so the note would vanish rather than sound")
 
         # The rendered rhythm must be the note layer the sieve actually produces.
         layer, periodic = rhythm_from_file(path, step_ticks, note_layers[name])
@@ -634,7 +626,7 @@ def main():
             accent_bins = {k: np.roll(v, cfg['shift_amount'])
                            for k, v in accent_bins.items()}
 
-        profile = generate_velocity_profile(accent_bins, binary_full.astype(bool))
+        profile = generate_velocity_profile(accent_bins)
         if accent_dict:
             used = sorted(set(profile['levels'].values()))
             gaps = {b - a for a, b in zip(used, used[1:])}
@@ -642,8 +634,8 @@ def main():
             order = " < ".join(sorted(profile['rarity'], key=profile['rarity'].get))
             print(f"  {name}: rhythm {note_layers[name]} steps, accents span {span} "
                   f"({span // note_layers[name]} iterations) — "
-                  f"{len(used)} of {2 ** len(profile['labels'])} accent states occur, "
-                  f"levels {used[0]}-{used[-1]} spaced {spacing}, rarity order {order}")
+                  f"{len(used)} levels {used[0]}-{used[-1]} spaced {spacing}, "
+                  f"rarity order {order}")
 
         notes_per_step, velocities = accent_voicing(binary_full, accent_bins,
                                                     profile, cfg['root'])

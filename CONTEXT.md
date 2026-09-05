@@ -344,38 +344,52 @@ The former `low5` (`5@0|5@1`) was equally arbitrary: the two lowest residues, ma
 clause. It is now `sieve5`. Same density, so nothing about the ordering changed — it just
 means something now.
 
-**Velocity: rank the states that OCCUR, spaced evenly.**
+**Velocity: one shared table, ranked by rarity, spread across the whole 1-127 range.**
+
+```
+1  9  18  26  35  43  51  60  68  77  85  93  102  110  119  127     16 levels, 8-9 apart
+rarity order: cross3 < sieve8 < sieve5 < span32/span9
+```
+
+**Every voice uses this same table.** It depends only on the accent set, never on which
+states a particular rhythm happens to reach, so a given combination of accents means the
+same velocity everywhere in the piece. Velocity is a property of the sieve structure, not
+of the notes it lands on. All 16 states are ranked, including any this piece never reaches.
 
 Ordering is derived — an accent contributes its rarity `(1 - density)`, so a sparse accent
-outranks a common one and more accents outrank fewer. Two things are imposed, both for the
-reason the ghost floor is imposed: *a distinction the sieve makes must be one you can hear.*
+outranks a common one and more accents outrank fewer. Only the spacing is imposed, and
+evenly, because proportional spacing let accents of similar density earn near-identical
+weights and rendered genuinely different states 1 velocity apart.
 
-- **Even spacing, not proportional.** Proportional spacing let accents of similar density
-  earn near-identical weights, so genuinely different states rendered 1 velocity apart.
-- **Only the states that occur.** Four accents give 16 combinations, but 6 never coincide
-  with a note in voice A. Spacing all 16 spent a third of the range on states that never
-  sound — levels landed 6-7 apart and merging anything under 8 left just 5 of 10 distinct.
-  Ranking the 10 that occur spreads them 11-12 apart, every one audible.
+**`MIN_VELOCITY` is 1, not 0.** MIDI defines a note-on of velocity 0 as a note-off, so
+velocity 0 would delete the note rather than sound it faintly. 1 is the quietest a note can
+be and still exist. Verified: zero velocity-0 note-on events in any file.
 
-The mapping is therefore **per-voice**: the same accent state can render at a different
-velocity in different voices, because each reaches a different set of states and each is
-given the whole range. The voices are separate drum sounds whose notes never coincide, so
-nothing is lost; what is gained is that no voice wastes range on a distinction it never makes.
+### A wrong assumption, corrected (2026-09-05)
 
-**Measured — and this version beats every alternative tried:**
+Between 2026-09-03 and 2026-09-05 the velocity design was built on the premise that
+**velocity means volume**, and that a low-velocity note would therefore go unheard. That
+produced two changes which have now been reverted:
 
-| | levels | gaps | entropy | audible after merge | audible entropy |
-|---|---|---|---|---|---|
-| A | 10 | 11-12 | 3.051 | **10** | **3.051** |
-| B | 12 | 9-10 | 3.210 | **12** | **3.210** |
-| C | 10 | 11-12 | 3.051 | **10** | **3.051** |
-| D | 9 | 12-13 | 2.990 | **9** | **2.990** |
-| *dois_ten A* | *16* | *2-17* | *3.596* | *9* | *2.899* |
-| *dois_ten D* | *9* | *2-32* | *2.990* | *6* | *2.530* |
+- a raised floor of 24, on the grounds that ~10% of notes were "inaudible" at velocity 1;
+- wide spacing (and briefly, dropping an accent entirely to get it), on the grounds that
+  differences under about 8 could not be resolved.
 
-Every level is audible in every voice — nothing merges. dois_ten had more raw levels but
-fewer that could be told apart, and 10.6% of its notes below audibility. **Rhythm and pitch
-remain identical to dois_ten in all six files.**
+**The premise was wrong.** The user's note, 2026-09-05: *"When creating the synth patches
+velocity is not necessarily directly tied to volume. I can use velocity to tie many other
+attributes in the sound design process utilizing software synths."* Velocity here drives
+filter cutoff, envelope times, sample layer — whatever a patch maps it to. A low-velocity
+note is not a quiet note that might vanish; it is a **different sound**. So there is no
+audibility floor to protect, no just-noticeable-difference to spread levels around, and no
+reason to withhold range from a state the current rhythm happens to miss.
+
+The lesson worth keeping: the audibility reasoning was sound engineering applied to a
+premise never checked with the person who knew. Ask what velocity is *for* before
+optimising what it looks like.
+
+Voices use different subsets of the shared table, which is expected — a voice reaches only
+the accent states its rhythm coincides with. A, C use 10 of 16; B uses 12; D uses 9. The
+*values* are identical; only which of them occur differs.
 
 ### Velocity Arrays
 
