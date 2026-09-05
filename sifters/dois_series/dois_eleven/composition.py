@@ -122,16 +122,23 @@ def meter_for_voice(step_ticks, note_layer_ticks, period_ticks):
             return int(numerator), int(denominator)
     return meter_for(period_ticks, denominators=(4, 8, 16, 2, 32, 1, 64))
 
-def shared_meter(lengths, note_layer_ticks):
+def shared_meter(lengths, candidate_bars):
     """One meter for every voice, when one exists.
 
-    The natural bar is one pass of the note layer at the finest basic unit. It can be
-    shared only if EVERY length is a whole number of those bars — otherwise some clip
-    would not end on a bar line and the host would pad it.
+    A candidate bar is one pass of SOME voice's note layer at that voice's own basic
+    unit. Voices may have different note layers and different units, so each offers a
+    different candidate. One can be shared only if it divides EVERY length — otherwise
+    a clip would not end on a bar line and the host would pad it — and is expressible
+    as a meter at all. The finest workable bar wins, so the beat stays a real
+    subdivision rather than a coarse container.
     """
-    if any(length % note_layer_ticks for length in lengths):
-        return None
-    return meter_for(note_layer_ticks)
+    for bar in sorted(set(candidate_bars)):
+        if any(length % bar for length in lengths):
+            continue
+        meter = meter_for(bar)
+        if meter:
+            return meter
+    return None
 
 def append_header(track, name, meter):
     track.append(mido.MetaMessage('track_name', name=name, time=0))
@@ -175,17 +182,13 @@ def voice_rhythm(config, base_binaries, span):
     sources = [tile_to(base_binaries[n], span) for n in derives_from]
     return RELATIONSHIPS[config['relationship']](sources, config)
 
-def build_binary(config, base_binaries):
-    """One voice's note layer, over exactly one period of its own sieve."""
-    if 'sieve' in config:
-        period = true_period(config['sieve'])
-        return evaluate(config['sieve'], period), period
+def sources_for(config, base_binaries):
+    """The source note layers a derived voice combines, tiled to a common length.
 
-    relationship = config.get('relationship')
-    if relationship not in RELATIONSHIPS:
-        raise ValueError(f"voice {config.get('name')!r}: unknown relationship "
-                         f"{relationship!r}. Known: {sorted(RELATIONSHIPS)}")
-
+    Sources need not share a period. Two sieves of period 40 and 35 are both defined
+    over LCM(40, 35) = 280 steps, and that is where their intersection or union lives.
+    Tiling each to the LCM is the only way to combine them without misaligning one.
+    """
     derives_from = config['derives_from']
     if isinstance(derives_from, str):
         derives_from = [derives_from]
@@ -195,12 +198,31 @@ def build_binary(config, base_binaries):
                          f"is not defined before it")
 
     sources = [base_binaries[n] for n in derives_from]
-    if len({len(s) for s in sources}) != 1:
-        raise ValueError(f"voice {config.get('name')!r}: sources have different lengths "
-                         f"{[len(s) for s in sources]}; they must share a period")
+    common = math.lcm(*(len(s) for s in sources))
+    return [tile_to(s, common) for s in sources]
 
-    result = RELATIONSHIPS[relationship](sources, config)
-    return result, len(result)
+def build_binary(config, base_binaries):
+    """One voice's note layer, at its OWN true period.
+
+    Every voice derives its own period; they happen to coincide here because all four
+    descend from one 40-step sieve, but nothing assumes that. A voice defined by its
+    own sieve takes that sieve's measured period. A derived voice is combined over the
+    LCM of its sources' periods, then reduced to the period the result actually has —
+    a derivation can close sooner than its sources do, and the voice's length must state
+    the period it really has, not the one it was computed over.
+    """
+    if 'sieve' in config:
+        period = true_period(config['sieve'])
+        return evaluate(config['sieve'], period), period
+
+    relationship = config.get('relationship')
+    if relationship not in RELATIONSHIPS:
+        raise ValueError(f"voice {config.get('name')!r}: unknown relationship "
+                         f"{relationship!r}. Known: {sorted(RELATIONSHIPS)}")
+
+    result = RELATIONSHIPS[relationship](sources_for(config, base_binaries), config)
+    period = minimal_period(result)
+    return result[:period], period
 
 # ---------------------------------------------------------------------------
 # Accent voicing
@@ -404,7 +426,7 @@ def rhythm_from_file(path, step_ticks, note_layer_steps):
     periodic = all(grid[i] == layer[i % note_layer_steps] for i in range(len(grid)))
     return layer, periodic
 
-def check_derivations(base_binaries, note_layer_steps):
+def check_derivations(base_binaries):
     """Assert every voice really is what config says it is derived from.
 
     This is the one class of error the file-level checks cannot see. Change
@@ -427,8 +449,9 @@ def check_derivations(base_binaries, note_layer_steps):
         derives_from = cfg['derives_from']
         if isinstance(derives_from, str):
             derives_from = [derives_from]
-        sources = [base_binaries[n] for n in derives_from]
+        sources = sources_for(cfg, base_binaries)
         want = RELATIONSHIPS[cfg['relationship']](sources, cfg)
+        want = want[:minimal_period(want)]
         rel = cfg['relationship']
         if not np.array_equal(got, want):
             problems.append(f"{name}: is not the {rel} of {derives_from}")
@@ -436,7 +459,7 @@ def check_derivations(base_binaries, note_layer_steps):
 
         # The relationships also carry structural promises worth stating outright.
         if rel == 'complement':
-            src = sources[0]
+            src = tile_to(sources[0], len(got)) if len(sources[0]) != len(got) else sources[0]
             if (got & src).any():
                 problems.append(f"{name}: overlaps {derives_from[0]}, so it is not a complement")
             if not (got | src).all():
@@ -451,7 +474,7 @@ def check_derivations(base_binaries, note_layer_steps):
                 problems.append(f"{name}: the intersection is empty — the voice is silent")
     return problems
 
-def verify(voices, periods, total_ticks, note_layer_steps, base_binaries):
+def verify(voices, periods, total_ticks, note_layers, base_binaries):
     """Re-read every written file and assert what the project actually promises."""
     failures = []
     def check(condition, message):
@@ -464,7 +487,7 @@ def verify(voices, periods, total_ticks, note_layer_steps, base_binaries):
     pads  = {cfg['name']: cfg['root'] for cfg in INSTRUMENT_CONFIGS}
 
     # --- the derivations, before anything about the files -----------------
-    for problem in check_derivations(base_binaries, note_layer_steps):
+    for problem in check_derivations(base_binaries):
         failures.append(problem)
     if not failures:
         rels = ", ".join(
@@ -492,8 +515,9 @@ def verify(voices, periods, total_ticks, note_layer_steps, base_binaries):
               f"sieve selected that step, so it must sound")
 
         # The rendered rhythm must be the note layer the sieve actually produces.
-        layer, periodic = rhythm_from_file(path, step_ticks, note_layer_steps)
-        check(periodic, f"{name}: onsets are not periodic on {note_layer_steps} steps")
+        layer, periodic = rhythm_from_file(path, step_ticks, note_layers[name])
+        check(periodic,
+              f"{name}: onsets are not periodic on its {note_layers[name]}-step note layer")
         if periodic:
             check(np.array_equal(layer, base_binaries[name]),
                   f"{name}: the rendered rhythm is not the sieve's note layer")
@@ -559,15 +583,21 @@ def main():
     for stale in glob.glob(os.path.join(OUTPUT_DIR, '*.mid')):
         os.remove(stale)
 
-    base_binaries = {}
+    # Every voice derives its OWN note-layer period — measured, never declared. They
+    # coincide here because all four descend from one 40-step sieve, but nothing assumes
+    # it: an independent sieve of another period, or a derivation that closes sooner than
+    # its sources, would simply carry its own.
+    base_binaries, note_layers = {}, {}
     for cfg in INSTRUMENT_CONFIGS:
-        binary, _ = build_binary(cfg, base_binaries)
+        binary, period = build_binary(cfg, base_binaries)
         base_binaries[cfg['name']] = binary
+        note_layers[cfg['name']] = period
 
-    # The note layer's period is the base sieve's, measured — never declared.
-    note_layer_steps = len(base_binaries[INSTRUMENT_CONFIGS[0]['name']])
-
-    print(f"Note layer: {note_layer_steps} steps (derived from the base sieve)\n")
+    distinct = sorted(set(note_layers.values()))
+    print("Note layers (each derived from that voice's own sieve): "
+          + ", ".join(f"{n} {p}" for n, p in note_layers.items())
+          + (f"  — all {distinct[0]} steps\n" if len(distinct) == 1
+             else f"  — {len(distinct)} different periods in play\n"))
     print("Densities:")
     for cfg in INSTRUMENT_CONFIGS:
         b = base_binaries[cfg['name']]
@@ -581,7 +611,7 @@ def main():
         binary = base_binaries[name]
         step_ticks = get_step_ticks(cfg)
 
-        span = voice_span(len(binary), accent_dict)
+        span = voice_span(note_layers[name], accent_dict)
         binary_full = voice_rhythm(cfg, base_binaries, span)
         accent_bins = create_accent_binaries(accent_dict, span)
         if cfg.get('relationship') == 'shift':
@@ -594,8 +624,8 @@ def main():
             gaps = {b - a for a, b in zip(used, used[1:])}
             spacing = str(gaps.pop()) if len(gaps) == 1 else f"{min(gaps)}-{max(gaps)}"
             order = " < ".join(sorted(profile['rarity'], key=profile['rarity'].get))
-            print(f"  {name}: rhythm {len(binary)} steps, accents span {span} "
-                  f"({span // len(binary)} iterations) — {len(used)} levels "
+            print(f"  {name}: rhythm {note_layers[name]} steps, accents span {span} "
+                  f"({span // note_layers[name]} iterations) — {len(used)} levels "
                   f"{used[0]}-{used[-1]}, spacing {spacing} (integer rounding of "
                   f"{(FULL_VELOCITY - GHOST_VELOCITY) / (len(used) - 1):.2f}), "
                   f"rarity order {order}")
@@ -613,8 +643,9 @@ def main():
     print(f"  Ensemble {total_ticks} ticks — "
           + ", ".join(f"{n} x{total_ticks // p}" for n, p in periods.items()))
 
-    note_layer_ticks = note_layer_steps * min(st for _, _, _, st in voices)
-    one = shared_meter(list(periods.values()) + [total_ticks], note_layer_ticks)
+    # Each voice offers one candidate bar: a pass of its own note layer at its own unit.
+    candidate_bars = [note_layers[name] * st for name, _, _, st in voices]
+    one = shared_meter(list(periods.values()) + [total_ticks], candidate_bars)
     if one:
         bar = one[0] * (4 * TICKS_PER_QUARTER_NOTE) // one[1]
         print(f"\n  Shared meter {one[0]}/{one[1]} (bar {bar} ticks) — "
@@ -624,7 +655,7 @@ def main():
         print("\n  No single meter fits every period; using per-voice meters.")
         meters = {}
         for name, _, _, step_ticks in voices:
-            m = meter_for_voice(step_ticks, note_layer_steps * step_ticks, periods[name])
+            m = meter_for_voice(step_ticks, note_layers[name] * step_ticks, periods[name])
             if m is None:
                 m = TIME_SIGNATURE
                 print(f"  !! {name}: no meter lands on {periods[name]} ticks — "
@@ -641,9 +672,7 @@ def main():
         arrangement.append(make_track(name, repeated, total_ticks, meters[name]))
         merged.extend(repeated)
 
-    smallest = min(st for _, _, _, st in voices)
-    ensemble_meter = one or meter_for_voice(smallest, note_layer_steps * smallest,
-                                            total_ticks) or TIME_SIGNATURE
+    ensemble_meter = one or meter_for(min(candidate_bars)) or TIME_SIGNATURE
     print()
     reps = ", ".join(f"{n} x{total_ticks // p}" for n, p in periods.items())
     save_tracks(arrangement, f"{TITLE}_arrangement", total_ticks, ensemble_meter,
@@ -652,7 +681,7 @@ def main():
                 f"{TITLE}_drumrack", total_ticks, ensemble_meter,
                 note=", all voices on one track")
 
-    if not verify(voices, periods, total_ticks, note_layer_steps, base_binaries):
+    if not verify(voices, periods, total_ticks, note_layers, base_binaries):
         sys.exit(1)
 
 if __name__ == '__main__':
