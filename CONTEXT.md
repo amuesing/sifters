@@ -110,9 +110,25 @@ What it fixes, each a class of silent wrongness dois_ten was open to:
    upper bound: `32@0|32@1|32@16|32@17` reports 32 and truly repeats every 16. dois_ten
    would have rendered such a voice at 480 steps — the same material twice, still called
    one period. dois_eleven measures 240 and prints a warning naming the expression.
-2. **The note layer's period is derived from the base sieve**, not the hardcoded
-   `NOTE_LAYER_STEPS = 40`. Change the sieve to one of period 35 and the bar follows to
-   4200 ticks / 35-16; dois_ten would have kept using a 4800-tick bar.
+2. **Every voice derives its OWN period**, measured, never declared. dois_ten hardcoded
+   `NOTE_LAYER_STEPS = 40`; the first dois_eleven derived it but took the *first* voice's
+   period as everyone's, which holds only while all voices descend from one sieve. Now:
+
+   - a voice with its own sieve takes that sieve's **measured** period;
+   - a derived voice combines its sources over the **LCM of their periods** - sources need
+     not share one, so a 40-step and a 35-step sieve intersect over 280 - and the result
+     is then **reduced to the period it actually has**, since a derivation can close
+     sooner than its sources do;
+   - each voice offers one **candidate bar** (a pass of its own note layer at its own
+     unit). `shared_meter` takes the finest that divides every length, and returns None
+     rather than forcing one when no bar fits, so per-voice meters take over.
+
+   Tested on a config with two independent sieves: A (40 steps), E (35), F = A intersect E
+   (280), G = complement of E on a triplet grid. Each derived its own period; no shared
+   meter existed so per-voice meters were used (A 40/16, E 35/16, F 70/2); and G correctly
+   got none at all, its 5600-tick period having no factor of 3. That config could not
+   previously be expressed: E would have been mislabelled 40 steps, and F would have raised
+   on sources of unequal length.
 3. **Unknown duration names raise.** `'sixteenth note'` or `'Triplet Eighth'` used to
    silently become a sixteenth — the exact shape of the bug that produced the 40/16 meter
    error. Now a `KeyError` naming the voice and listing valid durations.
