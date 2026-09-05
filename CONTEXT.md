@@ -309,59 +309,73 @@ C: [2,4,6,10,11,13,14,21,23,26,27,29,35,36,38]
 D: [10, 13, 14, 23, 29, 38]
 ```
 
-### Accent Voicing — ranked and evenly spaced (2026-09-03)
+### Accent Voicing — derived accents, ranked over occurring states (2026-09-05)
 
-**Three** accent sieves per voice — two shared, plus that voice's parity accent. Velocity
-is picked by WHICH accents are firing: the 8 achievable combinations are **ordered by
-rarity** and **spaced evenly** from `GHOST_VELOCITY` (24) to `FULL_VELOCITY` (127).
+**Four accents per voice, and each one means something.**
 
-```
-levels  24  39  53  68  83  98  112  127        spacing 14-15
-                                                (integer rounding of 103/7 = 14.71)
-rarity order: mod3 (66.7%) < low5 (40%) < span32/span9 (15.6%)
-```
-
-Ordering is still derived — an accent contributes its rarity `(1 - density)`, so a sparse
-accent outranks a common one and more accents outrank fewer. Only the **spacing** is
-imposed, for the same reason the ghost floor is: *a distinction the sieve makes must be
-one you can hear.*
-
-**Why not scale velocity proportionally to rarity, as it did first.** Two accents of
-similar density earned near-identical weights — low5 at 40% got 26, wide8 at 37.5% got 27
-— so four genuinely different sieve states rendered **1 velocity apart**, and gaps across
-the range ran from 1 to 14, a 14:1 ratio. "16 distinct velocities" was really about 9
-perceptible ones.
-
-**Why three accents and not four.** Four gave 16 combinations across a 103-velocity range —
-about 7 apart even when perfectly spaced, at the edge of audibility. Three gives 8 levels a
-comfortable ~15 apart.
-
-**`wide8` was the one dropped, and only low5 or wide8 could be.** Their moduli (5 and 8)
-already divide the 40-step note layer, so they contribute nothing to the LCM and removing
-either leaves every period and the duration parity untouched. `mod3` and the parity accent
-are what set the span — remove either and the durations change. So the accent that could be
-spared happened to be one of the two that were colliding. low5 was kept on measurement:
-both give near-identical evenness (entropy 2.643 vs 2.636), but low5 puts full velocity on
-5.6% of notes rather than 10%, keeping the all-agree moment rare.
-
-**Measured, voice A (180 notes):**
-
-| velocity | notes | share |
+| accent | expression | what it is |
 |---|---|---|
-| 24 (ghost) | 28 | 15.6% |
-| 39 | 56 | 31.1% |
-| 53 | 19 | 10.6% |
-| 68 | 8 | 4.4% |
-| 83 | 38 | 21.1% |
-| 98 | 16 | 8.9% |
-| 112 | 5 | 2.8% |
-| 127 (all three) | 10 | 5.6% |
+| `sieve5` | `5@1\|5@3` | clause 1's mod-5, **verbatim from the sieve** |
+| `sieve8` | `8@0\|8@1\|8@2\|8@5\|8@6` | clauses 2+3's mod-8, **verbatim from the sieve** |
+| `cross3` | `3@0\|3@1` | modulus 3 — **absent from the sieve**, deliberately foreign |
+| `span32` / `span9` | | the parity accent; carries `sieve8`'s / `cross3`'s residues up to a new modulus |
 
-Entropy 2.643 of a possible 3.000. **Rhythm and pitch are identical to dois_ten in all six
-files** — every change here is velocity only.
+The psappha sieve, clause by clause:
 
-**Voice D uses 6 of the 8 levels**, not all 8. With only 6 hits per 40 steps, two accent
-combinations never coincide with a D note. Not a defect — a consequence of how sparse D is.
+```
+clause 1   (8@0|8@1|8@7) & (5@1|5@3)        mod-8 {0,1,7}   mod-5 {1,3}
+clause 2   (8@0|8@1|8@2) & 5@0              mod-8 {0,1,2}   mod-5 {0}
+clause 3   (8@5|8@6) & (5@2|5@3|5@4)        mod-8 {5,6}     mod-5 {2,3,4}
+```
+
+`sieve8` = clauses 2+3's mod-8 = every mod-8 residue the sieve uses except 7. `sieve5` =
+clause 1's mod-5. Between them they reference all three clauses: **the sieve accents its
+own vocabulary.** `cross3` is the deliberate outsider — modulus 3 appears nowhere in the
+sieve, which is exactly why it does not divide the 40-step note layer, and so is what
+makes the accent field land differently on each pass and carries the factor of 3 the
+triplet voice's period needs.
+
+**Two mistakes were made here and are recorded so they are not repeated.** `sieve8` was
+`wide8` and had been written `8@0|8@1|8@2|8@5|8@6` since dois_two. On 2026-09-03 it was
+thinned to `8@0|8@1|8@5` purely because that measured better, and then dropped entirely.
+{0,1,5} matches no clause — the thinning **turned a derived object into a hand-picked
+one**, and dropping it removed the sieve's mod-8 self-reference from the accent layer.
+The former `low5` (`5@0|5@1`) was equally arbitrary: the two lowest residues, matching no
+clause. It is now `sieve5`. Same density, so nothing about the ordering changed — it just
+means something now.
+
+**Velocity: rank the states that OCCUR, spaced evenly.**
+
+Ordering is derived — an accent contributes its rarity `(1 - density)`, so a sparse accent
+outranks a common one and more accents outrank fewer. Two things are imposed, both for the
+reason the ghost floor is imposed: *a distinction the sieve makes must be one you can hear.*
+
+- **Even spacing, not proportional.** Proportional spacing let accents of similar density
+  earn near-identical weights, so genuinely different states rendered 1 velocity apart.
+- **Only the states that occur.** Four accents give 16 combinations, but 6 never coincide
+  with a note in voice A. Spacing all 16 spent a third of the range on states that never
+  sound — levels landed 6-7 apart and merging anything under 8 left just 5 of 10 distinct.
+  Ranking the 10 that occur spreads them 11-12 apart, every one audible.
+
+The mapping is therefore **per-voice**: the same accent state can render at a different
+velocity in different voices, because each reaches a different set of states and each is
+given the whole range. The voices are separate drum sounds whose notes never coincide, so
+nothing is lost; what is gained is that no voice wastes range on a distinction it never makes.
+
+**Measured — and this version beats every alternative tried:**
+
+| | levels | gaps | entropy | audible after merge | audible entropy |
+|---|---|---|---|---|---|
+| A | 10 | 11-12 | 3.051 | **10** | **3.051** |
+| B | 12 | 9-10 | 3.210 | **12** | **3.210** |
+| C | 10 | 11-12 | 3.051 | **10** | **3.051** |
+| D | 9 | 12-13 | 2.990 | **9** | **2.990** |
+| *dois_ten A* | *16* | *2-17* | *3.596* | *9* | *2.899* |
+| *dois_ten D* | *9* | *2-32* | *2.990* | *6* | *2.530* |
+
+Every level is audible in every voice — nothing merges. dois_ten had more raw levels but
+fewer that could be told apart, and 10.6% of its notes below audibility. **Rhythm and pitch
+remain identical to dois_ten in all six files.**
 
 ### Velocity Arrays
 

@@ -60,32 +60,49 @@ TEMPO_BPM = 120
 # 16, which would halve the period. music21's Sieve.period() reports the nominal
 # modulus and will not catch it; composition.py measures the true period instead and
 # refuses to run if the two disagree.
-# Three accents per voice, not four. Four gave 16 combinations across a 103-velocity
-# range — about 7 apart even when perfectly spaced, at the edge of audibility — and two
-# of them (low5 at 40%, wide8 at 37.5%) were so close in density that they earned
-# near-identical weights and rendered 1 velocity apart. Three gives 8 combinations a
-# comfortable 15 apart.
+# Four accents per voice. Two are drawn from the base sieve's own vocabulary, one
+# introduces a modulus the sieve does not use, and one sets the period.
 #
-# `wide8` was the one dropped, and it was safe to drop because its modulus 8 already
-# DIVIDES the 40-step note layer: it contributed nothing to the LCM, so removing it
-# leaves every period and the duration parity untouched. The same is true of low5
-# (modulus 5). mod3 and the parity accent are what actually set the span — neither can
-# be removed without changing the durations.
+#   The psappha sieve, clause by clause:
+#     clause 1   (8@0|8@1|8@7) & (5@1|5@3)        mod-8 {0,1,7}   mod-5 {1,3}
+#     clause 2   (8@0|8@1|8@2) & 5@0              mod-8 {0,1,2}   mod-5 {0}
+#     clause 3   (8@5|8@6) & (5@2|5@3|5@4)        mod-8 {5,6}     mod-5 {2,3,4}
 #
-# low5 was kept over wide8 on measurement: both give the same 8 evenly spaced levels
-# and near-identical evenness (entropy 2.643 vs 2.636), but low5 puts full velocity on
-# 5.6% of notes rather than 10%, keeping the moment all three accents agree genuinely
-# rare.
+# `sieve8` is the mod-8 residues of clauses 2 and 3 together — equivalently, every
+# mod-8 residue the sieve uses except 7. It has been written that way since dois_two.
+# It was briefly thinned to 8@0|8@1|8@5 on 2026-09-03 to fix a velocity-spacing
+# problem, and then dropped entirely; both were mistakes. {0,1,5} corresponds to no
+# clause of the sieve, so the thinning turned a derived object into a hand-picked one,
+# and dropping it removed the sieve's mod-8 self-reference from the accent layer
+# altogether. Ranked velocity spacing solves the spacing problem without touching the
+# residues, so the original is restored.
+#
+# `sieve5` is clause 1's mod-5 component, verbatim. It replaces the former `low5`
+# (5@0|5@1), which matched no clause — it was simply the two lowest residues, chosen
+# by hand. Same density, so the ordering is unaffected; the difference is that it now
+# means something. Between them, sieve8 and sieve5 reference all three clauses.
+#
+# `cross3` uses modulus 3, which appears NOWHERE in the sieve. That is deliberate and
+# should not be "corrected": it is the accent that does not divide the 40-step note
+# layer, so it is what makes the accent field land differently on each pass, and it
+# carries the factor of 3 the triplet voice's period needs. A foreign modulus by
+# choice, not by oversight.
+#
+# The parity accent is derived in turn: span32 carries sieve8's residue set up to
+# modulus 32, span9 carries cross3's shape up to modulus 9.
 _BASE_ACCENTS = {
-    'low5': '5@0|5@1',
-    # Deliberately dense at 66.7%. Density spread is what makes the ranking meaningful.
-    'mod3': '3@0|3@1',
+    'sieve5': '5@1|5@3',                    # clause 1's mod-5, verbatim
+    'sieve8': '8@0|8@1|8@2|8@5|8@6',        # clauses 2+3's mod-8, verbatim
+    'cross3': '3@0|3@1',                    # a modulus the sieve does not use
 }
-ACCENTS_SIXTEENTH = dict(_BASE_ACCENTS, span32='32@0|32@1|32@2|32@5|32@6')
-# 9 is a multiple of 3, so mod3 survives alongside it and D still accents the beat
-# (on the triplet grid, 3 steps = 480 ticks = one quarter note).
-ACCENTS_TRIPLET   = dict(_BASE_ACCENTS, span9='9@0|9@1')
 
+# The parity accent: its modulus is what makes a voice's period in TICKS match the
+# others' despite a different basic unit. Residues are carried up from an existing
+# accent rather than invented — span32 is sieve8's residue set at modulus 32, span9
+# is cross3's shape at modulus 9 (and 9 being a multiple of 3, cross3 survives beside
+# it, so the triplet voice still accents the beat every 3 steps = one quarter note).
+ACCENTS_SIXTEENTH = dict(_BASE_ACCENTS, span32='32@0|32@1|32@2|32@5|32@6')
+ACCENTS_TRIPLET   = dict(_BASE_ACCENTS, span9='9@0|9@1')
 # ---------------------------------------------------------------------------
 # Voices — each derived from the base sieve, never independently authored
 # ---------------------------------------------------------------------------

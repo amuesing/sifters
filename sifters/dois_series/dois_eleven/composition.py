@@ -246,32 +246,51 @@ def create_accent_binaries(accent_dict, span):
     """
     return {label: evaluate(pattern, span) for label, pattern in accent_dict.items()}
 
-def generate_velocity_profile(accent_binaries):
-    """One velocity per achievable accent combination — ORDERED by rarity, spaced EVENLY.
+def accent_code(accent_binaries, labels, n):
+    """One integer per step: a bitmask of which accents are firing there."""
+    code = np.zeros(n, dtype=int)
+    for i, label in enumerate(labels):
+        code += (1 << i) * accent_binaries[label].astype(int)
+    return code
 
-    Which combination is louder is still derived: an accent contributes its rarity
-    (1 - density) to the ordering, so a sparse accent outranks a common one and more
-    accents outrank fewer. Only the SPACING is imposed, for exactly the reason the ghost
-    floor is imposed — a distinction the sieve makes must be one you can hear.
+def generate_velocity_profile(accent_binaries, on):
+    """One velocity per accent state that actually occurs — ranked by rarity, spaced evenly.
 
-    Scaling velocity proportionally to rarity did not achieve that. Two accents of
-    similar density earned near-identical weights (26 and 27), so four genuinely
-    different sieve states rendered 1 velocity apart, and the gaps between levels ranged
-    from 1 to 14. Ranking gives a constant gap instead: 15 with three accents.
+    Which state is louder is derived: an accent contributes its rarity (1 - density) to
+    the ordering, so a sparse accent outranks a common one and more accents outrank
+    fewer. Two things are imposed, both for the same reason the ghost floor is — a
+    distinction the sieve makes must be one you can hear.
+
+    EVEN SPACING, rather than velocity proportional to rarity. Proportional spacing let
+    two accents of similar density earn near-identical weights, so genuinely different
+    states rendered 1 velocity apart, and gaps across the range ran 1 to 14.
+
+    ONLY THE STATES THAT OCCUR. Four accents give sixteen combinations, but six of them
+    never coincide with a note in voice A. Spacing all sixteen spent a third of the
+    range on states that never sound: adjacent levels landed 6-7 apart and, merging
+    anything closer than 8, only 5 of 10 levels stayed distinct. Ranking the 10 that do
+    occur spreads them 11-12 apart, every one audible.
+
+    The mapping is therefore per-voice — the same accent state can render at different
+    velocities in different voices, because each voice reaches a different set of states
+    and each is given the whole range. Voices are separate drum sounds whose notes never
+    coincide, so nothing is lost by that; what is gained is that no voice wastes range on
+    a distinction it never makes.
     """
     labels = list(accent_binaries)
     if not labels:
-        return {'labels': [], 'levels': np.array([UNACCENTED_VELOCITY]), 'rarity': {}}
+        return {'labels': [], 'levels': {0: UNACCENTED_VELOCITY}}
 
     rarity = {label: 1.0 - float(np.mean(arr)) for label, arr in accent_binaries.items()}
-    combinations = range(1 << len(labels))
-    by_rarity = sorted(combinations, key=lambda code: (
-        sum(rarity[l] for i, l in enumerate(labels) if code >> i & 1), code))
+    code = accent_code(accent_binaries, labels, len(on))
+    occurring = sorted(set(code[on].tolist()))
+    by_rarity = sorted(occurring, key=lambda c: (
+        sum(rarity[l] for i, l in enumerate(labels) if c >> i & 1), c))
 
-    levels = np.zeros(len(by_rarity), dtype=int)
     reach = FULL_VELOCITY - GHOST_VELOCITY
-    for rank, code in enumerate(by_rarity):
-        levels[code] = round(GHOST_VELOCITY + reach * rank / (len(by_rarity) - 1))
+    levels = {c: (GHOST_VELOCITY if len(by_rarity) == 1
+                  else round(GHOST_VELOCITY + reach * rank / (len(by_rarity) - 1)))
+              for rank, c in enumerate(by_rarity)}
     return {'labels': labels, 'levels': levels, 'rarity': rarity}
 
 def accent_voicing(binary, accent_binaries, profile, root_note):
@@ -284,12 +303,9 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
             raise RuntimeError(f"accent {label!r} has {len(arr)} steps, voice has {n}")
 
     # Which accents are present picks the level — not merely how many of them.
-    code = np.zeros(n, dtype=int)
-    for i, label in enumerate(profile['labels']):
-        code += (1 << i) * accent_binaries[label].astype(int)
-
+    code = accent_code(accent_binaries, profile['labels'], n)
     velocities = np.zeros(n, dtype=int)
-    velocities[on] = profile['levels'][code[on]]
+    velocities[on] = [profile['levels'][c] for c in code[on]]
 
     notes_per_step = [[] for _ in range(n)]
     for i in np.flatnonzero(on):
@@ -618,17 +634,16 @@ def main():
             accent_bins = {k: np.roll(v, cfg['shift_amount'])
                            for k, v in accent_bins.items()}
 
-        profile = generate_velocity_profile(accent_bins)
+        profile = generate_velocity_profile(accent_bins, binary_full.astype(bool))
         if accent_dict:
-            used = sorted(set(profile['levels'].tolist()))
+            used = sorted(set(profile['levels'].values()))
             gaps = {b - a for a, b in zip(used, used[1:])}
             spacing = str(gaps.pop()) if len(gaps) == 1 else f"{min(gaps)}-{max(gaps)}"
             order = " < ".join(sorted(profile['rarity'], key=profile['rarity'].get))
             print(f"  {name}: rhythm {note_layers[name]} steps, accents span {span} "
-                  f"({span // note_layers[name]} iterations) — {len(used)} levels "
-                  f"{used[0]}-{used[-1]}, spacing {spacing} (integer rounding of "
-                  f"{(FULL_VELOCITY - GHOST_VELOCITY) / (len(used) - 1):.2f}), "
-                  f"rarity order {order}")
+                  f"({span // note_layers[name]} iterations) — "
+                  f"{len(used)} of {2 ** len(profile['labels'])} accent states occur, "
+                  f"levels {used[0]}-{used[-1]} spaced {spacing}, rarity order {order}")
 
         notes_per_step, velocities = accent_voicing(binary_full, accent_bins,
                                                     profile, cfg['root'])
