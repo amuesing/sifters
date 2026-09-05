@@ -100,13 +100,34 @@ _BASE_ACCENTS = {
     'cross3': '3@0|3@1',                    # a modulus the sieve does not use
 }
 
-# The parity accent: its modulus is what makes a voice's period in TICKS match the
-# others' despite a different basic unit. Residues are carried up from an existing
-# accent rather than invented — span32 is sieve8's residue set at modulus 32, span9
-# is cross3's shape at modulus 9 (and 9 being a multiple of 3, cross3 survives beside
-# it, so the triplet voice still accents the beat every 3 steps = one quarter note).
-ACCENTS_SIXTEENTH = dict(_BASE_ACCENTS, span32='32@0|32@1|32@2|32@5|32@6')
-ACCENTS_TRIPLET   = dict(_BASE_ACCENTS, span9='9@0|9@1')
+# The parity accent. Its MODULUS is what makes a voice's period in ticks match the
+# others' despite a different basic unit; its RESIDUES decide whether it is an
+# independent layer or merely a refinement of another accent.
+#
+# It must be INDEPENDENT: it has to fire both with and without every other accent, or
+# some accent states can never occur. The earlier residue sets failed this. Carrying a
+# parent's residues up to a higher modulus — span32 = sieve8's {0,1,2,5,6} at mod 32,
+# span9 = cross3's {0,1} at mod 9 — guarantees CONTAINMENT whenever the residues are
+# smaller than the parent's modulus: every n congruent to 0,1,2,5,6 mod 32 is also
+# 0,1,2,5,6 mod 8. So span32 could never fire without sieve8, span9 never without
+# cross3, and 4 of the 16 accent states were unreachable by construction.
+#
+# The rule instead: take some residues the parent covers AND at least one it omits.
+#
+#   sieve8 is clauses 2+3's mod-8 {0,1,2,5,6}; clause 1's is {0,1,7}. Lifting clause 1
+#   to modulus 32 gives 32@0|32@1|32@7 — it shares 0 and 1 with sieve8 and adds 7,
+#   which sieve8 omits. Derived from the sieve, and independent of sieve8 for exactly
+#   the reason that makes it derived: clause 1 is the clause sieve8 leaves out. Between
+#   them the two accents now cover all three clauses' mod-8 vocabulary.
+#
+#   cross3 is foreign to the sieve, so its parity partner follows the rule rather than
+#   a clause: 9@0|9@2 shares residue 0 with cross3 ({0,1} mod 3) and adds 2, which
+#   cross3 omits.
+#
+# All 16 accent states are now reachable in every voice.
+ACCENTS_SIXTEENTH = dict(_BASE_ACCENTS, span32='32@0|32@1|32@7')
+ACCENTS_TRIPLET   = dict(_BASE_ACCENTS, span9='9@0|9@2')
+
 # ---------------------------------------------------------------------------
 # Voices — each derived from the base sieve, never independently authored
 # ---------------------------------------------------------------------------

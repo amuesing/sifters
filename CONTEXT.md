@@ -365,6 +365,41 @@ weights and rendered genuinely different states 1 velocity apart.
 velocity 0 would delete the note rather than sound it faintly. 1 is the quietest a note can
 be and still exist. Verified: zero velocity-0 note-on events in any file.
 
+### The parity accent must be INDEPENDENT (2026-09-05)
+
+Four of the sixteen accent states were unreachable — **by construction, not by accident.**
+
+The parity accents were derived by carrying a parent's residues up to a higher modulus:
+`span32` was `sieve8`'s {0,1,2,5,6} at modulus 32, `span9` was `cross3`'s {0,1} at
+modulus 9. That looked elegant and guarantees the wrong thing: when the residues are
+smaller than the parent's modulus, **every** n congruent to 0,1,2,5,6 mod 32 is also
+0,1,2,5,6 mod 8. So `span32` could never fire without `sieve8` — measured, 0 steps out
+of 480 — and `span9` never without `cross3`. The parity accent was not an independent
+layer at all; it only subdivided its parent, and 4 states could never occur.
+
+**The rule: a parity accent takes some residues its parent covers AND at least one it
+omits**, so it fires both with and without it.
+
+- `sieve8` is clauses 2+3's mod-8 {0,1,2,5,6}. Clause 1's is {0,1,7}. Lifting *clause 1*
+  to modulus 32 gives **`32@0|32@1|32@7`** — it shares 0 and 1 with `sieve8` and adds 7,
+  which `sieve8` omits. Still derived from the sieve, and independent of `sieve8` for
+  precisely the reason it is derived: clause 1 is the clause `sieve8` leaves out. The two
+  accents together now cover all three clauses' mod-8 vocabulary.
+- `cross3` is foreign to the sieve, so its partner follows the rule rather than a clause:
+  **`9@0|9@2`** shares residue 0 with `cross3` and adds 2, which `cross3` omits.
+
+Moduli are unchanged (32 and 9), so every period and the duration parity are untouched.
+
+**Result: all 16 levels now appear in the piece**, up from 13. Each voice reaches 12 of
+the 16 — a voice only meets the states its own rhythm coincides with, and no arrangement
+of a *shared* table can make every voice reach every state.
+
+| | levels used | range |
+|---|---|---|
+| A, C, D | 12 of 16 | 18-127 |
+| B | 12 of 16 | 1-102 |
+| whole piece | **16 of 16** | 1-127 |
+
 ### A wrong assumption, corrected (2026-09-05)
 
 Between 2026-09-03 and 2026-09-05 the velocity design was built on the premise that
