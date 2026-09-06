@@ -494,9 +494,49 @@ def verify(voices, periods, total_ticks, note_layers, base_binaries):
     steps = {name: len(vel) for name, _, vel, _ in voices}
     pads  = {cfg['name']: cfg['root'] for cfg in INSTRUMENT_CONFIGS}
 
-    # --- the derivations, before anything about the files -----------------
+    # --- the principles, before anything about the files -------------------
     for problem in check_derivations(base_binaries):
         failures.append(problem)
+
+    # PARITY. Not a preference: "all voices begin and end together" plus "nothing
+    # repeats identically" jointly require it. If periods differed, the cycle where
+    # they align would be their LCM — longer than the shortest voice, which would then
+    # repeat inside it.
+    spans = set(periods.values())
+    check(len(spans) == 1,
+          f"voices do not share a period: {periods}. The ensemble would then be their "
+          f"LCM and the shorter voices would repeat inside it.")
+    if len(spans) == 1:
+        print(f"  parity: every voice is {spans.pop()} ticks")
+
+    # ONE WEATHER. Every voice must carry the shared accent set. Exactly one accent may
+    # differ — the parity accent, whose only job is to set the period, and which cannot
+    # be shared across grids without breaking parity.
+    sets = {cfg['name']: set(cfg['accent_dict']) for cfg in INSTRUMENT_CONFIGS}
+    common = set.intersection(*sets.values())
+    for name, own in sets.items():
+        check(set(WEATHER) <= own, f"{name}: missing shared weather {set(WEATHER) - own}")
+        extra = own - set(WEATHER)
+        check(len(extra) == 1,
+              f"{name}: carries {len(extra)} accents outside the weather ({extra}); "
+              f"only the parity accent may differ")
+    print(f"  one weather: {sorted(common)} shared by all; "
+          f"parity accent differs by grid ({', '.join(sorted(n + '=' + next(iter(s - set(WEATHER))) for n, s in sets.items()))})")
+
+    # NO ABSOLUTE REPETITION. The minimal-period check below catches repetition at a
+    # divisor of the span, but two arbitrary passes could still coincide without making
+    # the whole sequence periodic. Compare every pass against every other.
+    for name, _, velocities, step_ticks in voices:
+        layer = note_layers[name]
+        n_passes = len(velocities) // layer
+        passes = [tuple(velocities[i * layer:(i + 1) * layer]) for i in range(n_passes)]
+        dupes = [(i + 1, j + 1) for i in range(n_passes) for j in range(i + 1, n_passes)
+                 if passes[i] == passes[j]]
+        check(not dupes,
+              f"{name}: passes {dupes} of the note layer are identical — the accent "
+              f"field failed to inflect them, so the repetition parity requires is bare")
+        if not dupes:
+            print(f"  {name}: {n_passes} passes of its note layer, all distinct")
     if not failures:
         rels = ", ".join(
             f"{c['name']}={c.get('relationship', 'base sieve')}" for c in INSTRUMENT_CONFIGS)

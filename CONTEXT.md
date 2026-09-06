@@ -55,6 +55,53 @@ across passes while velocities never are, and each voice's minimal period equals
 span so nothing repeats at any sub-length. `verify()` enforces the minimal-period half of
 this on every run.
 
+### The one weather is broken in exactly one place, and it is FORCED
+
+Principle III (one weather) and Principle II (parity) cannot both hold across voices on
+different basic units. The proof, worth keeping because the conclusion looks like a defect
+and is not:
+
+1. Principles (1) *all voices begin and end together* and (2) *nothing repeats identically*
+   **jointly force parity.** If periods differed, the cycle where voices align is their LCM
+   — longer than the shortest voice, which must then repeat inside it. Parity is not a
+   preference; it is what those two demand together.
+2. A voice's period is `LCM(note layer, accent moduli) x basic unit`. Voices sharing an
+   accent set share that LCM, so their periods stand in the ratio of their units:
+   `480 x 120 = 57600` against `480 x 160 = 76800`. Never equal.
+3. Therefore parity, one weather, and differing basic units are mutually exclusive. One
+   must give.
+
+| give up | cost |
+|---|---|
+| the polyrhythm | the piece loses its central relationship |
+| parity | A repeats **4x** inside a 120-bar ensemble — absolute repetition |
+| **one weather** | **D differs in one of four accents; everything else holds** |
+
+The third is the cheapest by a wide margin, and the break is placed in the accent whose
+*only* job is to set the period. So `config.py` now separates them explicitly:
+
+- **`WEATHER`** — `sieve5`, `sieve8`, `cross3`. Shared by every voice, no exceptions.
+- **`PARITY_ACCENT`** — keyed by basic unit: `span32` for the 120-tick grid, `span9` for
+  the 160-tick grid. Not weather; the device that lets weather cross grids.
+
+A voice no longer names an accent set at all — it is **assembled** from the weather plus
+the one parity accent its unit requires, so a voice cannot be given accents of its own. A
+unit with no parity accent defined raises rather than silently rendering out of parity.
+
+`verify()` now enforces all three principles on every run:
+
+```
+parity: every voice is 57600 ticks
+one weather: ['cross3','sieve5','sieve8'] shared by all; parity accent differs by grid
+A: 12 passes of its note layer, all distinct
+D:  9 passes of its note layer, all distinct
+```
+
+The pass check matters separately from the minimal-period check: the latter catches
+repetition at a *divisor* of the span, but two arbitrary passes could coincide without
+making the sequence periodic. Every pass is now compared against every other. All four
+sabotage cases were tested and caught.
+
 ### Static and moving accents
 
 An accent whose modulus **divides** the note-layer period repeats identically on every pass.
