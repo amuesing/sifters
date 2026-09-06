@@ -26,6 +26,58 @@ A generative MIDI composition system based on **Xenakis sieve theory** — a mat
 
 ---
 
+## Governing Principle III: One Weather (2026-09-05)
+
+> The user: *"It would be ideal if there was a uniform approach to accent sieves... the
+> accent sieve is like the weather that the notes and rhythms fall under. Each voice should
+> be under the same weather... It is important that nothing is ever repeated identically.
+> Every total cycle of rhythm should find all the voices beginning and starting at the same
+> point and should never have any absolute repetition. The accent sieve helps justify
+> repetitions to achieve parity."*
+
+**One accent field, shared by every voice.** Accents are not per-voice character. Do not
+give a voice its own accent sieves to differentiate it — the uniformity is the point.
+*(A suggestion to give voice B the complement of A's accent field was made on 2026-09-05
+and is ruled out by this. B sharing A's field is the design, not a weakness.)*
+
+**The accent field licenses repetition.** Parity forces a voice to repeat its note layer —
+D states its 40-step rhythm 9 times, A 12 times. Bare, that is literal repetition. Because
+the accent moduli do not divide the note-layer period, each pass is inflected differently:
+**the rhythm recurs while the music never does.** That is what the accent layer is *for*.
+
+**Nothing may repeat identically.** Two requirements, both verified:
+
+- every voice begins and ends together (parity — Principle II);
+- within that cycle no passage exactly repeats another.
+
+Checked 2026-09-05: all 12 passes of A/B/C distinct, all 9 of D distinct, rhythm identical
+across passes while velocities never are, and each voice's minimal period equals its full
+span so nothing repeats at any sub-length. `verify()` enforces the minimal-period half of
+this on every run.
+
+### Static and moving accents
+
+An accent whose modulus **divides** the note-layer period repeats identically on every pass.
+It colours the rhythm but never varies it:
+
+| accent | modulus | divides 40? | role |
+|---|---|---|---|
+| `sieve5` | 5 | yes | **static** — fixed colour, same every pass |
+| `sieve8` | 8 | yes | **static** — fixed colour, same every pass |
+| `cross3` | 3 | no | **moving** — inflects each pass |
+| `span32` / `span9` | 32 / 9 | no | **moving** — inflects each pass |
+
+Only the moving accents create non-repetition, and they alone set how many distinct passes
+exist: LCM(40,3,32)/40 = **12** for the sixteenth voices, LCM(40,3,9)/40 = **9** for the
+triplet voice. So the polyrhythm exists at the accent level too, not only in the note grid —
+A's weather turns over 12 times while D's turns 9, against each other.
+
+**The cost of more variation is length.** Every accent modulus coprime to the note layer
+multiplies the total period: adding a mod-7 accent takes the piece from 30 bars to 210.
+Depth of variation and total duration are the same dial.
+
+---
+
 ## Governing Principle II: Parity Through Accent Choice (2026-09-02)
 
 > Stated by the user: *"it is important to try to create accent sieves that create parity
