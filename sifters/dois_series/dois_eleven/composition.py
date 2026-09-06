@@ -519,9 +519,9 @@ def verify(voices, periods, total_ticks, note_layers, base_binaries):
         extra = own - set(WEATHER)
         check(len(extra) == 1,
               f"{name}: carries {len(extra)} accents outside the weather ({extra}); "
-              f"only the parity accent may differ")
+              f"only the span accent may differ")
     print(f"  one weather: {sorted(common)} shared by all; "
-          f"parity accent differs by grid ({', '.join(sorted(n + '=' + next(iter(s - set(WEATHER))) for n, s in sets.items()))})")
+          f"span accent differs by grid ({', '.join(sorted(n + '=' + next(iter(s - set(WEATHER))) for n, s in sets.items()))})")
 
     # NO ABSOLUTE REPETITION. The minimal-period check below catches repetition at a
     # divisor of the span, but two arbitrary passes could still coincide without making

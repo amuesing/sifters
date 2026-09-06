@@ -70,62 +70,50 @@ TEMPO_BPM = 120
 # The accent field is not per-voice character. It is the weather the notes and rhythms
 # fall under, and every voice falls under the same weather.
 #
-# It also LICENSES REPETITION. Parity forces a voice to restate its note layer — D nine
-# times, A twelve. Bare that would be literal repetition. Because these moduli do not all
-# divide the note-layer period, each pass is inflected differently: the rhythm recurs
-# while the music never does.
-#
 #   The psappha sieve, clause by clause:
 #     clause 1   (8@0|8@1|8@7) & (5@1|5@3)      mod-8 {0,1,7}   mod-5 {1,3}
 #     clause 2   (8@0|8@1|8@2) & 5@0            mod-8 {0,1,2}   mod-5 {0}
 #     clause 3   (8@5|8@6) & (5@2|5@3|5@4)      mod-8 {5,6}     mod-5 {2,3,4}
 #
-# Note which accents actually move. A modulus that DIVIDES the 40-step note layer
-# repeats identically on every pass — it colours the rhythm but never varies it:
-#
-#     sieve5  mod 5   divides 40   STATIC — fixed colour
-#     sieve8  mod 8   divides 40   STATIC — fixed colour
-#     cross3  mod 3   does not     MOVING — inflects every pass
-#
-# So the two accents drawn from the sieve's own vocabulary are exactly the two that
-# cannot vary, because they are built from the sieve's own moduli. All the motion comes
-# from cross3, which is foreign to the sieve by necessity, not oversight: only a modulus
-# the sieve does not use can fail to divide its period.
+# Both are drawn verbatim from the sieve, and both are STATIC: their moduli (5 and 8)
+# are the sieve's own, so they necessarily divide its 40-step period and land the same
+# way on every pass. They colour the rhythm; they never vary it. That is not a defect —
+# an accent built from the sieve's own moduli cannot do otherwise.
 WEATHER = {
     'sieve5': '5@1|5@3',                 # clause 1's mod-5, verbatim
     'sieve8': '8@0|8@1|8@2|8@5|8@6',     # clauses 2+3's mod-8, verbatim
-    'cross3': '3@0|3@1',                 # foreign modulus — the only source of motion
 }
 
 # ---------------------------------------------------------------------------
-# THE PARITY ACCENT — not weather; the device that makes weather cross grids
+# THE SPAN ACCENT — its length IS the justification for repeating
 # ---------------------------------------------------------------------------
-# This is the one place voices differ, and the difference is FORCED. The proof:
+# PARITY is the first moment every voice converges on a common end point. The voices'
+# raw rhythms are 40 steps at their own units:
 #
-#   (1) all voices must begin and end together at the total cycle;
-#   (2) nothing may repeat identically within it.
-#   (1)+(2) => every voice must have the SAME period. If periods differed, the cycle
-#             where they align is their LCM, longer than the shortest voice, so that
-#             voice repeats inside it — absolute repetition.
-#   A voice's period is LCM(note layer, accent moduli) x its basic unit. Voices sharing
-#   an accent set share that LCM, so their periods stand in the ratio of their units:
-#   480 x 120 = 57600 against 480 x 160 = 76800, never equal.
-#   => parity and a fully shared accent set are mutually exclusive across grids.
+#     16th voices  40 x 120 = 4800 ticks
+#     triplet      40 x 160 = 6400 ticks
+#     first convergence = LCM(4800, 6400) = 19200 ticks   <- the length of the piece
 #
-# Giving up the polyrhythm instead would cost the piece its central relationship; giving
-# up parity would make A repeat four times inside a 120-bar ensemble. Breaking the
-# weather in ONE accent is the cheapest of the three, and it is broken in the accent
-# whose only job is to set the period — so the weather proper stays universal.
+# Reaching it forces repetition: the sixteenth voices must state their rhythm 4 times,
+# the triplet voice 3 times. Bare, that is literal repetition. The span accent is what
+# redeems it — and so it must be EXACTLY long enough to inflect those repetitions and no
+# longer. Its span is not chosen; it is dictated by the parity point:
 #
-# Residues follow one rule: take some the parent covers AND at least one it omits, so the
-# accent is INDEPENDENT rather than a refinement. Carrying a parent's residues up wholesale
-# guarantees containment (every n = 0,1,2,5,6 mod 32 is also 0,1,2,5,6 mod 8) and makes
-# four accent states unreachable.
-#   span32 = clause 1's mod-8 lifted — shares 0,1 with sieve8, adds 7 which it omits.
-#   span9  = shares residue 0 with cross3, adds 2 which cross3 omits.
-PARITY_ACCENT = {
-    120: ('span32', '32@0|32@1|32@7'),   # sixteenth grid
-    160: ('span9',  '9@0|9@2'),          # triplet grid
+#     16th voices  need 4 passes -> LCM(40, M) = 160 -> M = 32   (the only modulus that does)
+#     triplet      need 3 passes -> LCM(40, M) = 120 -> M = 3
+#
+# So the accent that MOVES and the accent that BUYS PARITY are the same accent. A longer
+# span would over-run the parity point and repeat something; a shorter one would leave a
+# repetition unjustified. Adding any further coprime modulus lengthens the piece past its
+# first convergence, which is why the weather holds only the two static accents.
+#
+# Residues take some the parent covers AND at least one it omits, so the accent is
+# independent rather than a refinement — otherwise some accent states become unreachable.
+#   span32 = clause 1's mod-8 lifted to 32: shares 0,1 with sieve8, adds 7 which it omits.
+#   span3  = 3@0|3@1, independent of both static accents.
+SPAN_ACCENT = {
+    120: ('span32', '32@0|32@1|32@7'),   # sixteenth grid: 4 passes
+    160: ('span3',  '3@0|3@1'),          # triplet grid:   3 passes
 }
 
 # ---------------------------------------------------------------------------
@@ -173,9 +161,9 @@ for _i, _cfg in enumerate(INSTRUMENT_CONFIGS):
     # one parity accent its grid requires. A voice cannot be given accents of its own.
     _unit = _cfg.get('step_ticks') or int(
         TICKS_PER_QUARTER_NOTE * DURATION_MULTIPLIER_KEY[_cfg['duration']])
-    if _unit not in PARITY_ACCENT:
-        raise KeyError(f"voice {_cfg['name']!r} uses a {_unit}-tick unit with no parity "
-                       f"accent defined. Known units: {sorted(PARITY_ACCENT)}. Without one "
-                       f"this voice cannot reach the same period as the others.")
-    _label, _expr = PARITY_ACCENT[_unit]
+    if _unit not in SPAN_ACCENT:
+        raise KeyError(f"voice {_cfg['name']!r} uses a {_unit}-tick unit with no span "
+                       f"accent defined. Known units: {sorted(SPAN_ACCENT)}. Without one "
+                       f"this voice cannot converge with the others.")
+    _label, _expr = SPAN_ACCENT[_unit]
     _cfg['accent_dict'] = dict(WEATHER, **{_label: _expr})

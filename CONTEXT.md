@@ -26,6 +26,51 @@ A generative MIDI composition system based on **Xenakis sieve theory** — a mat
 
 ---
 
+## Governing Principle IV: The Accent Span IS the Parity Justification (2026-09-05)
+
+> The user: *"I want the piece to be just as long as it takes for the sieves with different
+> base units to achieve parity with the other voices. The accent layer should express itself
+> fully and without repetition to achieve this... the accent layer should be exactly as long
+> as it is needed to justify the repetition of the various voices to achieve parity across
+> voices of different basic durational unit. I am taking parity to mean the first time all
+> voices converge at the same end point."*
+
+**Parity is the FIRST convergence of the raw rhythms**, and it sets the length of the piece:
+
+```
+16th voices   40 x 120 = 4800 ticks
+triplet       40 x 160 = 6400 ticks
+LCM(4800, 6400) = 19200 ticks   = the piece, 10 bars of 4/4, 4 bars of 40/16
+```
+
+Reaching it **forces** repetition: the sixteenth voices state their rhythm 4 times, the
+triplet voice 3. The accent span is what redeems that repetition, so it must be **exactly**
+long enough to inflect it — no longer, or it would over-run the convergence and repeat
+something; no shorter, or a repetition would go unjustified.
+
+**The span is therefore dictated, not chosen:**
+
+| grid | passes needed | required span | modulus that gives it |
+|---|---|---|---|
+| 16th (120) | 4 | LCM(40, M) = 160 | **32** — the only one |
+| triplet (160) | 3 | LCM(40, M) = 120 | **3** |
+
+`160 x 120 = 19200 = 120 x 160`. The accent that MOVES and the accent that BUYS PARITY are
+now the same accent, which is why `SPAN_ACCENT` replaced the old separate parity accent.
+
+**This is why the weather holds only static accents.** `sieve5` and `sieve8` have moduli the
+sieve itself uses, so they divide its 40-step period and land identically on every pass —
+they colour without varying, and crucially they do not lengthen the span. Any *further*
+coprime modulus would push the piece past its first convergence. The old `cross3` is gone as
+a separate accent: modulus 3 is now the triplet voice's span accent, doing the job it was
+always really doing.
+
+**Result:** 8 accent states, all reached; 4 distinct passes in the sixteenth voices, 3 in the
+triplet; every voice 19200 ticks; nothing repeated. The piece went from 30 bars to **10** —
+the earlier length carried repetition beyond what parity required.
+
+---
+
 ## Governing Principle III: One Weather (2026-09-05)
 
 > The user: *"It would be ideal if there was a uniform approach to accent sieves... the
