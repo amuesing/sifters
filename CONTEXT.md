@@ -112,7 +112,7 @@ and is not:
    preference; it is what those two demand together.
 2. A voice's period is `LCM(note layer, accent moduli) x basic unit`. Voices sharing an
    accent set share that LCM, so their periods stand in the ratio of their units:
-   `480 x 120 = 57600` against `480 x 160 = 76800`. Never equal.
+   with the current accents, `160 x 120 = 19200` against `160 x 160 = 25600`. Never equal.
 3. Therefore parity, one weather, and differing basic units are mutually exclusive. One
    must give.
 
@@ -125,9 +125,16 @@ and is not:
 The third is the cheapest by a wide margin, and the break is placed in the accent whose
 *only* job is to set the period. So `config.py` now separates them explicitly:
 
-- **`WEATHER`** — `sieve5`, `sieve8`, `cross3`. Shared by every voice, no exceptions.
-- **`PARITY_ACCENT`** — keyed by basic unit: `span32` for the 120-tick grid, `span9` for
-  the 160-tick grid. Not weather; the device that lets weather cross grids.
+- **`WEATHER`** — `sieve5`, `sieve8`. Shared by every voice, no exceptions.
+- **`SPAN_ACCENT`** — one per basic unit, and in `dois_twelve` **derived** rather than
+  written: `span32` on the 120-tick grid, `span3` on the 160-tick grid. Not weather; the
+  device that lets weather cross grids, and whose length is dictated by the parity point.
+
+*(Written 2026-09-05, when the weather also held `cross3` and the parity accent was a
+separate fourth accent. Principle IV then showed the span accent must be exactly as long
+as parity requires — which made `cross3` the triplet voice's span accent rather than a
+separate layer, and shortened the piece from 30 bars to 10. The reasoning below still
+holds; the accent names have moved on.)*
 
 A voice no longer names an accent set at all — it is **assembled** from the weather plus
 the one parity accent its unit requires, so a voice cannot be given accents of its own. A
@@ -136,10 +143,10 @@ unit with no parity accent defined raises rather than silently rendering out of 
 `verify()` now enforces all three principles on every run:
 
 ```
-parity: every voice is 57600 ticks
-one weather: ['cross3','sieve5','sieve8'] shared by all; parity accent differs by grid
-A: 12 passes of its note layer, all distinct
-D:  9 passes of its note layer, all distinct
+parity: every voice is 19200 ticks
+one weather: ['sieve5','sieve8'] shared by all; span accent differs by grid
+A: 4 passes of its note layer, all distinct
+D: 3 passes of its note layer, all distinct
 ```
 
 The pass check matters separately from the minimal-period check: the latter catches
@@ -156,17 +163,17 @@ It colours the rhythm but never varies it:
 |---|---|---|---|
 | `sieve5` | 5 | yes | **static** — fixed colour, same every pass |
 | `sieve8` | 8 | yes | **static** — fixed colour, same every pass |
-| `cross3` | 3 | no | **moving** — inflects each pass |
-| `span32` / `span9` | 32 / 9 | no | **moving** — inflects each pass |
+| `span32` / `span3` | 32 / 3 | no | **moving** — inflects each pass |
 
 Only the moving accents create non-repetition, and they alone set how many distinct passes
-exist: LCM(40,3,32)/40 = **12** for the sixteenth voices, LCM(40,3,9)/40 = **9** for the
+exist: LCM(40,32)/40 = **4** passes for the sixteenth voices, LCM(40,3)/40 = **3** for the
 triplet voice. So the polyrhythm exists at the accent level too, not only in the note grid —
-A's weather turns over 12 times while D's turns 9, against each other.
+A's weather turns over 4 times while D's turns 3, against each other, inside one cycle.
 
 **The cost of more variation is length.** Every accent modulus coprime to the note layer
-multiplies the total period: adding a mod-7 accent takes the piece from 30 bars to 210.
-Depth of variation and total duration are the same dial.
+multiplies the total period. This is exactly why Principle IV fixes the span at the parity
+point: any further coprime accent would push the piece past its first convergence and carry
+repetition parity never asked for. Depth of variation and total duration are one dial.
 
 ---
 
@@ -184,16 +191,17 @@ so that voices on different basic units arrive at the same period on their own.
 **inversely to the basic unit**:
 
 ```
-16th voices  (unit 120): LCM(40, 5, 8, 3, 32) = 480 steps x 120 = 57600
-triplet voice (unit 160): LCM(40, 5, 8, 3,  9) = 360 steps x 160 = 57600
+16th voices  (unit 120): LCM(40, 5, 8, 32) = 160 steps x 120 = 19200
+triplet voice (unit 160): LCM(40, 5, 8,  3) = 120 steps x 160 = 19200
 
-480 / 360 = 4/3 = 160 / 120     <- the step counts invert the unit ratio exactly
+160 / 120 = 4/3 = 160 / 120     <- the step counts invert the unit ratio exactly
 ```
 
-**There is a floor.** A sixteenth voice's minimum period is 40x120 = 4800 and a triplet
-voice's is 40x160 = 6400, so any shared duration must be a multiple of
-LCM(4800, 6400) = **19200 ticks**. Parity below 4 bars of 40/16 is impossible. 57600 is
-the multiple that also lets the sixteenth voices keep their mod-3 accent.
+**There is a floor, and the piece now sits exactly on it.** A sixteenth voice's minimum
+period is 40x120 = 4800 and a triplet voice's is 40x160 = 6400, so any shared duration
+must be a multiple of LCM(4800, 6400) = **19200 ticks**. Nothing shorter is possible, and
+Principle IV fixes the piece at that floor rather than any higher multiple — a longer
+choice would carry repetition parity never asked for.
 
 **Parity depends only on the moduli — the residues are free.** Change residues freely for
 musical reasons; parity survives. But keep them **irreducible**: a set that repeats at a
@@ -371,29 +379,59 @@ other hosts.
 
 ---
 
-## Current State — read this for the snapshot (2026-09-03)
+## Current State — read this for the snapshot (2026-09-07)
 
-Verified against the rendered MIDI, not from memory.
+**Current version: `dois_twelve`.** Verified against the rendered MIDI, not from memory.
 
-| Voice | Pad | Basic unit | Steps | Period | Notes | Accent moduli |
-|---|---|---|---|---|---|---|
-| A | 36 | 16th (120) | 480 | 57600 | 180 | 5, 8, 3, **32** |
-| B | 37 | 16th (120) | 480 | 57600 | 300 | 5, 8, 3, **32** |
-| C | 38 | 16th (120) | 480 | 57600 | 180 | 5, 8, 3, **32** |
-| D | 39 | triplet 8th (160) | 360 | 57600 | 54 | 5, 8, 3, **9** |
+| Voice | Pad | Basic unit | Note layer | Passes | Span | Period | Notes |
+|---|---|---|---|---|---|---|---|
+| A | 36 (C1) | 16th (120) | 40 steps | 4 | 160 steps | 19200 | 60 |
+| B | 37 (C#1) | 16th (120) | 40 steps | 4 | 160 steps | 19200 | 100 |
+| C | 38 (D1) | 16th (120) | 40 steps | 4 | 160 steps | 19200 | 60 |
+| D | 39 (D#1) | triplet 8th (160) | 40 steps | 3 | 120 steps | 19200 | 18 |
 
-- **Every file is 57600 ticks = 12 bars of 40/16 at 120 BPM.** Every clip ends exactly on a
-  bar line; nothing is padded by the host.
-- **All four voices are in duration parity**, earned through accent-modulus choice rather
-  than imposed. The ensemble therefore contains exactly one statement of each voice.
-- `dois_ten_arrangement.mid` — 4 tracks, 714 notes. `dois_ten_drumrack.mid` — 1 track,
-  714 notes, pads 36-39.
-- A per-voice file is **identical note-for-note** to its arrangement track and its drum
-  rack pad. That is the point of the per-voice files: they are the reference for checking
-  the ensemble.
-- Velocity has 8 graded levels: ghost 1, single accents 19/37/55/73, then 91 / 109 / 127
-  for two, three and four accents agreeing.
-- `max/sieve.js` is **PARKED and stale** — it describes a much older version. Ignore it.
+- **Every file is 19200 ticks** — 4 bars of 40/16, equivalently 10 bars of 4/4, 20 seconds
+  at 120 BPM. That is the parity point: the *first* moment the raw rhythms converge,
+  LCM(4800, 6400).
+- **Accents:** the weather is `sieve5` (`5@1|5@3`) and `sieve8` (`8@0|8@1|8@2|8@5|8@6`),
+  shared by every voice. Each voice adds one **span accent**, derived: `span32`
+  (`32@0|32@1|32@7`) on the sixteenth grid, `span3` (`3@0|3@1`) on the triplet grid.
+- **Velocity:** 8 levels, `1 19 37 55 73 91 109 127`, evenly spaced 18 apart across the
+  full range. Each voice reaches 6 of the 8; all 8 appear across the piece.
+- `dois_twelve_arrangement.mid` — 4 tracks, 238 notes. `dois_twelve_drumrack.mid` —
+  1 track, 238 notes on pads 36-39.
+- A per-voice file is **identical note-for-note** to its arrangement track and drum rack
+  pad — that is what makes them usable as a reference for checking the ensemble.
+- Config fingerprint of this state: **`cfg=52ab7f83`**, stamped in every track.
+- `max/sieve.js` (in dois_ten) is **PARKED and stale**. Ignore it.
+
+### Ready to produce with — verified 2026-09-07
+
+Checked as a DAW sees the files, not as the code reports them:
+
+| check | result |
+|---|---|
+| all six files, valid MIDI type 1 | yes |
+| every file exactly 19200 ticks / whole bars | yes |
+| pads 36-39 = C1, C#1, D1, D#1, Drum Rack pads 1-4 | yes, 60/100/60/18 notes |
+| hanging notes, same-pitch overlaps, zero-length notes | **none in any file** |
+
+**Which file to use.** `dois_twelve_drumrack.mid` on one track with a Drum Rack is the
+plugin-ready form. `dois_twelve_arrangement.mid` is the same content split across four
+tracks for independent processing. The `_prime` files are single voices.
+
+**Tempo and meter.** Ableton uses the project's tempo, not the file's, so the clip is 40
+quarter notes at whatever tempo is set. The files declare **40/16** — musically meaningful
+(one bar = one pass of the note layer) but unusual. 19200 ticks is *also* exactly 10 bars
+of 4/4, so if 40/16 disturbs a session, switching costs nothing musically: one line in
+`config.py`.
+
+**Re-running is safe.** `python composition.py` replaces only its own six files and leaves
+anything else in `mid/` alone, so bounces and edits kept there survive.
+
+**What is deliberately absent: form.** This is 20 seconds of verified material, not a
+track. Repetition, variation, entrances and exits are not attempted by the code and are
+being built in Ableton for now, by choice — the material was got right first.
 
 ### Session log — 2026-08-27 to 2026-09-02
 
@@ -480,7 +518,15 @@ sifters/
 
 ---
 
-## Current Focus: `dois_ten`
+## The `dois_ten` version — superseded, kept for reference
+
+> **This section describes `dois_ten` as it stands, not the current version.** Its figures
+> (57600 ticks, 480/360-step spans, four accents, 12 and 9 passes) are correct *for that
+> version* and are not the current state — see "Current State" above for `dois_twelve`.
+> `dois_ten` remains on disk and is the version whose 30-bar length and four-accent field
+> are worth comparing against by ear.
+
+### Current Focus: `dois_ten`
 
 The active project. A stripped-down, plugin-oriented version that generates a single **40-step rhythmic beat** from the psappha sieve. No arrangement layer, no shift library — just the four core voices at their prime.
 
@@ -488,13 +534,13 @@ The active project. A stripped-down, plugin-oriented version that generates a si
 
 | Voice | Relationship | Density | Pitch / Drum Pad | Step Grid | Note layer | Full statement |
 |-------|-------------|---------|-----------|-----------|------|------|
-| A | Base sieve | 15/40 (37.5%) | 36 (C1) — pad 1 | 16th (120 ticks) | 40 steps | **480 steps = 57600 ticks** |
-| B | Complement of A | 25/40 (62.5%) | 37 (C#1) — pad 2 | 16th (120 ticks) | 40 steps | **480 steps = 57600 ticks** |
-| C | A shifted +13 steps (canon) | 15/40 (37.5%) | 38 (D1) — pad 3 | 16th (120 ticks) | 40 steps | **480 steps = 57600 ticks** |
-| D | Intersection of A and C | 6/40 (15%) | 39 (D#1) — pad 4 | Triplet 8th (160 ticks) | 40 steps | **360 steps = 57600 ticks** |
+| A | Base sieve | 15/40 (37.5%) | 36 (C1) — pad 1 | 16th (120 ticks) | 40 steps | **160 steps = 19200 ticks** |
+| B | Complement of A | 25/40 (62.5%) | 37 (C#1) — pad 2 | 16th (120 ticks) | 40 steps | **160 steps = 19200 ticks** |
+| C | A shifted +13 steps (canon) | 15/40 (37.5%) | 38 (D1) — pad 3 | 16th (120 ticks) | 40 steps | **160 steps = 19200 ticks** |
+| D | Intersection of A and C | 6/40 (15%) | 39 (D#1) — pad 4 | Triplet 8th (160 ticks) | 40 steps | **120 steps = 19200 ticks** |
 
-All four are in duration parity at 57600 ticks. D reaches it in fewer steps because its
-steps are wider — see "Governing Principle II" at the top.
+All four are in duration parity at 19200 ticks — the parity floor. D reaches it in fewer
+steps because its steps are wider. See Governing Principles II and IV at the top.
 
 Each voice has **one** pitch, used by every output. See "Pad assignment is derived" below.
 
@@ -774,9 +820,9 @@ still ending exactly on a bar line:
 | D | triplet 8th (160) | 360 | 40/16 | 57600 | 12 — exact |
 | arrangement, drumrack | — | — | 40/16 | 57600 | 12 — exact |
 
-**All four voices are now in duration parity at 57600 ticks** — see Governing Principle II
-at the top. The ensemble is therefore exactly **one statement of every voice**: each
-appears x1, nothing repeats.
+**All four voices are in duration parity at 19200 ticks** — the parity floor, see
+Governing Principles II and IV. The ensemble is exactly **one statement of every voice**:
+each appears x1, nothing repeats.
 
 **A shared meter only became possible when D gained its accent layer.** The bar must
 divide every period, and `gcd(14400, 4800, 19200) = 4800` — so 40/16 fits. With D's old
@@ -1114,10 +1160,19 @@ the rhythm period and every accent modulus, so it follows whatever accents are w
 **All four voices now carry accents.** B was flat at velocity 64 until 2026-09-02; it now
 uses the same set as A and C.
 
-## What's Next (as of 2026-09-03)
+## What's Next (as of 2026-09-07)
 
 - [x] Update `dois_ten` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format *(done 2026-08-27: `dois_ten_drumrack.mid`)*
-- [ ] Test dois_ten in Ableton with a Drum Rack to validate the musical result — load `mid/dois_ten_drumrack.mid` onto one track with a Drum Rack; pads 1-4 are A/B/C/D
+- [x] Code ready to produce with *(verified 2026-09-07 — see "Ready to produce with")*
+- [ ] **Build a track from `dois_twelve`.** Load `mid/dois_twelve_drumrack.mid` onto one
+      track with a Drum Rack (pads 1-4 = A/B/C/D), or `_arrangement.mid` for four separate
+      tracks. Form — repetition, variation, entrances and exits — is being built in the DAW
+      for now rather than in the code, by choice.
+- [ ] Worth an A/B by ear: `dois_ten` (30 bars, four accents, 12 passes) against
+      `dois_twelve` (10 bars, three accents, 4 passes). The shorter version carries no
+      repetition beyond what parity requires; the longer one has more accent variety.
+- [ ] Only after producing with this: decide whether form belongs in the code (a
+      `dois_thirteen` with an arrangement layer, as `dois_nine` had) or stays in the DAW.
 - [x] Write an explicit `set_tempo` into the generated files *(done 2026-08-30 — 120 BPM on every track)*
 - [x] Give every generated track the same time signature *(done 2026-08-30 — 4/4 everywhere)*
 - [x] Render each voice at the full 19200-tick LCM *(done 2026-08-31, then **superseded**
