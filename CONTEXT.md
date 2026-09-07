@@ -314,6 +314,63 @@ someone thought to look. Those checks now run on every render, against the bytes
 
 ---
 
+## `dois_twelve` — the production version (2026-09-07)
+
+**Same music as dois_eleven** — all six files identical note-for-note — with the four
+things that stood between the code and actually producing with it.
+
+**1. The span accent is fully derived, modulus AND residues.** dois_eleven wrote 32 and 3
+by hand; they are correct for a 40-step note layer and silently wrong for any other — the
+last hand-picked numbers in the system. `required_modulus()` computes the smallest M with
+`LCM(layer, M) = P / unit`, and the residues are `SPAN_RESIDUE_SOURCE` (clause 1's mod-8
+residues) kept where they fall below that modulus. The derivation reproduces 32 with
+{0,1,7} and 3 with {0,1} exactly, and follows a change of layer:
+
+| note layer | parity | 16th-grid modulus | residues |
+|---|---|---|---|
+| **40** (current) | 19200 | **32** | `32@0\|32@1\|32@7` |
+| 35 | 16800 | 4 | `4@0\|4@1` |
+| 24 | 11520 | 32 | `32@0\|32@1\|32@7` |
+| 20 | 9600 | 16 | `16@0\|16@1\|16@7` |
+
+**2. Rendering no longer empties the output directory.** dois_eleven deleted every `.mid`
+in `mid/` on each run, destroying anything saved or edited there. `clear_our_outputs()`
+replaces only the six files it is about to write and reports what it left alone. Verified
+with a foreign file in the folder: it survives.
+
+**3. Every track carries provenance.** A `text` meta event with title, date, config
+fingerprint, parity point, tempo, weather, the sieve, the voice and its accents:
+
+```
+dois_twelve 2026-09-07 cfg=52ab7f83 parity=19200 tempo=120 weather=sieve5+sieve8
+sieve=(8@0|8@1|8@7)&(5@1|5@3)|... voice=A accents=sieve5+sieve8+span32
+```
+
+`config_fingerprint()` is a SHA-256 prefix over everything that determines the output.
+Tested: it changes for tempo, weather residues, span residue source, the base sieve, a
+voice's shift amount, and a voice's basic unit — and returns to the baseline when they do.
+
+**4. Retrograde and augmentation are wired up.** `transformations.py` had
+`reverse_binary` and `stretch_binary` with nothing dispatching them. Both are now
+relationships. Augmentation lengthens the note layer (A stretched by 2 states itself over
+80 steps), which changes that voice's period and hence its span accent — handled, because
+layers are per-voice and span accents are now derived per voice. That is precisely why the
+moduli had to stop being hardcoded.
+
+### What is still NOT in the code, deliberately
+
+**There is no form.** The output is one 19200-tick statement — 10 bars, 20 seconds at 120
+BPM, 238 notes across four drum pads. It is correct, verified material, not a track.
+Arrangement, development and variation across a piece live above this layer and are not
+attempted here. `dois_nine` had that layer (5 movements x 8 sections); this lineage
+deliberately stripped it out to get the material right first.
+
+**Tempo and meter are largely moot in Ableton**, which uses the project's own and reads a
+19200-tick clip as 10 bars of whatever you are in. They matter for notation software and
+other hosts.
+
+---
+
 ## Current State — read this for the snapshot (2026-09-03)
 
 Verified against the rendered MIDI, not from memory.
@@ -411,7 +468,8 @@ sifters/
       dois_eight/
       dois_nine/          ← arrangement version of dois_three (5 movements × 8 sections)
       dois_ten/           ← superseded by dois_eleven; kept as it stands
-      dois_eleven/        ← CURRENT FOCUS — same music, self-verifying code
+      dois_eleven/        ← superseded by dois_twelve
+      dois_twelve/        ← CURRENT FOCUS — production version
         config.py
         composition.py
         transformations.py
