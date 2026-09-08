@@ -37,7 +37,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois through dois_ten
+  dois_series/     the main line of development, dois_01 through dois_10
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
   sixty/  third/  starbird/    earlier standalone pieces
@@ -47,7 +47,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_ten`
+## Current work: `dois_10`
 
 A stripped-down, plugin-oriented version: one 40-step beat, four voices, no arrangement layer.
 
@@ -73,7 +73,7 @@ Output is six MIDI files: one per voice, a four-track arrangement, and a single-
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_ten
+cd sifters/dois_series/dois_10
 python composition.py
 ```
 

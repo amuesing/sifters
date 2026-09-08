@@ -126,7 +126,7 @@ The third is the cheapest by a wide margin, and the break is placed in the accen
 *only* job is to set the period. So `config.py` now separates them explicitly:
 
 - **`WEATHER`** — `sieve5`, `sieve8`. Shared by every voice, no exceptions.
-- **`SPAN_ACCENT`** — one per basic unit, and in `dois_twelve` **derived** rather than
+- **`SPAN_ACCENT`** — one per basic unit, and in `dois_12` **derived** rather than
   written: `span32` on the 120-tick grid, `span3` on the 160-tick grid. Not weather; the
   device that lets weather cross grids, and whose length is dictated by the parity point.
 
@@ -248,22 +248,22 @@ LCM?** Include the accent sieves in that question — see the open issue below.
 
 ---
 
-## `dois_eleven` — hardened rewrite (2026-09-03)
+## `dois_11` — hardened rewrite (2026-09-03)
 
-**`dois_eleven` is `dois_ten` with the same rhythms, an audible ghost floor, and code that
-checks itself.** Onsets and pitches are identical to dois_ten in all six files; only
+**`dois_11` is `dois_10` with the same rhythms, an audible ghost floor, and code that
+checks itself.** Onsets and pitches are identical to dois_10 in all six files; only
 velocities differ, and only because the ghost floor moved from 1 to 24.
 
-What it fixes, each a class of silent wrongness dois_ten was open to:
+What it fixes, each a class of silent wrongness dois_10 was open to:
 
 1. **True periods are measured, not declared.** `true_period()` evaluates a sieve over one
    nominal period and finds the smallest length the binary actually repeats on.
    `music21`'s `Sieve.period()` returns the LCM of the moduli written down, which is an
-   upper bound: `32@0|32@1|32@16|32@17` reports 32 and truly repeats every 16. dois_ten
+   upper bound: `32@0|32@1|32@16|32@17` reports 32 and truly repeats every 16. dois_10
    would have rendered such a voice at 480 steps — the same material twice, still called
-   one period. dois_eleven measures 240 and prints a warning naming the expression.
-2. **Every voice derives its OWN period**, measured, never declared. dois_ten hardcoded
-   `NOTE_LAYER_STEPS = 40`; the first dois_eleven derived it but took the *first* voice's
+   one period. dois_11 measures 240 and prints a warning naming the expression.
+2. **Every voice derives its OWN period**, measured, never declared. dois_10 hardcoded
+   `NOTE_LAYER_STEPS = 40`; the first dois_11 derived it but took the *first* voice's
    period as everyone's, which holds only while all voices descend from one sieve. Now:
 
    - a voice with its own sieve takes that sieve's **measured** period;
@@ -284,7 +284,7 @@ What it fixes, each a class of silent wrongness dois_ten was open to:
 3. **Unknown duration names raise.** `'sixteenth note'` or `'Triplet Eighth'` used to
    silently become a sixteenth — the exact shape of the bug that produced the 40/16 meter
    error. Now a `KeyError` naming the voice and listing valid durations.
-4. **Derivations dispatch to named operations** in `transformations.py`, which dois_ten
+4. **Derivations dispatch to named operations** in `transformations.py`, which dois_10
    imported but never used, reimplementing `1 - src` and `np.roll` inline. Unknown
    relationships, forward references and mismatched source lengths all raise.
 5. **The ghost floor is audible.** `GHOST_VELOCITY = 24`, not 1. "Where a number occurs,
@@ -318,16 +318,16 @@ Point 5 is the important one. **Every bug in this project's history was caught b
 throwaway script that was then discarded**, so the next regression went unnoticed until
 someone thought to look. Those checks now run on every render, against the bytes on disk.
 
-`dois_ten` is left as it stands. New work should happen in `dois_eleven`.
+`dois_10` is left as it stands. New work should happen in `dois_11`.
 
 ---
 
-## `dois_twelve` — the production version (2026-09-07)
+## `dois_12` — the production version (2026-09-07)
 
-**Same music as dois_eleven** — all six files identical note-for-note — with the four
+**Same music as dois_11** — all six files identical note-for-note — with the four
 things that stood between the code and actually producing with it.
 
-**1. The span accent is fully derived, modulus AND residues.** dois_eleven wrote 32 and 3
+**1. The span accent is fully derived, modulus AND residues.** dois_11 wrote 32 and 3
 by hand; they are correct for a 40-step note layer and silently wrong for any other — the
 last hand-picked numbers in the system. `required_modulus()` computes the smallest M with
 `LCM(layer, M) = P / unit`, and the residues are `SPAN_RESIDUE_SOURCE` (clause 1's mod-8
@@ -341,7 +341,7 @@ residues) kept where they fall below that modulus. The derivation reproduces 32 
 | 24 | 11520 | 32 | `32@0\|32@1\|32@7` |
 | 20 | 9600 | 16 | `16@0\|16@1\|16@7` |
 
-**2. Rendering no longer empties the output directory.** dois_eleven deleted every `.mid`
+**2. Rendering no longer empties the output directory.** dois_11 deleted every `.mid`
 in `mid/` on each run, destroying anything saved or edited there. `clear_our_outputs()`
 replaces only the six files it is about to write and reports what it left alone. Verified
 with a foreign file in the folder: it survives.
@@ -350,7 +350,7 @@ with a foreign file in the folder: it survives.
 fingerprint, parity point, tempo, weather, the sieve, the voice and its accents:
 
 ```
-dois_twelve 2026-09-07 cfg=52ab7f83 parity=19200 tempo=120 weather=sieve5+sieve8
+dois_12 2026-09-07 cfg=52ab7f83 parity=19200 tempo=120 weather=sieve5+sieve8
 sieve=(8@0|8@1|8@7)&(5@1|5@3)|... voice=A accents=sieve5+sieve8+span32
 ```
 
@@ -370,7 +370,7 @@ moduli had to stop being hardcoded.
 **There is no form.** The output is one 19200-tick statement — 10 bars, 20 seconds at 120
 BPM, 238 notes across four drum pads. It is correct, verified material, not a track.
 Arrangement, development and variation across a piece live above this layer and are not
-attempted here. `dois_nine` had that layer (5 movements x 8 sections); this lineage
+attempted here. `dois_09` had that layer (5 movements x 8 sections); this lineage
 deliberately stripped it out to get the material right first.
 
 **Tempo and meter are largely moot in Ableton**, which uses the project's own and reads a
@@ -381,7 +381,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07)
 
-**Current version: `dois_twelve`.** Verified against the rendered MIDI, not from memory.
+**Current version: `dois_12`.** Verified against the rendered MIDI, not from memory.
 
 | Voice | Pad | Basic unit | Note layer | Passes | Span | Period | Notes |
 |---|---|---|---|---|---|---|---|
@@ -398,12 +398,12 @@ other hosts.
   (`32@0|32@1|32@7`) on the sixteenth grid, `span3` (`3@0|3@1`) on the triplet grid.
 - **Velocity:** 8 levels, `1 19 37 55 73 91 109 127`, evenly spaced 18 apart across the
   full range. Each voice reaches 6 of the 8; all 8 appear across the piece.
-- `dois_twelve_arrangement.mid` — 4 tracks, 238 notes. `dois_twelve_drumrack.mid` —
+- `dois_12_arrangement.mid` — 4 tracks, 238 notes. `dois_12_drumrack.mid` —
   1 track, 238 notes on pads 36-39.
 - A per-voice file is **identical note-for-note** to its arrangement track and drum rack
   pad — that is what makes them usable as a reference for checking the ensemble.
 - Config fingerprint of this state: **`cfg=52ab7f83`**, stamped in every track.
-- `max/sieve.js` (in dois_ten) is **PARKED and stale**. Ignore it.
+- `max/sieve.js` (in dois_10) is **PARKED and stale**. Ignore it.
 
 ### Ready to produce with — verified 2026-09-07
 
@@ -416,8 +416,8 @@ Checked as a DAW sees the files, not as the code reports them:
 | pads 36-39 = C1, C#1, D1, D#1, Drum Rack pads 1-4 | yes, 60/100/60/18 notes |
 | hanging notes, same-pitch overlaps, zero-length notes | **none in any file** |
 
-**Which file to use.** `dois_twelve_drumrack.mid` on one track with a Drum Rack is the
-plugin-ready form. `dois_twelve_arrangement.mid` is the same content split across four
+**Which file to use.** `dois_12_drumrack.mid` on one track with a Drum Rack is the
+plugin-ready form. `dois_12_arrangement.mid` is the same content split across four
 tracks for independent processing. The `_prime` files are single voices.
 
 **Tempo and meter.** Ableton uses the project's tempo, not the file's, so the clip is 40
@@ -490,24 +490,47 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ---
 
+## Naming convention for the dois series (2026-09-07)
+
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_12`, so the
+folders sort in the order they were made and the newest is always last.
+
+The spelled-out names sorted uselessly — `dois, dois_eight, dois_eleven, dois_five,
+dois_four, dois_nine, dois_seven, dois_six, dois_ten, dois_three, dois_twelve, dois_two`.
+Alphabetical order and creation order had almost nothing in common, so finding the current
+version meant reading the docs rather than the directory.
+
+Renamed retroactively on 2026-09-07: 12 folders, 95 MIDI files, 11 `TITLE` constants, and
+every reference in CONTEXT.md and README.md. **`dois_01` keeps `TITLE = 'psappha'`** — its
+outputs are named after the piece, not the folder, and always were.
+
+**Two traps if this is ever done again.** `_` is a word character, so `\bdois_ten\b` does
+NOT match in `dois_10_A_prime.mid` — a word-boundary pattern silently renames nothing. And
+chained `re.sub` calls will re-match: replacing `dois_ten` then `dois` turns `dois_10` into
+`dois_01_10`, and `dois_series` into `dois_01_series`. Use ONE alternation ordered
+longest-first so each position is replaced exactly once, allow `_` after a version but not
+after bare `dois`, and test the pattern against known cases before touching any file.
+
+---
+
 ## Repository Structure
 
 ```
 sifters/
   sifters/
-    dois_series/          ← all dois versions live here
-      dois/               ← original (v1)
-      dois_two/
-      dois_three/         ← best-sounding version; reference for voice design
-      dois_four/
-      dois_five/
-      dois_six/
-      dois_seven/
-      dois_eight/
-      dois_nine/          ← arrangement version of dois_three (5 movements × 8 sections)
-      dois_ten/           ← superseded by dois_eleven; kept as it stands
-      dois_eleven/        ← superseded by dois_twelve
-      dois_twelve/        ← CURRENT FOCUS — production version
+    dois_series/          ← all dois_01 versions live here
+      dois_01/               ← original (v1)
+      dois_02/
+      dois_03/         ← best-sounding version; reference for voice design
+      dois_04/
+      dois_05/
+      dois_06/
+      dois_07/
+      dois_08/
+      dois_09/          ← arrangement version of dois_03 (5 movements × 8 sections)
+      dois_10/           ← superseded by dois_11; kept as it stands
+      dois_11/        ← superseded by dois_12
+      dois_12/        ← CURRENT FOCUS — production version
         config.py
         composition.py
         transformations.py
@@ -518,15 +541,15 @@ sifters/
 
 ---
 
-## The `dois_ten` version — superseded, kept for reference
+## The `dois_10` version — superseded, kept for reference
 
-> **This section describes `dois_ten` as it stands, not the current version.** Its figures
+> **This section describes `dois_10` as it stands, not the current version.** Its figures
 > (57600 ticks, 480/360-step spans, four accents, 12 and 9 passes) are correct *for that
-> version* and are not the current state — see "Current State" above for `dois_twelve`.
-> `dois_ten` remains on disk and is the version whose 30-bar length and four-accent field
+> version* and are not the current state — see "Current State" above for `dois_12`.
+> `dois_10` remains on disk and is the version whose 30-bar length and four-accent field
 > are worth comparing against by ear.
 
-### Current Focus: `dois_ten`
+### Current Focus: `dois_10`
 
 The active project. A stripped-down, plugin-oriented version that generates a single **40-step rhythmic beat** from the psappha sieve. No arrangement layer, no shift library — just the four core voices at their prime.
 
@@ -584,7 +607,7 @@ makes the accent field land differently on each pass and carries the factor of 3
 triplet voice's period needs.
 
 **Two mistakes were made here and are recorded so they are not repeated.** `sieve8` was
-`wide8` and had been written `8@0|8@1|8@2|8@5|8@6` since dois_two. On 2026-09-03 it was
+`wide8` and had been written `8@0|8@1|8@2|8@5|8@6` since dois_02. On 2026-09-03 it was
 thinned to `8@0|8@1|8@5` purely because that measured better, and then dropped entirely.
 {0,1,5} matches no clause — the thinning **turned a derived object into a hand-picked
 one**, and dropping it removed the sieve's mod-8 self-reference from the accent layer.
@@ -706,17 +729,17 @@ but the rule is what keeps the per-voice files valid as a reference.
 Each per-voice file is **exactly one full statement** of that voice — which means they
 are deliberately different lengths. See the Governing Principle at the top.
 
-- `dois_ten_A_prime.mid` — 57600 ticks (12 bars), 480 steps, 180 notes
-- `dois_ten_B_prime.mid` — 57600 ticks (12 bars), 480 steps, 300 notes
-- `dois_ten_C_prime.mid` — 57600 ticks (12 bars), 480 steps, 180 notes
-- `dois_ten_D_prime.mid` — 57600 ticks (12 bars), 360 steps,  54 notes
+- `dois_10_A_prime.mid` — 57600 ticks (12 bars), 480 steps, 180 notes
+- `dois_10_B_prime.mid` — 57600 ticks (12 bars), 480 steps, 300 notes
+- `dois_10_C_prime.mid` — 57600 ticks (12 bars), 480 steps, 180 notes
+- `dois_10_D_prime.mid` — 57600 ticks (12 bars), 360 steps,  54 notes
 **A per-voice file is one period. The ensemble files repeat those same periods, whole,
 until every voice finishes together** — 57600 ticks, the LCM of the voice periods
 (A ×4, B ×12, C ×4, D ×9). No voice's internal period is altered to fit; it simply recurs,
 so any single cycle inside an ensemble file is identical to that voice's own file.
 
-- `dois_ten_arrangement.mid` — 57600 ticks (30 bars), four tracks, all ending together
-- `dois_ten_drumrack.mid` — 57600 ticks (30 bars), all four voices merged onto a **single
+- `dois_10_arrangement.mid` — 57600 ticks (30 bars), four tracks, all ending together
+- `dois_10_drumrack.mid` — 57600 ticks (30 bars), all four voices merged onto a **single
   track** at Drum Rack pitches 36/37/38/39. The plugin-ready format: drop it on one Ableton
   track holding a Drum Rack.
 
@@ -747,7 +770,7 @@ A → 36, B → 37, C → 38, D → 39, and a fifth voice would get 40 for free.
 still pin its own by setting `'root'` explicitly.
 
 **Why derived rather than two values.** The first version of this carried both `root`
-(a pitched voicing: 36/55/48/60, inherited from dois_three) and `drum_root` (the pad).
+(a pitched voicing: 36/55/48/60, inherited from dois_03) and `drum_root` (the pad).
 That meant the prime clips and the drum rack clip played *different notes* for the same
 voice — B was G3 in `B_prime.mid` but C#1 in the drum rack — so comparing them in
 Ableton showed the same rhythm on different rows, and the two values could drift apart
@@ -766,7 +789,7 @@ still holds and has been re-run against each later version of the files.)*
 
 ### Time Signature Bug Fixed (2026-08-27)
 
-**Symptom:** `dois_ten_D_prime.mid` declared `40/16`, but that meter describes a
+**Symptom:** `dois_10_D_prime.mid` declared `40/16`, but that meter describes a
 4800-tick bar while D's clip is 6400 ticks — the file asserted it was 1-1/3 bars long.
 
 **Root cause:** `generate_time_signature` did
@@ -955,7 +978,7 @@ OUTPUT_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'mid')
 This ensures scripts run correctly from any working directory.
 
 ### TITLE Prefix on Filenames
-All generated MIDI files are prefixed with the project TITLE (e.g. `dois_ten_A_prime.mid`) so versions can be differentiated when multiple projects are loaded in Ableton simultaneously.
+All generated MIDI files are prefixed with the project TITLE (e.g. `dois_10_A_prime.mid`) so versions can be differentiated when multiple projects are loaded in Ableton simultaneously.
 
 ### LCM Arrangement
 `main` computes `math.lcm(*cycle_lengths)` once across all voices and every file is written to exactly that length. Handles any combination of step durations. Each track padded to `total_ticks` with an explicit `end_of_track`.
@@ -1011,13 +1034,13 @@ Voice D → pitch 39 (D#1)  — Drum Rack pad 4
 [noteout]               ← sends to Drum Rack
 ```
 
-`sieve.js` already written at `sifters/dois_series/dois_ten/max/sieve.js`. It handles:
+`sieve.js` already written at `sifters/dois_series/dois_10/max/sieve.js`. It handles:
 - Transport position → step index for A/B/C (120-tick grid) and D (160-tick grid)
 - Step crossing detection (fires note only on new step, not every bang)
 - Velocity lookup from precomputed arrays
 - Outputs pitch on outlet 0, velocity on outlet 1 (velocity must arrive at noteout before pitch)
 
-**`max/sieve.js` is generated from `mid/dois_ten_*_prime.mid` — do not hand-edit it.**
+**`max/sieve.js` is generated from `mid/dois_10_*_prime.mid` — do not hand-edit it.**
 *(Parked — see the notice above. The generator that produced it was not committed, so
 it will need rewriting when this work resumes. That is deliberate: there was no point
 committing a generator for a file nobody is maintaining.)*
@@ -1031,7 +1054,7 @@ to the piece start even though their periods differ.
 **Verify it by RUNNING it, not by parsing it.** `node` is not installed on this machine,
 but macOS ships JavaScriptCore via `osascript -l JavaScript`, which will execute the file:
 stub Max's `outlet()`, sweep `msg_float()` across one ensemble period, and compare the
-notes it fires against `mid/dois_ten_drumrack.mid`. Verified 2026-08-31 this way — **714
+notes it fires against `mid/dois_10_drumrack.mid`. Verified 2026-08-31 this way — **714
 notes, identical in tick, pitch and velocity** (pads 36/37/38/39 = 180/300/180/54).
 
 This matters: an earlier version of the generator emitted a literal `\n` between voice
@@ -1052,14 +1075,14 @@ If broader DAW support is needed beyond Ableton: JUCE framework in C++. Same arc
 
 | Version | Key feature |
 |---|---|
-| dois | First working sieve → MIDI pipeline |
-| dois_two | Added shift library (all non-factor shifts of A) |
-| dois_three | **Best-sounding**: A + complement B + canon C + intersection D with triplet grid. Accent voicing. |
-| dois_four–six | Explored different instrument configurations |
-| dois_seven–eight | Ensemble and arrangement experiments |
-| dois_nine | Arrangement version of dois_three — fractal form (5 movements × 8 sections = 40 = sieve period), per-instrument presence thresholds, per-movement MIDI tracks |
-| dois_eleven | **Current**: same music as dois_ten, with measured (not declared) sieve periods, a derived note layer, strict duration lookup, dispatched derivations, and a `verify()` pass that re-reads every rendered file and asserts the invariants |
-| dois_ten | duration states periodicity; accent layers span multiple passes of the note layer; accent moduli chosen so all four voices reach the same period; graded overlap velocities; one derived pitch per voice on Drum Rack pads |
+| dois_01 | First working sieve → MIDI pipeline |
+| dois_02 | Added shift library (all non-factor shifts of A) |
+| dois_03 | **Best-sounding**: A + complement B + canon C + intersection D with triplet grid. Accent voicing. |
+| dois_04–six | Explored different instrument configurations |
+| dois_07–eight | Ensemble and arrangement experiments |
+| dois_09 | Arrangement version of dois_03 — fractal form (5 movements × 8 sections = 40 = sieve period), per-instrument presence thresholds, per-movement MIDI tracks |
+| dois_11 | **Current**: same music as dois_10, with measured (not declared) sieve periods, a derived note layer, strict duration lookup, dispatched derivations, and a `verify()` pass that re-reads every rendered file and asserts the invariants |
+| dois_10 | duration states periodicity; accent layers span multiple passes of the note layer; accent moduli chosen so all four voices reach the same period; graded overlap velocities; one derived pitch per voice on Drum Rack pads |
 
 ---
 
@@ -1162,17 +1185,17 @@ uses the same set as A and C.
 
 ## What's Next (as of 2026-09-07)
 
-- [x] Update `dois_ten` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format *(done 2026-08-27: `dois_ten_drumrack.mid`)*
+- [x] Update `dois_10` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format *(done 2026-08-27: `dois_10_drumrack.mid`)*
 - [x] Code ready to produce with *(verified 2026-09-07 — see "Ready to produce with")*
-- [ ] **Build a track from `dois_twelve`.** Load `mid/dois_twelve_drumrack.mid` onto one
+- [ ] **Build a track from `dois_12`.** Load `mid/dois_12_drumrack.mid` onto one
       track with a Drum Rack (pads 1-4 = A/B/C/D), or `_arrangement.mid` for four separate
       tracks. Form — repetition, variation, entrances and exits — is being built in the DAW
       for now rather than in the code, by choice.
-- [ ] Worth an A/B by ear: `dois_ten` (30 bars, four accents, 12 passes) against
-      `dois_twelve` (10 bars, three accents, 4 passes). The shorter version carries no
+- [ ] Worth an A/B by ear: `dois_10` (30 bars, four accents, 12 passes) against
+      `dois_12` (10 bars, three accents, 4 passes). The shorter version carries no
       repetition beyond what parity requires; the longer one has more accent variety.
 - [ ] Only after producing with this: decide whether form belongs in the code (a
-      `dois_thirteen` with an arrangement layer, as `dois_nine` had) or stays in the DAW.
+      `dois_thirteen` with an arrangement layer, as `dois_09` had) or stays in the DAW.
 - [x] Write an explicit `set_tempo` into the generated files *(done 2026-08-30 — 120 BPM on every track)*
 - [x] Give every generated track the same time signature *(done 2026-08-30 — 4/4 everywhere)*
 - [x] Render each voice at the full 19200-tick LCM *(done 2026-08-31, then **superseded**
@@ -1199,7 +1222,7 @@ uses the same set as A and C.
 ## Running the Code
 
 ```bash
-cd sifters/sifters/dois_series/dois_ten
+cd sifters/sifters/dois_series/dois_10
 python composition.py
 ```
 
@@ -1219,8 +1242,8 @@ music21, which imports in well under a second. Subsequent runs are immediate.
    touching any duration, meter or accent — they are where the reasoning lives, and the
    mistakes they describe were all made once already.
 4. The key files to read are:
-   - `sifters/dois_series/dois_ten/config.py` — voices, accent sieves, meter/tempo constants
-   - `sifters/dois_series/dois_ten/composition.py` — full pipeline
-   - ~~`sifters/dois_series/dois_ten/max/sieve.js`~~ — parked and stale; ignore for now
+   - `sifters/dois_series/dois_10/config.py` — voices, accent sieves, meter/tempo constants
+   - `sifters/dois_series/dois_10/composition.py` — full pipeline
+   - ~~`sifters/dois_series/dois_10/max/sieve.js`~~ — parked and stale; ignore for now
 5. Run `python composition.py` and compare its printed periods against "Current State".
    The first run after a reboot takes ~60s in numpy's import; that is normal here.
