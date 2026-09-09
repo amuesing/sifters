@@ -409,6 +409,15 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
 # cycle inside an ensemble file equals that voice's own file exactly — which is what
 # makes the per-voice files usable to check the ensemble.
 
+def gate_ticks(step_ticks):
+    """How long a note sounds: a fraction of its step, never the whole step.
+
+    A full-step gate ends a note on the tick the next begins, which many sustaining
+    instruments will not re-articulate from. At least one tick of silence is guaranteed.
+    """
+    gate = int(round(step_ticks * GATE_RATIO))
+    return max(1, min(gate, step_ticks - 1))
+
 def voice_events(notes_per_step, velocities, step_ticks, total_ticks):
     """Absolute-time (tick, kind, pitch, velocity); kind 1 = note_on, 0 = note_off."""
     active = np.flatnonzero(velocities)
@@ -425,8 +434,8 @@ def voice_events(notes_per_step, velocities, step_ticks, total_ticks):
             on_tick = rep_start + int(idx) * step_ticks
             velocity = int(velocities[idx])
             for pitch in notes_per_step[idx]:
-                events.append((on_tick,              1, int(pitch), velocity))
-                events.append((on_tick + step_ticks, 0, int(pitch), 0))
+                events.append((on_tick,                       1, int(pitch), velocity))
+                events.append((on_tick + gate_ticks(step_ticks), 0, int(pitch), 0))
     return events
 
 def make_track(name, events, total_ticks, meter, provenance=None):
@@ -645,8 +654,18 @@ def verify(voices, periods, total_ticks, note_layers, base_binaries):
               f"{name}: file is {end} ticks, its period is {periods[name]}")
         check(not hanging, f"{name}: {len(hanging)} hanging note(s)")
         check(not overlaps, f"{name}: {len(overlaps)} same-pitch overlap(s)")
-        check(all(d == step_ticks for _, d, _, _ in notes),
-              f"{name}: not every note is exactly one {step_ticks}-tick step")
+        gate = gate_ticks(step_ticks)
+        check(all(d == gate for _, d, _, _ in notes),
+              f"{name}: not every note is {gate} ticks (gate) long")
+        check(gate < step_ticks,
+              f"{name}: gate {gate} fills the whole {step_ticks}-tick step, so notes abut")
+
+        # No two notes on a pitch may touch: a zero-length gap is where a sustaining
+        # instrument fails to re-articulate and a sieve hit goes unheard.
+        seq = sorted((o, o + d) for o, d, _, _ in notes)
+        touching = [(a, b) for (_, a), (b, _) in zip(seq, seq[1:]) if a >= b]
+        check(not touching,
+              f"{name}: {len(touching)} note(s) start where the previous ends")
         check(all(o % step_ticks == 0 for o, _, _, _ in notes),
               f"{name}: some onsets are off the {step_ticks}-tick grid")
         check({p for _, _, p, _ in notes} == {pads[name]},

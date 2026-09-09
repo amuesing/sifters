@@ -26,6 +26,24 @@ MIN_VELOCITY = 1
 MAX_VELOCITY = 127
 UNACCENTED_VELOCITY = 64          # a voice with no accent layer at all
 
+# How much of its step a note actually sounds for.
+#
+# A gate of exactly one step makes each note end on the tick the next one starts, so the
+# note-off and the following note-on share a tick. That is legal MIDI and a one-shot drum
+# sample ignores it, but a SUSTAINING synth patch frequently fails to re-articulate from a
+# zero-length gap — consecutive notes are heard as one. In dois_12 that affected 91 pairs,
+# including 56% of voice B's notes.
+#
+# The sieve says a sound occurs at that step; if the note does not re-articulate, the
+# sound does not occur. So the gate is shortened to leave a real gap. This does not move
+# any onset — the integers the sieve produces are untouched — it only shortens what
+# sounds at each of them.
+#
+# 0.5 is a clean articulation that will retrigger on anything. Raise it toward 1.0 for a
+# more legato reading if your patches retrigger reliably; a value of 1.0 restores the
+# original behaviour and the problem with it.
+GATE_RATIO = 0.5
+
 TIME_SIGNATURE = (4, 4)           # fallback only, if no meter fits a period
 MAX_METER_NUMERATOR = 99          # Ableton's limit
 TEMPO_BPM = 120

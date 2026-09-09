@@ -365,6 +365,44 @@ relationships. Augmentation lengthens the note layer (A stretched by 2 states it
 layers are per-voice and span accents are now derived per voice. That is precisely why the
 moduli had to stop being hardcoded.
 
+### Note gate — notes must re-articulate (2026-09-08)
+
+**Found in production, not by any check.** Consecutive notes were not sounding on
+sustaining synth patches. The cause: every gate was exactly one step long, so each
+note-off landed on the same tick as the next note-on.
+
+```
+tick 360  delta 120  note_off note 37
+tick 360  delta   0  note_on  note 37 vel 37     <- zero gap
+```
+
+Legal MIDI, and a one-shot drum sample ignores note-off so it never showed up while
+testing with drums — but a sustaining patch frequently will not re-articulate from a
+zero-length gap, and the two notes are heard as one. **91 pairs across the four voices,
+including 56% of voice B's notes.**
+
+This violates the founding principle as squarely as an inaudible velocity did: the sieve
+says a sound occurs at that step, and no sound occurred.
+
+**`GATE_RATIO = 0.5`** — a note sounds for half its step. `gate_ticks()` clamps to at
+least 1 tick and at most `step - 1`, so a gap is guaranteed whatever the ratio.
+
+| | before | after |
+|---|---|---|
+| gate, 16th voices | 120 of 120 ticks | 60 of 120 |
+| gate, triplet voice | 160 of 160 | 80 of 160 |
+| abutting pairs | **91** | **0** |
+| smallest gap | 0 ticks | 60 / 80 ticks |
+
+**No onset moved.** The integers the sieve produces are untouched — A still sounds at
+0, 1, 8, 10, 13, 14, ... — only the length of what sounds at each changed. Raise the
+ratio toward 1.0 for a more legato reading if your patches retrigger reliably; 1.0
+restores the original behaviour and the fault with it.
+
+`verify()` now enforces both halves: every note is exactly the gate length, and **no two
+notes on a pitch may touch**. The old check asserted the gate filled the whole step —
+it was enforcing the bug.
+
 ### What is still NOT in the code, deliberately
 
 **There is no form.** The output is one 19200-tick statement — 10 bars, 20 seconds at 120
