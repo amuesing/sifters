@@ -410,13 +410,13 @@ def accent_voicing(binary, accent_binaries, profile, root_note):
 # makes the per-voice files usable to check the ensemble.
 
 def gate_ticks(step_ticks):
-    """How long a note sounds: a fraction of its step, never the whole step.
+    """How long a note sounds, from GATE_RATIO.
 
-    A full-step gate ends a note on the tick the next begins, which many sustaining
-    instruments will not re-articulate from. At least one tick of silence is guaranteed.
+    A ratio of 1.0 fills the step, so consecutive notes abut — legal MIDI, and what
+    lets a complement pair tile time continuously. Anything below leaves a gap, which
+    is what a device needs if it will not retrigger from a zero-length one.
     """
-    gate = int(round(step_ticks * GATE_RATIO))
-    return max(1, min(gate, step_ticks - 1))
+    return max(1, min(int(round(step_ticks * GATE_RATIO)), step_ticks))
 
 def voice_events(notes_per_step, velocities, step_ticks, total_ticks):
     """Absolute-time (tick, kind, pitch, velocity); kind 1 = note_on, 0 = note_off."""
@@ -657,15 +657,17 @@ def verify(voices, periods, total_ticks, note_layers, base_binaries):
         gate = gate_ticks(step_ticks)
         check(all(d == gate for _, d, _, _ in notes),
               f"{name}: not every note is {gate} ticks (gate) long")
-        check(gate < step_ticks,
-              f"{name}: gate {gate} fills the whole {step_ticks}-tick step, so notes abut")
-
-        # No two notes on a pitch may touch: a zero-length gap is where a sustaining
-        # instrument fails to re-articulate and a sieve hit goes unheard.
+        # Notes may abut (gate 1.0) but must never OVERLAP — an overlapping pair is a
+        # second Note On for a sounding pitch, which no device handles predictably.
         seq = sorted((o, o + d) for o, d, _, _ in notes)
-        touching = [(a, b) for (_, a), (b, _) in zip(seq, seq[1:]) if a >= b]
-        check(not touching,
-              f"{name}: {len(touching)} note(s) start where the previous ends")
+        overlapping = [(a, b) for (_, a), (b, _) in zip(seq, seq[1:]) if a > b]
+        check(not overlapping,
+              f"{name}: {len(overlapping)} note(s) start before the previous ends")
+        abutting = sum(1 for (_, a), (b, _) in zip(seq, seq[1:]) if a == b)
+        if abutting:
+            print(f"     {name}: {abutting} consecutive pair(s) abut (gate {GATE_RATIO}) — "
+                  f"correct, but a device that will not retrigger from a zero-length gap "
+                  f"needs GATE_RATIO below 1.0")
         check(all(o % step_ticks == 0 for o, _, _, _ in notes),
               f"{name}: some onsets are off the {step_ticks}-tick grid")
         check({p for _, _, p, _ in notes} == {pads[name]},

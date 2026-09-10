@@ -365,43 +365,41 @@ relationships. Augmentation lengthens the note layer (A stretched by 2 states it
 layers are per-voice and span accents are now derived per voice. That is precisely why the
 moduli had to stop being hardcoded.
 
-### Note gate — notes must re-articulate (2026-09-08)
+### Note gate — a device question, not a file question (2026-09-10)
 
-**Found in production, not by any check.** Consecutive notes were not sounding on
-sustaining synth patches. The cause: every gate was exactly one step long, so each
-note-off landed on the same tick as the next note-on.
+**`GATE_RATIO = 1.0` is the default: a note fills its step, so consecutive notes abut.**
 
-```
-tick 360  delta 120  note_off note 37
-tick 360  delta   0  note_on  note 37 vel 37     <- zero gap
-```
+Briefly changed to 0.5 on 2026-09-08 after consecutive notes failed to sound on a hardware
+synth, then reverted when the user established the decisive fact: **the same files
+articulate correctly in Ableton through samples.** The MIDI was never at fault.
 
-Legal MIDI, and a one-shot drum sample ignores note-off so it never showed up while
-testing with drums — but a sustaining patch frequently will not re-articulate from a
-zero-length gap, and the two notes are heard as one. **91 pairs across the four voices,
-including 56% of voice B's notes.**
+- **The file's structure was always correct.** Verified at the byte level, bypassing mido:
+  100 note-ons and 100 note-offs in voice B, real `0x8n` messages rather than the
+  `0x9n`-with-velocity-0 shorthand, every note closed before its pitch sounds again,
+  nothing hanging. The note-off correctly precedes the note-on when they share a tick —
+  the documented convention, since note-off first starts a new note while note-on first
+  gives a zero-length one.
+- **Abutting is legal but not guaranteed to retrigger.** The MIDI specification leaves it
+  to the DEVICE whether a Note On for a sounding pitch retriggers or is absorbed. There is
+  no correct behaviour to appeal to, which is why samples were fine and the synth was not.
+- **A full gate is the structurally truthful reading.** A and B are complements; only at
+  gate 1.0 do they tile time continuously, every tick covered by exactly one of the pair.
+  0.5 silently discarded that.
+- **Two real conventions exist.** 100% is the modern digital default (Logic's Step
+  Sequencer); ~50% is the classic analogue gate (TB-303), chosen so fast repeated notes
+  read as distinct events.
+- **A survey of 196 local MIDI files did not settle it.** Ableton's factory packs appear to
+  abut 100% of the time, but that is an artifact — they hold a fixed length of about one
+  quarter note, which only *looks* like abutting at quarter spacing, and they contain zero
+  repeated notes at 16th spacing. A 50% figure from score exports is Finale's export
+  default. Neither is a considered choice about material like this.
 
-This violates the founding principle as squarely as an inaudible velocity did: the sieve
-says a sound occurs at that step, and no sound occurred.
+**If a device absorbs the retrigger**, set `GATE_RATIO` below 1.0 — 0.5 is the classic
+value and retriggers on anything — or use Ableton's Note Length MIDI effect, which
+overrides durations per track at playback and leaves the file intact.
 
-**`GATE_RATIO = 0.5`** — a note sounds for half its step. `gate_ticks()` clamps to at
-least 1 tick and at most `step - 1`, so a gap is guaranteed whatever the ratio.
-
-| | before | after |
-|---|---|---|
-| gate, 16th voices | 120 of 120 ticks | 60 of 120 |
-| gate, triplet voice | 160 of 160 | 80 of 160 |
-| abutting pairs | **91** | **0** |
-| smallest gap | 0 ticks | 60 / 80 ticks |
-
-**No onset moved.** The integers the sieve produces are untouched — A still sounds at
-0, 1, 8, 10, 13, 14, ... — only the length of what sounds at each changed. Raise the
-ratio toward 1.0 for a more legato reading if your patches retrigger reliably; 1.0
-restores the original behaviour and the fault with it.
-
-`verify()` now enforces both halves: every note is exactly the gate length, and **no two
-notes on a pitch may touch**. The old check asserted the gate filled the whole step —
-it was enforcing the bug.
+`verify()` enforces that notes never OVERLAP and reports how many abut, so the condition is
+visible rather than silent: A 16, B 56, C 16, D 3.
 
 ### What is still NOT in the code, deliberately
 
