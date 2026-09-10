@@ -434,6 +434,10 @@ other hosts.
   (`32@0|32@1|32@7`) on the sixteenth grid, `span3` (`3@0|3@1`) on the triplet grid.
 - **Velocity:** 8 levels, `1 19 37 55 73 91 109 127`, evenly spaced 18 apart across the
   full range. Each voice reaches 6 of the 8; all 8 appear across the piece.
+- **Note gate:** `GATE_RATIO = 1.0` — a note fills its step, so consecutive notes abut
+  (16 pairs in A, 56 in B, 16 in C, 3 in D). Correct, and what lets the A/B complement
+  pair tile time continuously. Lower it only for a device that will not retrigger from a
+  zero-length gap — see "Note gate" below.
 - `dois_12_arrangement.mid` — 4 tracks, 238 notes. `dois_12_drumrack.mid` —
   1 track, 238 notes on pads 36-39.
 - A per-voice file is **identical note-for-note** to its arrangement track and drum rack
@@ -447,10 +451,17 @@ Checked as a DAW sees the files, not as the code reports them:
 
 | check | result |
 |---|---|
-| all six files, valid MIDI type 1 | yes |
+| all six files, valid MIDI type 1, 480 tpq | yes |
 | every file exactly 19200 ticks / whole bars | yes |
 | pads 36-39 = C1, C#1, D1, D#1, Drum Rack pads 1-4 | yes, 60/100/60/18 notes |
-| hanging notes, same-pitch overlaps, zero-length notes | **none in any file** |
+| hanging notes, overlapping notes, zero-length notes | **none in any file** |
+| note-ons matched by real `0x8n` note-offs | yes — 60/100/60/18 each, no velocity-0 shorthand |
+| every onset on its voice's tick grid | yes |
+| per-voice file == arrangement track == drum rack pad | yes, all four |
+| re-render byte-identical | yes — deterministic |
+
+Re-confirmed 2026-09-10 by parsing the raw MIDI bytes directly, without mido and without
+the project's own `verify()`, so the check does not depend on the code it is checking.
 
 **Which file to use.** `dois_12_drumrack.mid` on one track with a Drum Rack is the
 plugin-ready form. `dois_12_arrangement.mid` is the same content split across four
