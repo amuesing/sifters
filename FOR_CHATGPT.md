@@ -12,8 +12,19 @@ produced. A third set of changes you made has *not* been adopted, and sorting yo
 into those categories is what this document is for.
 
 Sections 1-3 are things you got right. Sections 4-6 are the adopt / do-not-adopt
-verdicts and the reasoning. Sections 7-9 are the context and state you need to work
+verdicts and the reasoning. Sections 7-10 are the context and state you need to work
 here again.
+
+**Updated 2026-09-16, and you have already acted on some of this.** Two things happened
+after the first draft. You built `dois_14(gpt)`, which makes the correction and the
+policy changes independently selectable instead of bundling them — that is exactly the
+central ask in section 4, and it is the right shape. I verified your `reference` preset:
+it reproduces this project's `dois_14` note-for-note in all four voices, rhythm and
+velocity, so the baseline is trustworthy and the policy presets really do isolate one
+variable each. Separately, this project gained **`dois_15`**, which derives pitch from
+the sieve. You had already built `dois_14(gpt)_pitch` by a different method. Section 9
+is new and covers both, because the two approaches are worth comparing rather than
+merging.
 
 ---
 
@@ -264,7 +275,7 @@ mapped to filter cutoff, envelope times, or sample layer. A low velocity is a *d
 sound*, not a quieter one. The full 1–127 range is used deliberately, and the floor is 1
 rather than 0 because a note-on of velocity 0 is a note-off.
 
-## 8. What `dois_14` is
+## 8. What `dois_14` and `dois_15` are
 
 `dois_12`'s code with your sieve correction applied and **nothing else changed** — same
 weather, same span-accent derivation, same basic units, same gate, same parity
@@ -284,23 +295,103 @@ The density relationship between A and its complement **inverts**: B used to be 
 busier voice and is now the sparse one. That is the most audible consequence and it is
 intended.
 
+**`dois_15`** is `dois_14` with pitch derived from the lattice (section 9) and nothing
+else changed: rhythm and velocity are byte-identical to `dois_14` in all four voices, so
+the two are directly A/B-able and any difference you hear is pitch alone. Its merged file
+separates voices by **MIDI channel** rather than by pitch, because with pitch derived two
+voices may legitimately sound the same note at the same tick.
+
 Verified on the rendered files by independent byte-level parse: all four voices exactly
 19200 ticks — 4 bars of the derived 40/16 meter, 40 quarter notes; voice A's onsets match the PMC attack list exactly; `A|B` complete
 and `A&B` empty; C confirmed as A shifted +13; D confirmed as `A∩C`; minimal period
 equals full span in every voice, so Principle IV holds; 0 hanging and 0 overlapping
 notes; drum rack on pads 36–39 with 108/52/108/60 notes.
 
-## 9. Open questions, if you want to be useful next
+## 9. Pitch: two different derivations, yours and this project's
 
-Four things are genuinely open. None is a defect to be fixed unasked, and none should
+Both of us answered "derive pitch from the sieve" and got materially different music. The
+approaches are not in competition; they are different readings of the same requirement,
+and the author has not chosen between them.
+
+**This project's `dois_15` — the lattice.** Because gcd(8, 5) = 1, every step of the
+40-step period has a unique address `(step mod 8, step mod 5)`, so the period is an
+**8 x 5 grid** rather than a line. The sieve drawn on that grid is a shape: `8@3` and
+`8@4` are complete rows, `(8@1&5@2)` is a single cell — which is exactly why those
+clauses fire every 8 steps and once per period. Pitch takes one interval per axis, using
+the sieve's own moduli exchanged:
+
+```
+pitch = root + ( 5*(step mod 8) + 8*(step mod 5) )  mod  40
+```
+
+Counting walks diagonally across the grid, so each step adds 5 + 8 = 13 semitones and
+folds inside the period. The identity `5*(n mod 8) + 8*(n mod 5) == 13n (mod 40)` is
+exact and is asserted at render time — the lattice form and the multiplier form are one
+operation, not two schemes. (An earlier draft of this file's thinking treated them as
+two. They are not.)
+
+Two properties fall out, both asserted in `verify()` rather than assumed:
+
+- **Bijectivity.** gcd(13, 40) = 1, so all 40 pitches are reached before anything
+  repeats, and residue classes map to residue classes — the pitch set is the rhythm
+  sieve under a sieve-preserving transformation, not an arbitrary reordering.
+- **The canon becomes an exact transposition.** Moving 13 steps is 5 rows down and 3
+  columns right from anywhere, always worth 5*5 + 8*3 = 49 = **+9 semitones**. C is A
+  transposed, everywhere, with no exceptions. The interval is not chosen; it falls out
+  of the displacement already in the piece.
+
+**Your `dois_14(gpt)_pitch`** reads each voice's own cyclic sieve gaps as semitone
+intervals, with a minimum-reversal solver forcing the signed sum to zero so the line
+closes. Measured from your `creative` preset: A spans 16 semitones across 17 distinct
+pitches, B 11 across 9, D just 2 pitches. Conjunct, narrow, melodic.
+
+The lattice is the opposite character: 40-semitone span, interval sizes of 13, 14, 26 and
+27 semitones, longest monotonic run of 2. Disjunct and wide where yours is stepwise and
+narrow.
+
+**Neither is more derived than the other**, and that is the point — "derive pitch from
+the sieve" underdetermines the answer. If you work on pitch again, the useful thing is
+not to pick a winner but to be explicit about which musical property you are preserving:
+you preserved melodic continuity, this preserved structural bijectivity and the canon.
+
+**One known cost of the lattice, unresolved.** Pitch is a function of the step index, and
+A, B and C share the 120-tick grid, so whenever they sound together they read the same
+cell. A+C and B+C are in **unison 100%** of their overlapping time, and 42% of the time
+two or more voices sound there is only one distinct pitch. The texture is heterophonic,
+not contrapuntal, and the +9 canon is a relationship between melodies over time rather
+than an audible harmony. Counterpoint is reachable without leaving the sieve — let each
+voice read the lattice through its own derivation rather than the shared global index —
+but that has not been done and should not be done unasked.
+
+**The serial connection, noted because it may be useful and may be unwelcome.** The
+lattice reproduces several twelve-tone properties exactly: multiplication by a unit is a
+serial operation (M5/M7 in mod 12, central to Boulez's multiplication technique); the
+40-element row completes the aggregate before repeating; and A and B partition that
+aggregate with zero overlap — combinatoriality, arriving free because B is *defined* as
+the complement rather than chosen for the property. x13 has order 4 in the group mod 40
+(13 -> 9 -> 37 -> 1), a closed family of four mappings parallel to P/I/R/RI. The
+qualification matters: Xenakis wrote sieve theory *against* serialism, the row here is
+generated rather than composed, and there is no octave equivalence, so it is serial in
+structure but not in perception. Do not take this as licence to import serial technique
+wholesale; it is an observation about what the arithmetic already does.
+
+---
+
+## 10. Open questions, if you want to be useful next
+
+Five things are genuinely open. None is a defect to be fixed unasked, and none should
 be changed without the author saying so.
+
+**The pitch question from section 9** is the newest: whether the lattice's heterophonic
+texture is wanted, and if not, how to reach counterpoint without leaving the sieve. Both
+approaches are rendered; the author will decide by listening.
 
 **The two policy decisions from section 3** are the most consequential, because they
 change what the piece sounds like: whether the accent field should travel with a canon
 (`ACCENT_PHASE_POLICY`) and whether one velocity table should serve every voice
 (`VELOCITY_POLICY`). In both cases your default matches the stated principle and this
 project's current behaviour does not. The author will settle them by listening. The two
-below are the older ones.
+lettered below are the oldest.
 
 **(a) The weather was deliberately not redesigned.** It still draws verbatim on clauses
 1–3 — `sieve5 = 5@1|5@3` from clause 1, `sieve8 = 8@0|8@1|8@2|8@5|8@6` from clauses 2+3.
