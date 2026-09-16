@@ -2,7 +2,342 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-09-03
+> Last updated: 2026-09-16
+
+---
+
+## Latest Claude iteration — `dois_15`: pitch from the sieve's lattice (2026-09-16)
+
+Pitch is now derived, not assigned. Every voice previously sounded one fixed Drum Rack
+pad; `dois_15` reads pitch off the sieve's own structure.
+
+**The geometry.** Because gcd(8, 5) = 1, every step of the 40-step period has a UNIQUE
+address `(step mod 8, step mod 5)`. The period is therefore not a line of 40 things but
+an **8 x 5 grid**, and the sieve drawn on it is a shape: `8@3` and `8@4` are complete
+rows, `(8@1&5@2)` is a single cell — which is exactly why those clauses fire every 8
+steps and once per period respectively. Pitch takes one interval per axis:
+
+```
+pitch = PITCH_ROOT + ( 5*(step mod 8) + 8*(step mod 5) )  mod  40
+```
+
+The two intervals are the sieve's own moduli exchanged — the mod-8 axis steps by 5
+semitones (a fourth), the mod-5 axis by 8 (a minor sixth). Nothing comes from outside
+the sieve. Counting 0,1,2,... walks DIAGONALLY across the grid, so each step adds
+5 + 8 = 13 semitones and folds back inside the period.
+
+**That identity is exact and is asserted at render time:**
+`5*(n mod 8) + 8*(n mod 5) == 13n (mod 40)` for every n. The lattice form and the
+multiplier form are one operation. An earlier session presented them as two different
+schemes with different characters — that was wrong, and the rendered note content is
+identical.
+
+**Verified from the MIDI bytes, not from the code that wrote them:**
+
+| check | result |
+|---|---|
+| every note on the lattice (recomputed from file onsets) | yes, all four voices |
+| rhythm and velocity vs `dois_14` | **byte-identical** — only pitch changed |
+| canon: C vs A shifted 13 steps | **+9 semitones, constant everywhere** |
+| A and B pitch sets | 27 and 13, overlap 0, union **40 of 40** |
+| hanging / overlapping notes | none |
+| merged file | one MIDI channel per voice (0-3) |
+
+The canon interval is not imposed. On the grid, moving 13 steps is 5 rows down and 3
+columns right from anywhere, always worth 5*5 + 8*3 = 49 = +9 semitones. The
+transposition falls out of the displacement already in the piece.
+
+**`verify()` now asserts the lattice rather than assuming it:** gcd(diagonal, period) = 1
+(what makes the map a bijection, and a bijection is what carries residue classes to
+residue classes — i.e. what makes the pitch set the rhythm sieve under a sieve-preserving
+transformation); that all 40 pitches are reached; and that the lattice and multiplier
+forms agree at every step. Changing the intervals to something non-bijective now FAILS
+the run instead of quietly producing a degenerate scale.
+
+**Bug found while building it.** `read_track` keyed sounding notes by pitch alone, so a
+cross-voice unison registered as an overlap. It now keys by `(channel, pitch)`.
+
+### The consequence to know about — the texture is heterophonic, not contrapuntal
+
+Pitch is a function of the STEP INDEX, and A, B and C all share the 120-tick grid. So
+whenever they sound together they read the same lattice cell and play the same pitch:
+
+| pair | share of overlapping time in unison |
+|---|---|
+| **A + C** | **100%** |
+| **B + C** | **100%** |
+| A + D | 4% |
+| C + D | 4% |
+| B + D | 0% |
+
+42% of the time two or more voices sound, there is only ONE distinct pitch present. This
+is not a defect — it is the honest consequence of deriving pitch from the step index, and
+it is a real aesthetic: one melodic line stated by three rhythmic agents, with D (on the
+160-tick grid) the only genuine second voice. But the +9 canon is a relationship between
+MELODIES heard over time, not a harmony — where A and C actually coincide they are in
+unison. **Undecided:** whether to keep it. Counterpoint is reachable without leaving the
+sieve — let each voice read the lattice through its own derivation rather than the shared
+global index (B is the complement, so it could read the transposed lattice, 8 per row and
+5 per column; C could index from its source position rather than its sounding position).
+
+### The serial connection (noted 2026-09-16)
+
+The user observed the resemblance to twelve-tone technique. It is not loose:
+multiplying by a number coprime to the modulus IS a serial operation (M5/M7 in mod 12,
+central to Boulez's "multiplication"); the 40-element row completes the aggregate before
+anything repeats; and A/B partition that aggregate exactly — combinatoriality, arriving
+free because B is defined as the complement rather than chosen for the property.
+**x13 has order 4 in the group mod 40** (13 -> 9 -> 37 -> 1), so there is a closed family
+of four mappings parallel to P/I/R/RI:
+
+| map | canon becomes | longest scalar run |
+|---|---|---|
+| x1 | +13 | 26 — the chromatic degenerate case |
+| **x13** (current) | **+9** | **2** |
+| x9 | +37 | 3 |
+| x37 | +1 | 8 |
+
+Differences that matter: Xenakis wrote sieve theory AGAINST serialism ("The Crisis of
+Serial Music", 1955); the row here is generated rather than composed, so there is no free
+act to defend; and there is no octave equivalence, the space being 40 semitones, so it is
+serial in structure but not in perception. Closest relative is Babbitt's time-point
+system, which maps serial operations onto rhythm — the exact inverse of this.
+
+### `pitch_studies/` — throwaway auditions, kept
+
+`sifters/dois_series/pitch_studies/mid/` holds the demos used to choose the scheme:
+`k13_*` (adopted, reproduced note-for-note by `dois_15`) and `k19_*` (the rejected
+alternative, where the canon lands on a perfect fifth instead). Built by repitching
+`dois_14`'s output, so rhythm and velocity are guaranteed identical. Not a version;
+delete freely.
+
+---
+
+## `dois_14` — the sieve correction (2026-09-16)
+
+**NOT the same thing as `dois_14(gpt)`.** This is Claude's minimal port: `dois_12`'s code
+with one change, to the sieve, and nothing else.
+
+`dois_12`'s base sieve was the psappha sieve **truncated to its first three clauses** —
+15 attacks in 40 where the published source has 27. The four missing terms `8@3`, `8@4`,
+`(8@1&5@2)`, `(8@6&5@1)` are restored. The expression now reproduces the attack list in
+Besada, Barthel-Calvet & Pagan Canovas (2021), DOI 10.3389/fpsyg.2020.611316, open access
+as **PMC7849451**, exactly:
+
+```
+[0,1,3,4,6,8,10,11,12,13,14,16,17,19,20,22,23,25,27,28,29,31,33,35,36,37,38]
+```
+
+`dois_12`'s sieve was a strict subset — no spurious attacks, twelve missing. **Sourcing
+caution:** the frontiersin.org copy of this same paper returns a formula that simplifies
+to 20 attacks while the prose claims 27, and an attack list matching neither. Use PMC.
+
+Because the voices are derived, correcting A rewrote all four:
+
+| voice | attacks in 40 | notes rendered |
+|---|---|---|
+| A — base sieve | 15 -> **27** | 60 -> 108 |
+| B — complement | 25 -> **13** | 100 -> 52 |
+| C — A shifted +13 | 15 -> **27** | 60 -> 108 |
+| D — A ∩ C | 6 -> **20** | 18 -> 60 |
+
+The density relationship between A and its complement **inverts** — B was the busier
+voice and is now the sparse one. Most audible consequence, and intended.
+
+**Independently cross-confirmed:** `dois_14`'s A and B render to 108 and 52 notes,
+identical to `dois_13(gpt)`'s A and B, reached from a different codebase by a different
+route. Two unrelated implementations agreeing note-for-note is good evidence the
+correction is right. C and D differ between them only by the compositional choices
+`dois_13(gpt)` made on top (C slowed to 160; D changed to B ∩ C at 240).
+
+Everything else is `dois_12` unchanged, so the two are directly A/B-able. Parity is still
+19200 ticks; meter still 40/16; accent-state coverage moved 6/8 -> 7/8 (A), 6/8 -> 5/8
+(B, now too sparse to reach as many), 6/8 -> 7/8 (C), 6/8 -> 8/8 (D).
+
+---
+
+## Two real defects found in this project's code (2026-09-16)
+
+Both surfaced by reviewing `dois_13(gpt)`'s engine, both still present in **`dois_12`,
+`dois_14` and `dois_15`**, both **unresolved** — they change what the piece sounds like, so they are the
+user's decision, to be made by listening.
+
+**1. Accents travel with the canon, silently.** The accent roll (`composition.py` line
+816 in `dois_12`, 832 in `dois_14`, 883 in `dois_15`) rolls the entire
+accent field by the shift amount whenever a voice's relationship is `shift`:
+
+```python
+if cfg.get('relationship') == 'shift':
+    accent_bins = {k: np.roll(v, cfg['shift_amount']) for k, v in accent_bins.items()}
+```
+
+No comment on it, and no principle calls for it. Verified against the rendered MIDI:
+**voice C's velocity at step i equals voice A's at step i-13, everywhere C sounds.** C is
+not under the same weather as A and B — it carries A's weather displaced 13 steps, which
+contradicts Governing Principle III. **84 of C's 108 notes (77%) would change velocity
+under a fixed weather.** Rhythm is untouched either way. GPT made this an explicit setting
+(`ACCENT_PHASE_POLICY`) and defaulted it to `fixed`; that default matches the stated
+principle and this project's silent behaviour does not. A canon carrying its own
+accentuation is defensible; happening by accident is not.
+
+**2. The "shared" velocity table is not shared.** `generate_velocity_profile`
+(`composition.py` line 352 in `dois_12`, 368 in `dois_14` and `dois_15`) claims in a
+docstring that "a given combination of accents means the same velocity everywhere in the
+piece." True for A, B and C; **false for D**, whose span accent is `span3` where the
+others use `span32`, reshuffling the rarity ranking. Six of the eight states differ:
+
+| state (sieve5, sieve8, span) | A/B/C | D |
+|---|---|---|
+| (1, 0, 0) | 37 | **55** |
+| (0, 1, 0) | 19 | **37** |
+| (1, 1, 0) | 73 | **109** |
+| (0, 0, 1) | 55 | **19** |
+| (1, 0, 1) | 109 | **91** |
+| (0, 1, 1) | 91 | **73** |
+
+GPT's `VELOCITY_POLICY = 'shared_rarity'` makes the docstring's claim actually true.
+
+---
+
+## `FOR_CHATGPT.md` (repo root, 2026-09-16)
+
+A review of `dois_13(gpt)` written to be handed to ChatGPT directly, so it can act on the
+findings without this conversation. Nine sections: what it got right and how that was
+verified; the two defects above; what was not adopted musically and why; which of its
+engineering changes are worth taking (round-trip verification against the plan,
+`validate_settings` rejecting unknown AND missing keys, `ENGINE_VERSION` in the
+fingerprint, bounding the sieve LCM before music21, `Fraction` over float) and which are
+not (the ~95-line symlink/generation/lock publication machinery, which created the
+duplicate `mid-files/` problem it then had to solve); the governing principles restated;
+and the open questions. Its central ask: keep source corrections and musical taste in
+SEPARATE, separately-adoptable changes — one is checkable against a source, the other is
+only the author's to rule on. GPT acted on this in `dois_14(gpt)`, which makes the
+policies independently selectable rather than bundled.
+
+---
+
+## Latest pitched iteration — dois_14(gpt)_pitch
+
+2026-09-14 revision at the user's request: A/B now interpret their own cyclic sieve
+gaps as semitone intervals, with C membership preferring upward motion and absence
+preferring downward. A deterministic minimum-reversal solver makes the signed sum
+exactly zero (six reversals A, one B); no interval sizes change or extra time is added.
+C remains A's shifted pitch canon. D ranks position-modulo-12 counts in its own
+intersection and assigns one class per raw pass: creative MIDI 38 then 45.
+
+Parent rhythms/gates/velocities remain unchanged: creative 255 notes, 19200 ticks,
+20 seconds at 120 BPM; all four rhythm presets retained. Accents remain independent.
+Current MIDI in mid/<preset>; initial mapping in mid-initial/<preset> with --initial-pitch.
+Channels 1–4, ordinary files, pitched instruments. The initial approach is documented
+in INITIAL_APPROACH.md and archived in history/initial-pitch.zip. MUSICAL_DESIGN.md
+explains the revision, exact closure, tie breaks and limitations. Diagnostics/manifests
+include derivation details. 25 tests cover both designs, gap/closure optimality and MIDI.
+Next: audition same-preset initial/current arrangements on the user's instruments.
+
+
+---
+
+## Latest GPT iteration — dois_14(gpt)
+
+Created at the user's request after reading Claude's FOR_CHATGPT.md. Creative
+liberties are authorized when consistent with the principles and explicitly explained.
+The corrected source and musical choices are now independently selectable:
+reference (note-for-note Claude dois_14), fixed-weather (C's accent phase only),
+shared-weather (common state table), creative (default 4:3:2 proposal from GPT 13).
+Reference/policy versions have 108/52/108/60 notes; creative has 108/52/81/14.
+All end at the first 19200-tick convergence with distinct complete accented passes.
+Historical reference policies expose, rather than silently endorse, the weather
+inconsistencies discussed in Claude's review.
+
+Exports are ordinary files in dois_14(gpt)/mid/<preset>/, with preset names in filenames.
+No symlinks, generations, lock or duplicate browser copy. Temporary output is verified
+before replacing files individually; existing real folders and unrelated files are
+preserved. An interrupted multi-file replacement needs rerendering. --all creates
+all comparisons; --preset selects one; dry-run, diagnostics and verify-only remain.
+43 tests cover the independent source/reference, isolated policy changes, creative
+structure, MIDI readback and ordinary publication. See MUSICAL_DESIGN.md and
+REVIEW_RESPONSE.md in the new iteration. Existing versions are unchanged.
+
+Next: audition the presets in sequence with the user's patches; choose phase,
+velocity policy and creative clocks independently. Form/Max work remain parked.
+
+---
+
+## Ableton browser fix — 2026-09-13
+
+Confirmed in Live UI: dois_13(gpt) expanded to show other subfolders but not the
+symlinked mid directory. Added automatic ordinary-file export to mid-files/ on
+every normal render; this is the folder to browse in Ableton. The managed mid
+snapshot/history remains. Forty-four tests pass; note data is unchanged. The user
+also reports improper rendering; the specific note/timing/playback symptom has
+been requested and is not yet identified. Do not call that broader issue fixed
+merely because MIDI-byte checks pass.
+
+---
+
+## Latest GPT iteration — `dois_13(gpt)`: complete sieve and musical redesign
+
+The user requested restoration of the omitted Psappha terms and a creative
+implementation within the original principles. Work remains local to this iteration.
+The base expression now includes `8@3|8@4|(8@1&5@2)|(8@6&5@1)`: 27 attacks,
+not 15, per 40 steps. Source: Besada et al. (2021), DOI 10.3389/fpsyg.2020.611316,
+opening sieve S (including 22). Earlier GPT audits established consistency with
+existing MIDI, not fidelity to that transcription; the current tests address both.
+
+Current voices: A=complete sieve, B=complement(A), C=shift(A,+13), D=B intersect C.
+Units 120/120/160/240 ticks create three rates (4:3:2), with raw periods
+4800/4800/6400/9600. First convergence remains 19200 ticks (20 seconds at 120 BPM).
+Passes 4/4/3/2 contain 108/52/81/14 notes, 255 in total. Every full rhythm pass is
+distinct through accents, and each accented voice has the full minimal period.
+Operations use integer step indices before clocks: D is not an actual-time
+coincidence detector. Initial rests are intentional; shared origin/end is the rule.
+
+The two shared clause-derived weather sieves remain. Default accent phase is now
+`fixed` in local step indices; the canon does not shift its weather. Derived span
+accents are 32/32/3/16, with source residues {0,1,7} filtered by modulus. New
+`shared_rarity` uses one velocity table for all accented voices, based on weather
+rarities and the largest rarity among the required span sieves (29/32 here).
+Equivalent states have identical velocity across clocks; all eight states occur.
+`per_grid_rarity`/`follow_shift` remain for historical comparisons. Full gates,
+1–127 velocity control and 40/16 metadata are retained. No form or Max work added.
+
+Current docs: README.md and MUSICAL_DESIGN.md in the iteration. Forty tests pass,
+including the published attack set, independent congruences and all MIDI formats.
+Legacy 15-hit tests now load an explicit fixture configuration. Previous code/tests
+and MIDI are saved in history/before-full-psappha.zip; previous generations remain.
+
+Next: audition A/B, then C, then D with the user's patches. This is a reasoned
+compositional choice tested structurally, not an assertion of an objectively best
+sound. Arrangement stays in the DAW. Historical sections below retain superseded
+figures; the current code and this snapshot take precedence.
+
+---
+
+## New parallel iteration — `dois_12(gpt)` (2026-09-11)
+
+At the user's request, a new implementation lives in `sifters/dois_series/dois_12(gpt)/`.
+It includes the full GPT audit as `REVIEW.md`, a concise local README and changes log,
+separate planning/MIDI modules, regression tests, and generated MIDI. The original
+`dois_12` and all earlier iterations remain the historical reference.
+
+The baseline musical output is unchanged: 60/100/60/18 notes, 19,200 ticks, 40/16,
+120 BPM, gate 1.0. The new version fixes unsafe output replacement, incomplete
+readback verification, ignored channels/ensemble metadata, missing first-parity
+validation, augmentation's double expansion, and incomplete configuration identity.
+Publication stages and verifies an entire generation before switching the `mid`
+symlink; prior generations are retained under `.mid-renders/`.
+
+Musical-policy clarification: C intentionally retains a shifted accent field, and
+D retains per-grid rarity mapping. These are explicit settings, not a claim of one
+identical velocity table or phase-aligned field. The default residues with fixed
+weather cause C's passes to repeat and are rejected. Intersections are in integer
+step coordinates, before assigning each voice's own time unit. A mathematically
+minimal span modulus is a policy: 32 is the smallest M with LCM(40,M)=160, not the
+only solution (160 also satisfies it).
+
+Use this variant's README for its current commands, full contract and limitations;
+the historical snapshots below contain superseded numerical and policy descriptions.
+No new arrangement layer or Max-patch work was undertaken.
 
 ---
 
@@ -415,9 +750,21 @@ other hosts.
 
 ---
 
-## Current State — read this for the snapshot (2026-09-07)
+## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_12`.** Verified against the rendered MIDI, not from memory.
+**Current version: `dois_15`** — see the top of this file. The snapshot below describes
+`dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
+was the truncated 15-attack form. Read it as history, not as current state. What changed
+since:
+
+- **`dois_14`** corrected the sieve (15 -> 27 attacks), which rewrote all four voices;
+  note counts below (60/100/60/18) became 108/52/108/60.
+- **`dois_15`** derives pitch from the sieve's 8x5 lattice, so voices no longer sound one
+  fixed pad each. The merged file now separates voices by MIDI CHANNEL, not by pitch.
+- Two defects in this code are **unresolved** — the accent roll on shifted voices and the
+  velocity table that is not actually shared. Both documented at the top.
+
+Verified against the rendered MIDI, not from memory.
 
 | Voice | Pad | Basic unit | Note layer | Passes | Span | Period | Notes |
 |---|---|---|---|---|---|---|---|
@@ -527,7 +874,9 @@ A sieve is expressed as boolean combinations of modular congruences. For example
 - `8@1|8@7` means "positions where `n mod 8 == 1` OR `n mod 8 == 7`"
 - `&` = intersection, `|` = union, complement = `1 - binary`
 
-The **psappha sieve** (from Xenakis's percussion piece) is the base formula used throughout:
+The following **historical partial Psappha-derived sieve** was used through the first
+GPT iterations; it omitted four terms. The complete formula and current configuration
+are documented at the top of this file and in dois_13(gpt)/MUSICAL_DESIGN.md:
 ```
 (8@0|8@1|8@7)&(5@1|5@3)|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))
 ```
@@ -539,8 +888,14 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_12`, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_15`, so the
 folders sort in the order they were made and the newest is always last.
+
+**Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
+iterations; bare `dois_NN` are Claude's. They are NOT the same work and the numbers do not
+correspond — `dois_14` (Claude's minimal sieve correction) and `dois_14(gpt)` (GPT's
+multi-preset version built after reading `FOR_CHATGPT.md`) are different things that happen
+to share a number. Check the suffix before assuming which is meant.
 
 The spelled-out names sorted uselessly — `dois, dois_eight, dois_eleven, dois_five,
 dois_four, dois_nine, dois_seven, dois_six, dois_ten, dois_three, dois_twelve, dois_two`.

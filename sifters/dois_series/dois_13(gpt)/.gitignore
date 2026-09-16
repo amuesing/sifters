@@ -1,0 +1,8 @@
+# Parent ignores dotfiles; retain the output generations that mid points to.
+!.gitignore
+!.mid-renders/
+!.mid-renders/**
+__pycache__/
+*.pyc
+.mid-render.lock
+.mid-link-*

@@ -1,0 +1,4 @@
+# Tested together with Python 3.14.4. Tests use the standard-library unittest.
+mido==1.3.3
+music21==10.5.0
+numpy==2.4.6

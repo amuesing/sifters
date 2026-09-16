@@ -1,0 +1,78 @@
+{
+  "tests_passed": 43,
+  "midi_files_checked": 24,
+  "presets": {
+    "reference": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "independent_raw_midi_matches": true,
+      "sha256": {
+        "dois_14(gpt)_reference_drumrack.mid": "a72a7c268bcaf6d81bf7c11ceb51ee9ee9746cf8f470b0ab88decdcc2ed0a735",
+        "dois_14(gpt)_reference_A_prime.mid": "c8ede89243b4ec53e4671802135414be047030db6fac9db5fe423ee5d7163be7",
+        "dois_14(gpt)_reference_arrangement.mid": "ca8e6e2a2c3723f70d520dcd32fa5498470d9e412aec020ada973360878b5b2e",
+        "dois_14(gpt)_reference_B_prime.mid": "5e73d6349c4c000f4bdc5fd5f0c338204cb90d4c6f1243d9063f28e200fe39fb",
+        "dois_14(gpt)_reference_D_prime.mid": "bf94e08f42ecc5a7e3755a3ae8b99c8d8993737bb57786aa1dfa61db71e11bae",
+        "dois_14(gpt)_reference_C_prime.mid": "0f8e48b1eb8ad5e9b56f63509c7e6caae1f159df617f630e22df103d16c37605"
+      }
+    },
+    "fixed-weather": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "independent_raw_midi_matches": true,
+      "sha256": {
+        "dois_14(gpt)_fixed_weather_arrangement.mid": "aa7fe6ca4bb2ac38c7a9eaefb9dcee4f15db10c9fd404ac0c5dad06dcc62e350",
+        "dois_14(gpt)_fixed_weather_C_prime.mid": "6bc2f664eae6d8c5c6e795100d84600f284c53abad5a921751527a10343cb738",
+        "dois_14(gpt)_fixed_weather_D_prime.mid": "038232a26b7045cb0b510950fcfd2d9393193a710bde193f269fcbfc7dc8d143",
+        "dois_14(gpt)_fixed_weather_B_prime.mid": "865b97c7529d2925dbc5bba339ecca881aba22ad8e43e84be9b08b4574b1519b",
+        "dois_14(gpt)_fixed_weather_A_prime.mid": "e34c8183a9997867f876131d139c7ef82d186011db46388dc5b77e372629364a",
+        "dois_14(gpt)_fixed_weather_drumrack.mid": "5265be0d99ebcb55c3d904be6bcf3c5670a2a3680cfb07f529b38d4b82e5a81a"
+      }
+    },
+    "shared-weather": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "independent_raw_midi_matches": true,
+      "sha256": {
+        "dois_14(gpt)_shared_weather_C_prime.mid": "788561ee346a81b9c85ad932dd620ba08e67ece6c3daa31f14f836b1e959fba6",
+        "dois_14(gpt)_shared_weather_B_prime.mid": "007cffe6c0d8e87639bb41bdb7b93700e748381a0617f9c985da1bb72b07e92f",
+        "dois_14(gpt)_shared_weather_D_prime.mid": "2b8556d0ac4c6a98fbca895332b6750e7ee9a1599dbcbaeb0a1c4f0227478029",
+        "dois_14(gpt)_shared_weather_A_prime.mid": "50890aa42f64f0a2f4d8ceb364d7733db31a55e5756b140d787f3df847ee814e",
+        "dois_14(gpt)_shared_weather_arrangement.mid": "43982dda8345c531cd8145a9472f9debb369f738b99459eebe6bf736bc42beda",
+        "dois_14(gpt)_shared_weather_drumrack.mid": "adf4c48d75bd393b142d611bac1c13624db1b597a39bf6fcf0cfed2a2f729723"
+      }
+    },
+    "creative": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 81,
+        "D": 14
+      },
+      "parity_ticks": 19200,
+      "independent_raw_midi_matches": true,
+      "sha256": {
+        "dois_14(gpt)_creative_A_prime.mid": "bea1c2aa68a2b67054f0eb3305fb4f45a3bee3af679924f45c6f117e72bd3974",
+        "dois_14(gpt)_creative_drumrack.mid": "aea61661597b4f718cf042b19acdc52c6adf790fb904281e37906fc8d4ff7157",
+        "dois_14(gpt)_creative_C_prime.mid": "0c19e91d46e671bf5abe48fa316dcd7963f72869d393e7969c5ffcd014b742d6",
+        "dois_14(gpt)_creative_B_prime.mid": "8a2836a9739bce0991328bd5146465bba0014fab1c1195360b6960158be9c5ac",
+        "dois_14(gpt)_creative_arrangement.mid": "423f2104771863526d07a60c35d283623bcba5bf0ac3f0da4b62d83fa6a82d00",
+        "dois_14(gpt)_creative_D_prime.mid": "ff25e6d08b114953327ab02239884510c46022b64e781bc98f8f10397b9afdb7"
+      }
+    }
+  }
+}

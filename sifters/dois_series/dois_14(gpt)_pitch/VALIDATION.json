@@ -1,0 +1,151 @@
+{
+  "tests_passed": 25,
+  "midi_files_checked": 48,
+  "validation": "Raw MIDI decoder independent of mido and project code; literal documented contours, independent anchor counts, initial arithmetic, and parent timing/velocity fixture.",
+  "presets": {
+    "mid/reference": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_reference_A_prime.mid": "eff65995a801a41f56fa189a2c35f86233c06a2e9135db47d19d0e0562db7958",
+        "dois_14(gpt)_pitch_reference_ensemble.mid": "3c7510a3c6f44ac25f3ec9c8a2592a14cff395fbe115c948cff2b12b20b6e9ce",
+        "dois_14(gpt)_pitch_reference_arrangement.mid": "67df2d80095ee2fd24ea79dc4f40f34782699349bd49f899bded16248a848f0f",
+        "dois_14(gpt)_pitch_reference_C_prime.mid": "afbdd78ec2cf91710e67eadcd38a60d4f86b7279ae2f64823083a31da180fab8",
+        "dois_14(gpt)_pitch_reference_B_prime.mid": "51b46f3832ae788231d91c5afef3a0f50e1d236b84549118a58d5a5240466838",
+        "dois_14(gpt)_pitch_reference_D_prime.mid": "b912fa4f5c739d40ae4e8f4ce508cac0ac3da538a2009fb471a3f872bae319c7"
+      }
+    },
+    "mid/fixed-weather": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_fixed_weather_A_prime.mid": "647510730426684d3e96ce45b727dbe5cd9f9f9c224d3cee45acc81f40be3513",
+        "dois_14(gpt)_pitch_fixed_weather_arrangement.mid": "72073c6e94f21941c9e19191a30db3c52fb16a98eb05499e2d019c334a3ba993",
+        "dois_14(gpt)_pitch_fixed_weather_C_prime.mid": "e62be107203aabc05f1824f3e4b43d7e54665eb44f88f3cdd6189eb48c46929f",
+        "dois_14(gpt)_pitch_fixed_weather_ensemble.mid": "11156b5c84f407daf0998da36669b9639a30c536263a949057c1f28bab0a59a1",
+        "dois_14(gpt)_pitch_fixed_weather_B_prime.mid": "b5c83547d058941ee677f158d0f76ebd77fe95df67469bb57fd1e7cd83c4dd92",
+        "dois_14(gpt)_pitch_fixed_weather_D_prime.mid": "532c231ede2240052f375b7d01dc1d310831ca84709227562307377a6b4ee319"
+      }
+    },
+    "mid/shared-weather": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_shared_weather_A_prime.mid": "35474d455f5ad9c2518f3bae5e4d6a948907779b282d5cf8d93b01f5152dd1ba",
+        "dois_14(gpt)_pitch_shared_weather_arrangement.mid": "0880ae3bc550b9bc9a9217c47cde7c8a7ef806092eca18866f481818f9445dad",
+        "dois_14(gpt)_pitch_shared_weather_C_prime.mid": "cce5654f5339cb20a217a0cccfcd48b587815a2a49ea240ee6f5114341818f39",
+        "dois_14(gpt)_pitch_shared_weather_B_prime.mid": "926063dc7cac1223e509d53113ce6081d9712850490a1efd111dae5e9cf0cb30",
+        "dois_14(gpt)_pitch_shared_weather_ensemble.mid": "54ebe7d28f326e4309e369abcecb7c978358f7ab35901d1dd7648636d48e530b",
+        "dois_14(gpt)_pitch_shared_weather_D_prime.mid": "58e646bc009dcd9ece53187b45a090d3bbcaf5beed134a090be978e648336261"
+      }
+    },
+    "mid/creative": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 81,
+        "D": 14
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_creative_D_prime.mid": "9722eec1927dcb3b6670d79f96ba3534a2db68f273638acc3c4803b39231be2f",
+        "dois_14(gpt)_pitch_creative_B_prime.mid": "79a958f4b9626df68f0c065678d663250dbea9f20923d9a9c1503faa3931c3c2",
+        "dois_14(gpt)_pitch_creative_C_prime.mid": "af0ba7430dfc08fb97b4b1bcf7178447dc83d845f23b8dc10a3518d8cfde5c1e",
+        "dois_14(gpt)_pitch_creative_arrangement.mid": "9a82c4862bd83d3b78d1fa7759be878f78e30abdac84f2fb01cf905be58e2b88",
+        "dois_14(gpt)_pitch_creative_ensemble.mid": "efc4618989d97ba6c1dd8d98df8e0e2d0b6b449b596e94fa03962ed0a741b7da",
+        "dois_14(gpt)_pitch_creative_A_prime.mid": "9e4252a7ac2a96ae019c06a0c37a6ffa5988a0838ea966ced8d8e974b2285c5d"
+      }
+    },
+    "mid-initial/reference": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_reference_initial_ensemble.mid": "d1dc07b370959326df61f403eb9a2e96ea3db7cfa16e16e5b372130691506a3b",
+        "dois_14(gpt)_pitch_reference_initial_A_prime.mid": "838930bebdde0c59b4b41dfe19c338e6cbeecd91a3b9b0bbb4f8a51f40e555c2",
+        "dois_14(gpt)_pitch_reference_initial_B_prime.mid": "253726a0cf204cea88d7a71b2c52e81b103c4ebc15f993912808258729eb36f2",
+        "dois_14(gpt)_pitch_reference_initial_D_prime.mid": "8db09c98062db8ae5eaa92df31a90e593ead3d55e9a62cb6ce7e30e3ef8761d4",
+        "dois_14(gpt)_pitch_reference_initial_C_prime.mid": "8b745ee2c25f0f3b81da1558af2494941fc52fb915a9d8e9c77787452fb6649f",
+        "dois_14(gpt)_pitch_reference_initial_arrangement.mid": "bf61d7f7fad4d9448baf19d89cf6eb8d3fde6e0d05cae84e822eb603b68663dc"
+      }
+    },
+    "mid-initial/fixed-weather": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_fixed_weather_initial_A_prime.mid": "cef6cbba053d7e75e2209179f930d5c9f6b0f38f0975f18d34411c56ed0a974c",
+        "dois_14(gpt)_pitch_fixed_weather_initial_C_prime.mid": "98406220110cdb4c90791159a2ed355c6075073300735a6e9098c95769eb0a1e",
+        "dois_14(gpt)_pitch_fixed_weather_initial_arrangement.mid": "222a42e805702e5393a0d1c656c91d288178509a0eb59ad5559a59bf247f6ecd",
+        "dois_14(gpt)_pitch_fixed_weather_initial_B_prime.mid": "08fddaebca9904c4f131f33982ab35da513082a746548529b76c5299d47167e1",
+        "dois_14(gpt)_pitch_fixed_weather_initial_ensemble.mid": "305c19eb53a0e7d6b791b063b94328418c3f53bdcd8f08a852a24f6eada85c5a",
+        "dois_14(gpt)_pitch_fixed_weather_initial_D_prime.mid": "7ed42d1ca8bcce318acc30d33ea11938f93ccbdc486621c5f2abd39012141e98"
+      }
+    },
+    "mid-initial/shared-weather": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_shared_weather_initial_ensemble.mid": "d993e7ed801cdb70aa13520123465e5dff4a204ea0a20c454af5c1ab67d91e40",
+        "dois_14(gpt)_pitch_shared_weather_initial_A_prime.mid": "d9b83c0afcdcb15ecb1110e4201efc9b274c173c1efdc9bcec47b00bc0327ad6",
+        "dois_14(gpt)_pitch_shared_weather_initial_B_prime.mid": "4f7215749ced82373edfd2e69725fcce3be7b3609bfd22b4346e8fd735b87f3f",
+        "dois_14(gpt)_pitch_shared_weather_initial_D_prime.mid": "657c9eae0b531b98a1a3b73d961073984e81b40cf6e05cd59b671c92f2324015",
+        "dois_14(gpt)_pitch_shared_weather_initial_arrangement.mid": "2212b202b2cd020283a216c9ea7443a6dde543aa3bf38d7f3c186a8d9c92bb31",
+        "dois_14(gpt)_pitch_shared_weather_initial_C_prime.mid": "05e32cc31ec76eda1c5af80b91c562519126b38a0a5a454e3e7a67597a0c52de"
+      }
+    },
+    "mid-initial/creative": {
+      "notes": {
+        "A": 108,
+        "B": 52,
+        "C": 81,
+        "D": 14
+      },
+      "parity_ticks": 19200,
+      "raw_midi_matches_reference": true,
+      "sha256": {
+        "dois_14(gpt)_pitch_creative_initial_A_prime.mid": "3a743dfcb63e650772162cff6fd8464d0d470a8d7a6502388667f893f9c4a384",
+        "dois_14(gpt)_pitch_creative_initial_ensemble.mid": "a6096593752c773f73a841ee55064b94f0b2fc7e099a0438a2d044c055759dbe",
+        "dois_14(gpt)_pitch_creative_initial_C_prime.mid": "3a977bda4352b4fb94cfb3d7af1728479215aae17962557b0453822a6d754519",
+        "dois_14(gpt)_pitch_creative_initial_B_prime.mid": "efa5952e1c5411ac16cc410258da7376bb1ba4a5219b7b5ada4c236ad479d921",
+        "dois_14(gpt)_pitch_creative_initial_arrangement.mid": "28292a517b9a78113f2ed6f47a5ac25aa9783f7f845d3e2d3fbf5a4e402bb900",
+        "dois_14(gpt)_pitch_creative_initial_D_prime.mid": "6107a2000f4e025271f15e634e967e1cfc6bb1350af332ed667875f204d3fb4b"
+      }
+    }
+  }
+}

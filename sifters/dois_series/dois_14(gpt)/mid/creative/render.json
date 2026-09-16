@@ -1,0 +1,207 @@
+{
+  "engine_version": "1.3.0",
+  "configuration": {
+    "ACCENT_PHASE_POLICY": "fixed",
+    "DRUM_RACK_BASE": 36,
+    "DURATION_MULTIPLIER_KEY": {
+      "Eighth Note": 0.5,
+      "Half Note": 2,
+      "Quarter Note": 1,
+      "Sixteenth Note": 0.25,
+      "Thirty-Second Note": 0.125,
+      "Whole Note": 4
+    },
+    "GATE_RATIO": 1.0,
+    "INSTRUMENT_CONFIGS": [
+      {
+        "duration": "Sixteenth Note",
+        "name": "A",
+        "root": 36,
+        "sieve": "((8@0|8@1|8@7)&(5@1|5@3))|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))|8@3|8@4|(8@1&5@2)|(8@6&5@1)"
+      },
+      {
+        "derives_from": [
+          "A"
+        ],
+        "duration": "Sixteenth Note",
+        "name": "B",
+        "relationship": "complement",
+        "root": 37
+      },
+      {
+        "derives_from": [
+          "A"
+        ],
+        "name": "C",
+        "relationship": "shift",
+        "root": 38,
+        "shift_amount": 13,
+        "step_ticks": 160
+      },
+      {
+        "derives_from": [
+          "B",
+          "C"
+        ],
+        "duration": "Eighth Note",
+        "name": "D",
+        "relationship": "intersection",
+        "root": 39
+      }
+    ],
+    "MAX_ACCENTS": 6,
+    "MAX_EVENTS": 1000000,
+    "MAX_METER_NUMERATOR": 99,
+    "MAX_STEPS": 100000,
+    "MAX_VELOCITY": 127,
+    "MAX_VOICES": 32,
+    "METER_OVERRIDE": null,
+    "MIN_VELOCITY": 1,
+    "SPAN_RESIDUE_SOURCE": [
+      0,
+      1,
+      7
+    ],
+    "TEMPO_BPM": 120,
+    "TICKS_PER_QUARTER_NOTE": 480,
+    "TITLE": "dois_14(gpt)_creative",
+    "UNACCENTED_VELOCITY": 64,
+    "VELOCITY_POLICY": "shared_rarity",
+    "WEATHER": [
+      [
+        "sieve5",
+        "5@1|5@3"
+      ],
+      [
+        "sieve8",
+        "8@0|8@1|8@2|8@5|8@6"
+      ]
+    ]
+  },
+  "configuration_sha256": "f308c2841642ed1ef714f9cde74c7017593a0cc17a189eb84ca20ac1b5f51c12",
+  "parity_ticks": 19200,
+  "meter": [
+    40,
+    16
+  ],
+  "rendered_at_utc": "2026-09-13T09:14:23.661714+00:00",
+  "dependencies": {
+    "mido": "1.3.3",
+    "music21": "10.5.0",
+    "numpy": "2.4.6"
+  },
+  "engine_source_sha256": {
+    "__init__.py": "7fb2d9f8ca628396af352c1a82d7c161b3c1f041849bf0ba77941bcba3d55d90",
+    "composition.py": "a86db62831d5421aafdf5580474c7b32a89cae5b05b71b6226490f75880535db",
+    "config.py": "4854da88eab6c466f0b97e030754c5444d00700e7c769e9af73043c395fb74dc",
+    "engine.py": "1cd798d934f7002b7529c51b1c94782863e5365329a74166dd05d02388b2c0bf",
+    "midi_io.py": "d26d64c604567bbce088edd794c777e0caccb3e83c12f02483f89b58a22a9d0b",
+    "transformations.py": "17c6995cf2491a03f627db68bfc16d0b105108b6d0103c94d731ade3ff89a1fb"
+  },
+  "voices": [
+    {
+      "name": "A",
+      "pitch": 36,
+      "step_ticks": 120,
+      "note_layer_steps": 40,
+      "full_span_steps": 160,
+      "accent_phase_steps": 0,
+      "accents": {
+        "sieve5": "5@1|5@3",
+        "sieve8": "8@0|8@1|8@2|8@5|8@6",
+        "span32": "32@0|32@1|32@7"
+      },
+      "velocity_state_table": {
+        "0": 1,
+        "1": 37,
+        "2": 19,
+        "3": 73,
+        "4": 55,
+        "5": 109,
+        "6": 91,
+        "7": 127
+      },
+      "notes": 108
+    },
+    {
+      "name": "B",
+      "pitch": 37,
+      "step_ticks": 120,
+      "note_layer_steps": 40,
+      "full_span_steps": 160,
+      "accent_phase_steps": 0,
+      "accents": {
+        "sieve5": "5@1|5@3",
+        "sieve8": "8@0|8@1|8@2|8@5|8@6",
+        "span32": "32@0|32@1|32@7"
+      },
+      "velocity_state_table": {
+        "0": 1,
+        "1": 37,
+        "2": 19,
+        "3": 73,
+        "4": 55,
+        "5": 109,
+        "6": 91,
+        "7": 127
+      },
+      "notes": 52
+    },
+    {
+      "name": "C",
+      "pitch": 38,
+      "step_ticks": 160,
+      "note_layer_steps": 40,
+      "full_span_steps": 120,
+      "accent_phase_steps": 0,
+      "accents": {
+        "sieve5": "5@1|5@3",
+        "sieve8": "8@0|8@1|8@2|8@5|8@6",
+        "span3": "3@0|3@1"
+      },
+      "velocity_state_table": {
+        "0": 1,
+        "1": 37,
+        "2": 19,
+        "3": 73,
+        "4": 55,
+        "5": 109,
+        "6": 91,
+        "7": 127
+      },
+      "notes": 81
+    },
+    {
+      "name": "D",
+      "pitch": 39,
+      "step_ticks": 240,
+      "note_layer_steps": 40,
+      "full_span_steps": 80,
+      "accent_phase_steps": 0,
+      "accents": {
+        "sieve5": "5@1|5@3",
+        "sieve8": "8@0|8@1|8@2|8@5|8@6",
+        "span16": "16@0|16@1|16@7"
+      },
+      "velocity_state_table": {
+        "0": 1,
+        "1": 37,
+        "2": 19,
+        "3": 73,
+        "4": 55,
+        "5": 109,
+        "6": 91,
+        "7": 127
+      },
+      "notes": 14
+    }
+  ],
+  "midi_sha256": {
+    "dois_14(gpt)_creative_A_prime.mid": "bea1c2aa68a2b67054f0eb3305fb4f45a3bee3af679924f45c6f117e72bd3974",
+    "dois_14(gpt)_creative_B_prime.mid": "8a2836a9739bce0991328bd5146465bba0014fab1c1195360b6960158be9c5ac",
+    "dois_14(gpt)_creative_C_prime.mid": "0c19e91d46e671bf5abe48fa316dcd7963f72869d393e7969c5ffcd014b742d6",
+    "dois_14(gpt)_creative_D_prime.mid": "ff25e6d08b114953327ab02239884510c46022b64e781bc98f8f10397b9afdb7",
+    "dois_14(gpt)_creative_arrangement.mid": "423f2104771863526d07a60c35d283623bcba5bf0ac3f0da4b62d83fa6a82d00",
+    "dois_14(gpt)_creative_drumrack.mid": "aea61661597b4f718cf042b19acdc52c6adf790fb904281e37906fc8d4ff7157"
+  }
+}

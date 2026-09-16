@@ -1,5 +1,16 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
+> **Latest version: `dois_15`** — pitch derived from the sieve's own 8x5 lattice, so a
+> voice's pitches and its rhythm come from one structure. See `CONTEXT.md`.
+> **`dois_14`** corrected the base sieve to the full 27-attack psappha form.
+>
+> **Latest GPT iteration: dois_14(gpt).** See `sifters/dois_series/dois_14(gpt)/README.md`.
+> It provides separately selectable correction-only, accent-policy and creative
+> comparisons, verified ordinary MIDI files in `mid/<preset>/`, and explicit musical
+> reasoning. Folders suffixed `(gpt)` are a parallel line; bare `dois_NN` are Claude's,
+> and the numbers do not correspond between them.
+> The detailed dois_10 description below is historical.
+
 Sifters is a data-driven system for developing musical compositions, using logical sieves as the foundation for creative exploration. The core idea behind Sifters is to synthesize data that generates musical forms, all derived from a single logical source. This approach draws inspiration from Iannis Xenakis’ analysis of Psappha (1975), where logical sieves are used to determine rhythmic and structural elements. In this system, the sieve functions similarly to an oscillator in an analog synthesizer, guiding the generation of musical material.
 
 The commit history in this repository chronicles my ongoing exploration of logic-based operations applied to musical composition within the Python programming environment. Each sub-directory within `sifters/` corresponds to a unique track intended to be realized through Ableton.

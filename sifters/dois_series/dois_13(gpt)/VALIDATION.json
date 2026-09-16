@@ -1,0 +1,77 @@
+{
+  "tests_passed": 44,
+  "independent_raw_midi_comparison_passed": true,
+  "complete_published_sieve_attacks": 27,
+  "parity_ticks": 19200,
+  "tempo_bpm": 120,
+  "note_counts": {
+    "A": 108,
+    "B": 52,
+    "C": 81,
+    "D": 14
+  },
+  "files": {
+    "dois_13(gpt)_A_prime.mid": {
+      "notes": [
+        108
+      ],
+      "end_ticks": [
+        19200
+      ],
+      "sha256": "99354f4ed1dde8c9772060f14306f248403cb46e893e87e4916276529f4eb034"
+    },
+    "dois_13(gpt)_B_prime.mid": {
+      "notes": [
+        52
+      ],
+      "end_ticks": [
+        19200
+      ],
+      "sha256": "b7d7010c7c8fda36ceaec9f6ac52c8949f777209a7dbe3629ed2fcac26d36353"
+    },
+    "dois_13(gpt)_C_prime.mid": {
+      "notes": [
+        81
+      ],
+      "end_ticks": [
+        19200
+      ],
+      "sha256": "61961e74f00336889cc9bd2c024404cab5990b0a9e210164c6ba67e51cbc1a32"
+    },
+    "dois_13(gpt)_D_prime.mid": {
+      "notes": [
+        14
+      ],
+      "end_ticks": [
+        19200
+      ],
+      "sha256": "3f4d09de5b2c2f17db2bf135314344db905247227161a9632d1b6d15901db2ae"
+    },
+    "dois_13(gpt)_arrangement.mid": {
+      "notes": [
+        108,
+        52,
+        81,
+        14
+      ],
+      "end_ticks": [
+        19200,
+        19200,
+        19200,
+        19200
+      ],
+      "sha256": "2a0a28fe5f7dca2576a30ec0d617dc68be939066c3e7b26af683373bbce0cb63"
+    },
+    "dois_13(gpt)_drumrack.mid": {
+      "notes": [
+        255
+      ],
+      "end_ticks": [
+        19200
+      ],
+      "sha256": "1a42af372f2d534cca10b5fab7acf07a1dbb00e1c8b1257a37c839d5403e5f6f"
+    }
+  },
+  "ableton_browser_all_six_files_observed": true,
+  "browser_export_byte_identical": true
+}
