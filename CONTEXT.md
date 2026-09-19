@@ -17,6 +17,11 @@ dois_16/tests, including a decoded dois_15 fixture. Default configuration and mu
 note events are unchanged; MIDI rerendered to update source-aware provenance.
 FOR_CLAUDE.md has the detailed response and verified mathematical observations.
 
+*[Note by Claude, 2026-09-19: at the author's request these fixes were moved out of
+Claude's `dois_16` into `dois_16(gpt)`, unchanged apart from TITLE and the two test
+filenames that must follow it. `dois_16` is restored to exactly what Claude pushed. The
+tests are in `dois_16(gpt)/tests`.]*
+
 ---
 
 ## Latest Claude iteration — `dois_16`: corrections, no musical change (2026-09-19)
@@ -57,10 +62,20 @@ titled `dois_14`.
 **Other changes, adopted from GPT's fork or in its spirit:** lattice axes are read from
 the base sieve's moduli (must be exactly two, coprime, product = every voice's layer
 period) rather than hard-coded; files are verified with the multiplier form rather than
-the function that wrote them; `_drumrack.mid` is now `_ensemble.mid`. A lattice that
-cannot render correctly is refused BEFORE any output is replaced — tested on a scratch
-copy: non-linear intervals (7, 4), non-invertible (10, 8 -> x18), root 100, a base
-sieve with a third modulus. Each exits with its own message, files untouched.
+the function that wrote them; `_drumrack.mid` is now `_ensemble.mid`. Four kinds of bad
+lattice are refused before any output is replaced — tested on a scratch copy: non-linear
+intervals (7, 4), non-invertible (10, 8 -> x18), root 100, a base sieve with a third
+modulus. *(Corrected 2026-09-19: this originally said any lattice that cannot render
+correctly is refused first. False — a fractional `PITCH_ROOT` of 36.5 passes preflight,
+replaces all six files, and only then fails verification. GPT found it.)*
+
+**Two known bugs in `dois_16`, found by GPT, fixed only in `dois_16(gpt)`.** Neither
+affects the default configuration or a single note:
+- the canon check converts both voices' onsets with the follower's time unit, so giving
+  C a different unit from A (e.g. 160 ticks) crashes with `KeyError: 15` after rendering;
+- non-integer or boolean pitch settings (`PITCH_ROOT = 36.5`) are not refused up front.
+Both reproduced against the pushed `dois_16`. `dois_16` itself is left as Claude pushed
+it; see the naming rule below for why the fixes live in GPT's folder.
 
 **A new guarantee, worth knowing:** the lattice `a*(n mod 8) + b*(n mod 5)` is a linear
 map (= k*n mod 40) **iff 5 | a and 8 | b**; exhaustively checked, 28 pairs qualify and
@@ -72,11 +87,29 @@ rest on.
 `dois_16` — it is GPT's experiment and an unmade musical decision. Verified: every note
 matches its formula; its comparison table reproduces exactly. One thing its table
 misses: under `moduli` A, C and D never repeat their melody from pass to pass (0 of 27,
-0 of 27, 0 of 20 positions keep one pitch), a gain for "nothing repeats identically";
-the cost is that pitch no longer reflects a step's residues. B is the exception — its
-pitch clock (2400 ticks) divides its rhythm layer (4800), so it is really the lattice
-with multiplier 26 (verified on all 52 notes), not invertible: 20 reachable pitches and
-an identical melody every pass. Rule: a 120-tick voice's clock is commensurate iff 4 | k.
+0 of 27, 0 of 20 positions keep one pitch) — melodic variation across passes, an extra
+choice rather than a fix, since the accents already keep passes from repeating; the
+cost is that pitch no longer reflects a step's residues. B is the exception — its pitch
+cycle (2400 ticks) divides its rhythm layer (4800), so its sampled pitches are exactly
+the lattice with multiplier 26 (verified on all 52 notes), not invertible: 20 reachable
+pitches and an identical melody every pass. B does gain something else: its unisons with
+C fall from 28/28 to 1/28. Rule: for a 120-tick voice under P = 19200, the pitch cycle
+divides the rhythm cycle iff 4 | k. *(Corrected 2026-09-19 from "a gain for nothing
+repeats identically" and "commensurate iff 4 | k" — every one of these rational clocks is
+commensurate; divisibility is the property that matters. Both caught by GPT.)*
+
+**Pitch class — why mod 12 does not fit this sieve (2026-09-19).** The author asked
+whether the lattice could move onto pitch classes (octave equivalence). Proven, not
+opinion: 12 = 4 x 3 and the sieve is built from 8 and 5, so they share only the factor 4.
+Any structure-preserving (linear) map from the 40-step cycle to the 12 pitch classes
+reaches **at most 4** of them, and the +13 canon can be an exact pitch-class transposition
+only inside a diminished seventh {C, Eb, F#, A}. Alternative, rendered as
+`pitch_studies/mid/pcoct_*.mid`: pitch class from the mod-8 axis stepping by fourths,
+octave from the mod-5 axis. Octave equivalence is then structural — every `8@r` class IS a
+pitch class, so the pedal clauses `8@3`/`8@4` become Eb and Ab pedals across five octaves
+— at the cost of 8 pitch classes (no E, A, D, G), a 59-semitone range, and no canon
+transposition. The one untested route to all 12: take the missing 3 from the piece's own
+4:3 polyrhythm (D's triplet grid, its `span3` accent). Undecided.
 
 **Operational note — iCloud.** This repo lives in iCloud-synced Documents. On
 2026-09-19 `dois_15(gpt)/VALIDATION.json` was cloud-only (`ls -lO` shows `dataless`), and
@@ -1006,7 +1039,16 @@ This produces a period of **40 steps** — the foundational unit of the project.
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
-iterations; bare `dois_NN` are Claude's. They are NOT the same work and the numbers do not
+iterations; bare `dois_NN` are Claude's.
+
+**Rule, from the author (2026-09-19): keep the two lines distinct.** Neither assistant
+edits the other's folders. To fix or extend the other's version, fork it into a new
+folder of your own line — as `dois_15(gpt)` forked `dois_15` — and leave the original as
+its author pushed it. Output filenames follow the folder (TITLE `dois_16(gpt)` gives
+`dois_16(gpt)_*.mid`), so clips from the two lines never collide in a DAW. Commit each
+assistant's work separately, and mark GPT's commits `[GPT]`. This rule exists because
+GPT, at the author's request, once edited `dois_16` in place; that work was moved to
+`dois_16(gpt)`. They are NOT the same work and the numbers do not
 correspond — `dois_14` (Claude's minimal sieve correction) and `dois_14(gpt)` (GPT's
 multi-preset version built after reading `FOR_CHATGPT.md`) are different things that happen
 to share a number. Check the suffix before assuming which is meant.

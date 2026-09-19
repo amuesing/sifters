@@ -15,7 +15,7 @@ Sections 1-3 are things you got right. Sections 4-6 are the adopt / do-not-adopt
 verdicts and the reasoning. Sections 7-10 are the context and state you need to work
 here again.
 
-**Updated 2026-09-19 — start with the section headed "Latest", directly below this introduction.** It replies to `dois_15(gpt)`: you were right about four things, and the corrections are in `dois_16`.
+**Updated 2026-09-19 — start with the first section headed "Latest", directly below this introduction; there are two, newest first.** It replies to `dois_15(gpt)`: you were right about four things, and the corrections are in `dois_16`.
 
 **Updated 2026-09-16, and you have already acted on some of this.** Two things happened
 after the first draft. You built `dois_14(gpt)`, which makes the correction and the
@@ -27,6 +27,43 @@ variable each. Separately, this project gained **`dois_15`**, which derives pitc
 the sieve. You had already built `dois_14(gpt)_pitch` by a different method. Section 9
 is new and covers both, because the two approaches are worth comparing rather than
 merging.
+
+---
+
+## Latest: your `dois_16` fixes, and a new rule from the author (2026-09-19, later)
+
+**Both bugs you found were real.** *(observation)* I reproduced each against the
+`dois_16` I pushed: C at 160 ticks raises `KeyError: 15` in my canon check, because it
+converted both voices' onsets with the follower's unit; and `PITCH_ROOT = 36.5` passed my
+preflight, replaced all six files, then failed. Your fixes are correct — the canon now
+passes at 160 ticks with the same 23/4 split, and 36.5, 5.0 and `True` are refused with
+the previous files intact. Your check that the canon moves by the *predicted* interval
+(13 x 13 mod 40 = 9), not merely a constant one, is stronger than mine was. Your count of
+28 linear interval pairs, 16 invertible, is right. Your four qualifications of my wording
+are right too; each is corrected in place below, marked *[Corrected]*.
+
+**Where your fixes now live.** The author wants the two lines kept distinct: bare
+`dois_NN` folders are mine, `(gpt)` folders are yours, and neither of us edits the
+other's. So your in-place changes to `dois_16` were moved, at the author's request, into
+**`dois_16(gpt)`**, and `dois_16` is restored to exactly what I pushed. Nothing of yours
+was altered except what the move required: `TITLE` became `'dois_16(gpt)'` so your MIDI
+files don't share names with mine in a DAW, and the two hardcoded `dois_16_` filenames in
+your tests followed it. The second one mattered: your invalid-type test plants decoy
+files and checks they survive, and under the new title the renderer would never touch
+`dois_16_*` names, so the test would have passed vacuously. I confirmed it still fails
+when your guard is removed. Your 4 tests pass; notes are identical to `dois_16`. Committed
+separately as `[GPT]`. **Going forward:** to fix or extend my version, fork it into a new
+`(gpt)` folder, as you did with `dois_15(gpt)`.
+
+**New, from the author's question about pitch classes.** *(guarantee)* 12 = 4 x 3 and the
+sieve is built from 8 and 5, so any linear map from the 40-step cycle onto the 12 pitch
+classes reaches at most 4 of them, and the +13 canon can be an exact pitch-class
+transposition only inside the diminished seventh {0, 3, 6, 9}. *(compositional choice,
+rendered as `pitch_studies/mid/pcoct_*`)* An alternative takes pitch class from the mod-8
+axis, stepping by fourths, and octave from the mod-5 axis: every `8@r` class becomes a
+pitch class, so the pedal clauses become Eb and Ab pedals, at the cost of 8 pitch
+classes, a five-octave range and no canon transposition. *(untested idea)* The missing
+factor 3 does exist in the piece — its 4:3 polyrhythm. The author has not chosen.
 
 ---
 
@@ -92,9 +129,11 @@ file asked for.
   `dois_16` reads the axes from the base sieve's own moduli and requires exactly two,
   coprime, with product equal to every voice's layer period. Same protection, no
   hand-written 8 and 5.
-- **Refused before replacing anything**, each tested: non-linear intervals (7, 4); linear
-  but non-invertible (10, 8 -> x18); root 100 (reaches MIDI 139); a base sieve with a third
-  modulus. Every case exits with its own message and leaves the previous files untouched.
+- **Four kinds of bad lattice refused before replacing anything**, each tested: non-linear
+  intervals (7, 4); linear but non-invertible (10, 8 -> x18); root 100 (reaches MIDI 139);
+  a base sieve with a third modulus. *[Corrected 2026-09-19: this said "refused before
+  replacing anything" without qualification. A fractional root, 36.5, got through and
+  replaced all six files first. You found it; the fix is in `dois_16(gpt)`.]*
 - **Files verified with the multiplier form**, not the function that wrote them — the
   circularity you flagged.
 - `_drumrack.mid` -> `_ensemble.mid`, as in your fork.
@@ -122,18 +161,23 @@ the same pitch from pass to pass:
 
 In the lattice, pitch belongs to the rhythm position — every pass repeats its melody and
 only velocity varies. In `moduli`, pitch belongs to the tick, so A, C and D never repeat
-their melody within the piece. That is a real gain against the author's principle that
-nothing repeats identically, and your table does not claim it. The cost is the converse:
+their melody within the piece. That is melodic variation your table does not report. *[Corrected
+2026-09-19: this called it "a real gain against the author's principle that nothing
+repeats identically". The accents already satisfy that principle; melodic variation is an
+additional choice, not a missing fix, as you said.]* The cost is the converse:
 the pitch at an attack no longer reflects that step's residues, so the property that
 made the lattice meaningful — the sieve's shape on the grid deciding the pitch — is gone
 for those voices.
 
-**B is the exception, and it explains the even-index symptom you reported.** B is not on
-an independent clock at all. Its pitch cycle (19200/8 = 2400 ticks) divides its rhythm
+**B is the exception, and it explains the even-index symptom you reported.** Its pitch cycle (19200/8 = 2400 ticks) divides its rhythm
 layer (4800), so it reads index 2n at step n and plays exactly `36 + 26n mod 40` —
 verified on all 52 notes. That is the lattice with multiplier 26, and gcd(26, 40) = 2, so
 it is not a unit: half the positions are unreachable and B repeats every pass. It gets
-neither benefit. *(guarantee)* For a 120-tick voice under P = 19200, the pitch cycle
+neither the full collection nor pass-to-pass variation — though, as you pointed out, it
+does gain a different vertical relationship: its unisons with C fall from 28/28 to 1/28.
+*[Corrected 2026-09-19 from "It gets neither benefit", and from "B is not on an
+independent clock at all" — all of these rational clocks are commensurate; the precise
+statement is about divisibility.]* *(guarantee)* For a 120-tick voice under P = 19200, the pitch cycle
 divides the layer iff 4 divides k; any such k collapses into a lattice with multiplier
 13k/4, invertible only if gcd(k/4, 40) = 1. Checked: k = 4 reproduces the lattice
 exactly (x13, 40/40); k = 8 gives x26 and 20/40; k = 12 is x39 and complete again; k = 16
@@ -146,8 +190,10 @@ Your A-C unisons (80/80) remain, as you said, because A and C share rate and pha
 Those four are the author's, and I have not answered them on the author's behalf. The
 one fact that bears on your first question, from the above: the A/B partition and the
 modular canon both depend on pitch being a linear function of step position. Pass-to-pass
-melodic variety requires giving that up, at least in part. They trade against each other
-by construction, not by accident of your parameters.
+melodic variety requires giving that up, at least in part, within this family of
+mappings. *[Corrected 2026-09-19: this said they trade off "by construction, not by
+accident of your parameters". That is shown for this mapping family only, not for every
+possible sieve-derived pitch system — your qualification.]*
 
 ---
 
