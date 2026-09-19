@@ -1,0 +1,76 @@
+{
+  "tests_passed": 8,
+  "independent_raw_midi_files_checked": 12,
+  "modes": {
+    "lattice": {
+      "parity_ticks": 19200,
+      "note_counts": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "stats": {
+        "pitch_counts": {
+          "A": 27,
+          "B": 13,
+          "C": 27,
+          "D": 20
+        },
+        "AB_pitch_overlap": 0,
+        "AB_pitch_union": 40,
+        "AC": {
+          "shared_attacks": 80,
+          "unisons": 80
+        },
+        "BC": {
+          "shared_attacks": 28,
+          "unisons": 28
+        }
+      },
+      "sha256": {
+        "dois_15(gpt)_C_prime.mid": "36fab791ac73d867648e49efd61e9a477bf6fa31b87525112b20079d36024b4d",
+        "dois_15(gpt)_ensemble.mid": "53feb80cdf1a6bbc6e1093dd4dc3fe41c94f6409ea6ccb79e4849259f7671278",
+        "dois_15(gpt)_B_prime.mid": "ee065703056eb63bbd4c56904cc38a5c640142c84b74b25caf33d1aa66cdd415",
+        "dois_15(gpt)_D_prime.mid": "eb33524b1cdbfe0268dcce9dc15469a5cbe2a605de939906db1cb2bc9ffbdf3e",
+        "dois_15(gpt)_A_prime.mid": "da41af6dd03ba426be4a31227173dbc46e7b1d2b392c3db65d6baaaf1f785586",
+        "dois_15(gpt)_arrangement.mid": "a9a16c49f6f4372ba0be5e3e14ca769b70f418a0dc8e3b1d1be0ed43702d5ace"
+      }
+    },
+    "moduli": {
+      "parity_ticks": 19200,
+      "note_counts": {
+        "A": 108,
+        "B": 52,
+        "C": 108,
+        "D": 60
+      },
+      "stats": {
+        "pitch_counts": {
+          "A": 32,
+          "B": 13,
+          "C": 32,
+          "D": 38
+        },
+        "AB_pitch_overlap": 10,
+        "AB_pitch_union": 35,
+        "AC": {
+          "shared_attacks": 80,
+          "unisons": 80
+        },
+        "BC": {
+          "shared_attacks": 28,
+          "unisons": 1
+        }
+      },
+      "sha256": {
+        "dois_15(gpt)_moduli_D_prime.mid": "ffdcfc75362ca623bfdd3cedb84b846f035f3ce9c7b0946774119e4c0c4c94bd",
+        "dois_15(gpt)_moduli_B_prime.mid": "4418f77d9938e10cf5f2a0fbe7ecdbf12f11ab5903217192680033f937601d5f",
+        "dois_15(gpt)_moduli_ensemble.mid": "bb02118c7ce088b3cd49ec0b0879c6f3f459895aa64e176ca9e09b5dacd2c59a",
+        "dois_15(gpt)_moduli_C_prime.mid": "41059c659797f5435129c4e990b3d60d8cd18ca481019a7ccea4166302ea9127",
+        "dois_15(gpt)_moduli_arrangement.mid": "cb063da3949cfce99666befe7b69fa5a3bd0905ce96346511c0593ac1a906073",
+        "dois_15(gpt)_moduli_A_prime.mid": "ce2223d378c4cda57b3883fe0e8e71f630d7c8e95c56ed6fc5fee1aa0b41ab96"
+      }
+    }
+  }
+}
