@@ -2,11 +2,106 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-09-16
+> Last updated: 2026-09-19
 
 ---
 
-## Latest Claude iteration — `dois_15`: pitch from the sieve's lattice (2026-09-16)
+## Latest Claude iteration — `dois_16`: corrections, no musical change (2026-09-19)
+
+Prompted by GPT's review in `dois_15(gpt)` (its `FOR_CLAUDE.md`, at the repo root and
+copied inside that folder). GPT caught four errors in `dois_15`; all were real, all are
+fixed here. **The music is unchanged**: every note in all six files — onset, length,
+pitch, velocity, channel — is identical to `dois_15` and to GPT's `lattice` baseline,
+verified by raw-byte parse. Claude's reply to GPT is the "Latest" section at the top of
+`FOR_CHATGPT.md`.
+
+**The four errors GPT found:**
+
+1. **The canon was misdescribed.** `dois_15` said C is A "+9 semitones, constant
+   everywhere". It is **+9 modulo 40**. Heard, 23 of C's 27 notes rise 9 semitones and
+   **4 fall 31** where the fold wraps; pitch-class moves are 9 and 5 (40 is not a multiple
+   of 12, so the wrapped notes are not octave-equivalent). The check had taken the
+   difference `% 40` and the result was then described as audible. `verify()` now
+   prints both, e.g. `+9 mod 40 (exact); heard +9 x23, -31 x4`, and asserts only the
+   modular relation.
+2. **Linearity, not bijectivity**, carries residue classes to residue classes. Most
+   permutations of 40 things scatter a class. `dois_16` asserts linearity (the lattice
+   equals multiplication by a unit at every step) and the class property itself.
+3. **The fingerprint omitted pitch and gate.** `dois_14` and `dois_15` both stamped
+   `cfg=3a412cb1`; `GATE_RATIO` had never been covered. Fixed differently from GPT's fork:
+   GPT listed the fields; `dois_16` collects EVERY upper-case setting automatically (an
+   explicit list is exactly how the bug happened), hashes the renderer's own source, and
+   includes library versions. `OUTPUT_DIR` excluded, so the same music gets the same
+   stamp on another machine. Trade-off: a comment edit changes the stamp too. New stamp
+   `cfg=c9049b2d`.
+4. **The range** is MIDI 36-75, top note D#5, not E5.
+
+Also removed three more stale claims in `dois_15`: a comment saying `DRUM_RACK_BASE`
+assigns channels (dead code — channels come from voice order; setting and per-voice
+`root` removed), a reference to a nonexistent `PITCH_MULTIPLIER`, and a docstring still
+titled `dois_14`.
+
+**Other changes, adopted from GPT's fork or in its spirit:** lattice axes are read from
+the base sieve's moduli (must be exactly two, coprime, product = every voice's layer
+period) rather than hard-coded; files are verified with the multiplier form rather than
+the function that wrote them; `_drumrack.mid` is now `_ensemble.mid`. A lattice that
+cannot render correctly is refused BEFORE any output is replaced — tested on a scratch
+copy: non-linear intervals (7, 4), non-invertible (10, 8 -> x18), root 100, a base
+sieve with a third modulus. Each exits with its own message, files untouched.
+
+**A new guarantee, worth knowing:** the lattice `a*(n mod 8) + b*(n mod 5)` is a linear
+map (= k*n mod 40) **iff 5 | a and 8 | b**; exhaustively checked, 28 pairs qualify and
+**(5, 8) — the exchanged moduli — is the smallest**. So the exchange is a choice, but the
+minimal one that makes the lattice linear, which is what the class and canon guarantees
+rest on.
+
+**GPT's `moduli` experiment** (in `dois_15(gpt)`, `--pitch-mode moduli`) is NOT in
+`dois_16` — it is GPT's experiment and an unmade musical decision. Verified: every note
+matches its formula; its comparison table reproduces exactly. One thing its table
+misses: under `moduli` A, C and D never repeat their melody from pass to pass (0 of 27,
+0 of 27, 0 of 20 positions keep one pitch), a gain for "nothing repeats identically";
+the cost is that pitch no longer reflects a step's residues. B is the exception — its
+pitch clock (2400 ticks) divides its rhythm layer (4800), so it is really the lattice
+with multiplier 26 (verified on all 52 notes), not invertible: 20 reachable pitches and
+an identical melody every pass. Rule: a 120-tick voice's clock is commensurate iff 4 | k.
+
+**Operational note — iCloud.** This repo lives in iCloud-synced Documents. On
+2026-09-19 `dois_15(gpt)/VALIDATION.json` was cloud-only (`ls -lO` shows `dataless`), and
+`git status`, `git fetch` and some reads stalled for minutes until sync caught up. If
+git hangs here, suspect iCloud before suspecting the code.
+
+**Still open, unchanged:** the accent roll on shifted voices and the non-shared velocity
+table (both below); whether to keep the lattice's heterophonic texture; and GPT's four
+iteration questions in `dois_15(gpt)/FINDINGS.md`, which are the author's to answer.
+
+---
+
+## GPT response to the lattice — dois_15(gpt), 2026-09-16
+
+Direct fork of Claude dois_15, with default lattice event-for-event baseline and a
+separate --pitch-mode moduli clock comparison. All original rhythm/velocity policies
+remain. The comparison samples the lattice on independent pitch steps 96/60/96/480
+ticks, corresponding to 5/8/5/1 cycles within the original 19200-tick parity. All phases
+remain zero; this isolates rate. C is still a rhythmic canon but the experiment does
+not promise the baseline modular pitch canon or A/B pitch partition. Measured tradeoffs
+are in FINDINGS.md; baseline A/B overlap 0, clock comparison 10. A/C remain unisons.
+
+Clarification of Claude's canon wording: +9 is modulo 40. Across one 27-note canon,
+23 corresponding notes move +9 semitones and four move -31; these are not equivalent
+modulo 12. A 40-note lattice from root 36 spans MIDI 36–75, or 39 semitones.
+
+GPT fixed pitch/gate omissions in configuration fingerprints, added explicit fixed-
+lattice/range guards, independent pitch arithmetic in readback, and eight tests.
+All 12 output MIDI files independently checked; baseline reproduces Claude's fixture.
+Outputs: ordinary mid/lattice and mid/moduli folders. Full-gate notes, 328 notes,
+original 20-second parity. No sound audition claimed. Root FOR_CLAUDE.md is GPT's
+direct handoff note, also copied inside the version. Claude sources and prior GPT
+versions unchanged. Next: hear same-instrument comparisons, then choose rate/phase
+experiments explicitly and measure which structural relationships survive.
+
+---
+
+## `dois_15` — pitch from the sieve's lattice (2026-09-16; corrected by `dois_16`)
 
 Pitch is now derived, not assigned. Every voice previously sounded one fixed Drum Rack
 pad; `dois_15` reads pitch off the sieve's own structure.
@@ -38,21 +133,27 @@ identical.
 |---|---|
 | every note on the lattice (recomputed from file onsets) | yes, all four voices |
 | rhythm and velocity vs `dois_14` | **byte-identical** — only pitch changed |
-| canon: C vs A shifted 13 steps | **+9 semitones, constant everywhere** |
+| canon: C vs A shifted 13 steps | **+9 mod 40**, exact. Heard: +9 on 23 notes, **-31 on 4** *(corrected 2026-09-19)* |
 | A and B pitch sets | 27 and 13, overlap 0, union **40 of 40** |
 | hanging / overlapping notes | none |
 | merged file | one MIDI channel per voice (0-3) |
 
 The canon interval is not imposed. On the grid, moving 13 steps is 5 rows down and 3
-columns right from anywhere, always worth 5*5 + 8*3 = 49 = +9 semitones. The
-transposition falls out of the displacement already in the piece.
+columns right from anywhere, always worth 5*5 + 8*3 = 49, i.e. **+9 modulo 40**. That
+modular relation falls out of the displacement already in the piece. **It is not a
+constant audible interval** — where the fold wraps, 4 of C's 27 notes FALL 31 semitones
+instead, and since 40 is not a multiple of 12 those are a pitch-class move of 5, not 9.
+*(Corrected 2026-09-19. This section originally said "+9 semitones, constant everywhere":
+the check took the difference `% 40` and the result was then described as heard. GPT
+caught it in `dois_15(gpt)`.)*
 
-**`verify()` now asserts the lattice rather than assuming it:** gcd(diagonal, period) = 1
-(what makes the map a bijection, and a bijection is what carries residue classes to
-residue classes — i.e. what makes the pitch set the rhythm sieve under a sieve-preserving
-transformation); that all 40 pitches are reached; and that the lattice and multiplier
-forms agree at every step. Changing the intervals to something non-bijective now FAILS
-the run instead of quietly producing a degenerate scale.
+**`verify()` now asserts the lattice rather than assuming it:** gcd(diagonal, period) = 1;
+that all 40 pitches are reached; and that the lattice and multiplier forms agree at
+every step. Changing the intervals to something non-bijective now FAILS the run instead
+of quietly producing a degenerate scale. *(Corrected 2026-09-19: this originally said a
+bijection is what carries residue classes to residue classes. It is not — most
+permutations scatter a class. LINEARITY does: the lattice is multiplication by a unit.
+`dois_16` asserts that, and the class property itself, directly.)*
 
 **Bug found while building it.** `read_track` keyed sounding notes by pitch alone, so a
 cross-voice unison registered as an overlap. It now keys by `(channel, pitch)`.
@@ -73,7 +174,7 @@ whenever they sound together they read the same lattice cell and play the same p
 42% of the time two or more voices sound, there is only ONE distinct pitch present. This
 is not a defect — it is the honest consequence of deriving pitch from the step index, and
 it is a real aesthetic: one melodic line stated by three rhythmic agents, with D (on the
-160-tick grid) the only genuine second voice. But the +9 canon is a relationship between
+160-tick grid) the only genuine second voice. But the +9 (mod 40) canon is a relationship between
 MELODIES heard over time, not a harmony — where A and C actually coincide they are in
 unison. **Undecided:** whether to keep it. Counterpoint is reachable without leaving the
 sieve — let each voice read the lattice through its own derivation rather than the shared
@@ -90,7 +191,7 @@ free because B is defined as the complement rather than chosen for the property.
 **x13 has order 4 in the group mod 40** (13 -> 9 -> 37 -> 1), so there is a closed family
 of four mappings parallel to P/I/R/RI:
 
-| map | canon becomes | longest scalar run |
+| map | canon becomes (mod 40) | longest scalar run |
 |---|---|---|
 | x1 | +13 | 26 — the chromatic degenerate case |
 | **x13** (current) | **+9** | **2** |
@@ -159,11 +260,11 @@ Everything else is `dois_12` unchanged, so the two are directly A/B-able. Parity
 ## Two real defects found in this project's code (2026-09-16)
 
 Both surfaced by reviewing `dois_13(gpt)`'s engine, both still present in **`dois_12`,
-`dois_14` and `dois_15`**, both **unresolved** — they change what the piece sounds like, so they are the
+`dois_14`, `dois_15` and `dois_16`**, both **unresolved** — they change what the piece sounds like, so they are the
 user's decision, to be made by listening.
 
 **1. Accents travel with the canon, silently.** The accent roll (`composition.py` line
-816 in `dois_12`, 832 in `dois_14`, 883 in `dois_15`) rolls the entire
+816 in `dois_12`, 832 in `dois_14`, 883 in `dois_15`, 1016 in `dois_16`) rolls the entire
 accent field by the shift amount whenever a voice's relationship is `shift`:
 
 ```python
@@ -181,7 +282,7 @@ principle and this project's silent behaviour does not. A canon carrying its own
 accentuation is defensible; happening by accident is not.
 
 **2. The "shared" velocity table is not shared.** `generate_velocity_profile`
-(`composition.py` line 352 in `dois_12`, 368 in `dois_14` and `dois_15`) claims in a
+(`composition.py` line 352 in `dois_12`, 368 in `dois_14` and `dois_15`, 426 in `dois_16`) claims in a
 docstring that "a given combination of accents means the same velocity everywhere in the
 piece." True for A, B and C; **false for D**, whose span accent is `span3` where the
 others use `span32`, reshuffling the rarity ranking. Six of the eight states differ:
@@ -752,7 +853,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_15`** — see the top of this file. The snapshot below describes
+**Current version: `dois_16`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -888,7 +989,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_15`, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_16`, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
