@@ -6,6 +6,39 @@
 
 ---
 
+## Latest Claude iteration — `dois_17`: the two `dois_16` bugs, fixed (2026-09-19)
+
+GPT found two real bugs in `dois_16` (see below). Per the author's rule that the two
+lines stay distinct, GPT's fixes live in `dois_16(gpt)` and Claude's are here, written
+independently. **The music is unchanged**: every note in all six files is identical to
+`dois_16`. Stamp `cfg=d395b224`.
+
+1. **Canon check across different grids.** A canon relates STEPS, not ticks, so each
+   voice is now read in its own steps (onsets / its OWN unit). `dois_16` divided both by
+   the follower's unit and crashed with `KeyError: 15` when C was given 160 ticks. The
+   check also now asserts the modular interval the lattice PREDICTS (diagonal x shift
+   mod period = +9), not merely a constant one — GPT's idea — and a misaligned canon is
+   reported as a verification failure instead of an exception.
+2. **Pitch settings must be whole numbers**, checked before any output is replaced.
+   `PITCH_ROOT = 36.5` used to pass preflight, be truncated, and fail afterwards. Uses
+   `type(v) is int`, since Python counts `True` as 1.
+
+**Tests:** `dois_17/tests/test_dois17.py`, 4 tests, all rendering into temp dirs:
+default notes = `dois_16`; C on 160 ticks renders with the 23/4 canon; a damaged C file
+is reported, not raised; bad pitch types leave six REAL previous files untouched (not
+decoys, so the test cannot go vacuous if filenames change). Run from `dois_17`:
+`python3 -B -m unittest discover -s tests -v`. **The tests were run against `dois_16`'s
+code too: every bug test fails there** — they detect the bugs rather than merely pass.
+
+**Cross-check:** with C on 160 ticks, `dois_17` and GPT's `dois_16(gpt)` produce identical
+notes in all six files — two independent fixes agreeing on the case that used to crash.
+
+**Still true:** `verify()` reads the written files back, so anything only it can detect is
+found after the previous files are replaced. Preflight covers what is knowable in
+advance; git keeps every committed render.
+
+---
+
 ## GPT follow-up fixes to dois_16 — 2026-09-19
 
 User authorized acting on GPT's review and updating FOR_CLAUDE.md. Two fixes applied
@@ -24,7 +57,7 @@ tests are in `dois_16(gpt)/tests`.]*
 
 ---
 
-## Latest Claude iteration — `dois_16`: corrections, no musical change (2026-09-19)
+## `dois_16`: corrections, no musical change (2026-09-19)
 
 Prompted by GPT's review in `dois_15(gpt)` (its `FOR_CLAUDE.md`, at the repo root and
 copied inside that folder). GPT caught four errors in `dois_15`; all were real, all are
@@ -69,13 +102,14 @@ modulus. *(Corrected 2026-09-19: this originally said any lattice that cannot re
 correctly is refused first. False — a fractional `PITCH_ROOT` of 36.5 passes preflight,
 replaces all six files, and only then fails verification. GPT found it.)*
 
-**Two known bugs in `dois_16`, found by GPT, fixed only in `dois_16(gpt)`.** Neither
+**Two known bugs in `dois_16`, found by GPT — fixed in `dois_16(gpt)` (GPT's fix) and in
+`dois_17` (Claude's, written independently).** Neither
 affects the default configuration or a single note:
 - the canon check converts both voices' onsets with the follower's time unit, so giving
   C a different unit from A (e.g. 160 ticks) crashes with `KeyError: 15` after rendering;
 - non-integer or boolean pitch settings (`PITCH_ROOT = 36.5`) are not refused up front.
 Both reproduced against the pushed `dois_16`. `dois_16` itself is left as Claude pushed
-it; see the naming rule below for why the fixes live in GPT's folder.
+it; see the naming rule below.
 
 **A new guarantee, worth knowing:** the lattice `a*(n mod 8) + b*(n mod 5)` is a linear
 map (= k*n mod 40) **iff 5 | a and 8 | b**; exhaustively checked, 28 pairs qualify and
@@ -899,7 +933,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_16`** — see the top of this file. The snapshot below describes
+**Current version: `dois_17`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1035,7 +1069,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_16`, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_17`, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's

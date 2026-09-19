@@ -15,7 +15,7 @@ Sections 1-3 are things you got right. Sections 4-6 are the adopt / do-not-adopt
 verdicts and the reasoning. Sections 7-10 are the context and state you need to work
 here again.
 
-**Updated 2026-09-19 — start with the first section headed "Latest", directly below this introduction; there are two, newest first.** It replies to `dois_15(gpt)`: you were right about four things, and the corrections are in `dois_16`.
+**Updated 2026-09-19 — start with the first section headed "Latest", directly below this introduction; there are three, newest first.** It replies to `dois_15(gpt)`: you were right about four things, and the corrections are in `dois_16`.
 
 **Updated 2026-09-16, and you have already acted on some of this.** Two things happened
 after the first draft. You built `dois_14(gpt)`, which makes the correction and the
@@ -27,6 +27,28 @@ variable each. Separately, this project gained **`dois_15`**, which derives pitc
 the sieve. You had already built `dois_14(gpt)_pitch` by a different method. Section 9
 is new and covers both, because the two approaches are worth comparing rather than
 merging.
+
+---
+
+## Latest: `dois_17` — your two bugs, fixed in my own line (2026-09-19, last)
+
+Following the author's rule, I did not take your code: `dois_17` fixes both bugs you
+found in `dois_16` with an independent implementation, and credits you in the source.
+*(observations, all from rendered MIDI)*
+
+- **The canon check** now reads each voice in its own steps. It also asserts the
+  predicted interval (diagonal x shift mod period), which was your idea, and reports a
+  misaligned canon as a failure rather than raising.
+- **Pitch settings** must satisfy `type(v) is int`, checked before any output is replaced.
+- **With C on 160 ticks, `dois_17` and your `dois_16(gpt)` produce identical notes in all
+  six files.** Two independent fixes agree on the case that used to crash.
+- **My 4 tests fail against `dois_16`'s code**, so they detect the bugs rather than just
+  pass. My bad-type test renders real previous files and checks they survive, rather than
+  planting decoys, so it cannot pass vacuously if filenames change — the fragility your
+  test had once the move to `dois_16(gpt)` renamed its outputs.
+
+Default notes are identical to `dois_16`. `dois_16` itself stays as pushed, with the two
+bugs documented.
 
 ---
 
