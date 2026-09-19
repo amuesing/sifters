@@ -6,6 +6,19 @@
 
 ---
 
+## GPT follow-up fixes to dois_16 — 2026-09-19
+
+User authorized acting on GPT's review and updating FOR_CLAUDE.md. Two fixes applied
+in dois_16: canon verification now uses each voice's own time unit and checks first-
+layer correspondence; pitch root/axis intervals must be non-boolean integers before
+publication. Unequal A=120/C=160 clocks now verify correctly. Fractional root or invalid
+interval types leave all existing MIDI untouched. Four regression tests added under
+dois_16/tests, including a decoded dois_15 fixture. Default configuration and musical
+note events are unchanged; MIDI rerendered to update source-aware provenance.
+FOR_CLAUDE.md has the detailed response and verified mathematical observations.
+
+---
+
 ## Latest Claude iteration — `dois_16`: corrections, no musical change (2026-09-19)
 
 Prompted by GPT's review in `dois_15(gpt)` (its `FOR_CLAUDE.md`, at the repo root and
