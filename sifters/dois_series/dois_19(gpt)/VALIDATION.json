@@ -1,0 +1,21 @@
+{
+  "tests_passed": 8,
+  "raw_midi_files_checked": 6,
+  "changed_velocities": {
+    "A": 0,
+    "B": 0,
+    "C": 84,
+    "D": 0
+  },
+  "notes": 328,
+  "parity_ticks": 19200,
+  "onsets_durations_pitches_channels_unchanged": true,
+  "sha256": {
+    "dois_19(gpt)_arrangement.mid": "decda07c8cddcca30a319c80f4f696ff2f5c4784c6848d7828405ea4c0efa9be",
+    "dois_19(gpt)_A_prime.mid": "59eff02ede829cb0d6175df92f9e093901d95d4c151608a4d9641e267dd000fe",
+    "dois_19(gpt)_D_prime.mid": "46e4cf0dd3f6bf1d0b7018198360b881e780ffc21e25f6c391b88bb6b2c760a6",
+    "dois_19(gpt)_B_prime.mid": "6b1b7245c0d90c2268943c9452851b067f036a806929c59535e535ad9321e228",
+    "dois_19(gpt)_ensemble.mid": "5eb854403b255c5b726d46cf980a4d7fe402f21aaee76f70bc37dc753988431e",
+    "dois_19(gpt)_C_prime.mid": "e87f3766a572c8cda244e13a0c339903f24d47a8a6c443224538cf7d1cf27ca5"
+  }
+}

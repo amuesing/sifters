@@ -1,0 +1,15 @@
+{
+  "tests_passed": 8,
+  "new_regressions_fail_with_old_checker": 2,
+  "independent_raw_files_checked": 6,
+  "notes_identical_to": "dois_22",
+  "parity_ticks": 19200,
+  "sha256": {
+    "dois_23(gpt)_A_prime.mid": "8189492035a0bf6e346f199b38d3341e12600543e072aa08f43c5fb298cfa87e",
+    "dois_23(gpt)_ensemble.mid": "ebc6fdf370a2593caae7725c9ae151157f9b72a91194d2daf22963261075130a",
+    "dois_23(gpt)_B_prime.mid": "c1a6f80e6204c1cdf05ae579baba141af46ee18eaeac2ede0118af37fad3163b",
+    "dois_23(gpt)_D_prime.mid": "e81240d28ee399d13255503696769de18ed49902c3b718afc689acb7ca8b9cd8",
+    "dois_23(gpt)_C_prime.mid": "af8c4f56110650ccc1b1e9c0cacb2cf1d427c0237bded0388ad7b925a40190af",
+    "dois_23(gpt)_arrangement.mid": "ed466c3187c1f5f7b8005749a0c198c5f56e8c81fa57948d3215c7526f298b85"
+  }
+}

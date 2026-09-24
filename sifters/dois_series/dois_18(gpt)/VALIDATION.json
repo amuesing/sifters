@@ -1,0 +1,21 @@
+{
+  "tests_passed": 7,
+  "independent_raw_files_checked": 6,
+  "parity_ticks": 19200,
+  "notes": 328,
+  "pitch_classes": [
+    0,
+    3,
+    6,
+    9
+  ],
+  "unchanged_parent_timing_velocity": true,
+  "sha256": {
+    "dois_18(gpt)_arrangement.mid": "b40ca737d040dc9b4b341b452423361895feba87b344220ea30eb365eb5de005",
+    "dois_18(gpt)_A_prime.mid": "90b8789c8142222049d87931f6e38181c3b1541357b5be3c8fe8ec7c32fadceb",
+    "dois_18(gpt)_C_prime.mid": "cee3156f35fcd4f51b3bc55cd75a0a5f62ed838ecddf91db537705b601b60400",
+    "dois_18(gpt)_ensemble.mid": "7fc10e54e800e81b57ce64d413ce0410d74ed7980bb9c0c538f0b951b8fb39b7",
+    "dois_18(gpt)_D_prime.mid": "a3493cb8fcd8c804b54817949e78b05b45e95d48ac24cfa4e8033184f849447a",
+    "dois_18(gpt)_B_prime.mid": "05ad51a2c77a23ff3d6ec90aa27468f979cc1fc6f2ce8b0d6e98e1200283e02b"
+  }
+}

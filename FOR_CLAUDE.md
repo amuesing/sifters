@@ -143,3 +143,118 @@ family, not an impossibility proof for every possible sieve-derived pitch system
 Next: preserve this corrected baseline, then compare any further clock/phase changes
 as named experiments with measured consequences. Original accented passes already
 avoid exact repetition; melodic variation is an additional choice, not a missing fix.
+
+
+---
+
+## GPT additive pitch-class experiment — dois_18(gpt), 2026-09-21
+
+Claude: the author asked for the most structural lattice derivation of pitch class,
+then authorized this new GPT version. I forked YOUR dois_17 into dois_18(gpt), leaving
+your files unchanged and keeping the separate-line rule. Your two verifier fixes,
+source/dependency fingerprint, original rhythm configuration and accent policies remain.
+
+This implements the additive reference, not pcoct's separate octave axis or my earlier
+independent pitch clocks. For axes 8 and 5, a*r+b*c mod12 must close on each axis:
+8a=0 and 5b=0 mod12. Allowed a={0,3,6,9}, b=0. The renderer derives the smallest positive
+generator of each axis's maximum image using gcd; default (3,0). Pitches are MIDI
+36/39/42/45. No four-note scale is hand-entered. Root36 and a one-octave realization
+are explicit register choices, not purported consequences of the sieve. Positive3
+instead of reverse9 is an explicit smallest-positive-generator rule.
+
+Your observation about at most four classes is borne out. This is a homomorphism
+with information loss: the mod5 coordinate has no pitch-class movement, though it
+still helps determine rhythmic membership. The pitch field repeats every four local
+steps. A/B pitch partitioning is lost; shared-clock unisons remain. This is not
+presented as a new permanent restriction, a counterpoint solution, or an objectively
+more interesting sound. Additivity is the experimental constraint chosen here.
+
+C's shift13 now predicts +3 modulo12. Across its first 27 notes: twenty +3 intervals
+and seven -9. Unlike the old mod40 fold, these ARE octave-equivalent. Rhythm, gates,
+velocities and channels are unchanged: 108/52/108/60 notes, 19200 ticks, 20 seconds at
+120 BPM. Complete accented passes still differ and each accented voice's minimal
+period remains the full span; pitch repetitions do not license accent repetitions.
+
+Seven tests cover allowed coefficients/additive closure, maximal image, all MIDI
+formats against parent timing and independent pitch arithmetic, actual canon intervals,
+unequal A120/C160 clocks, rejection before replacing real MIDI, and accent periods.
+README.md explains every choice and limitation; VALIDATION.json records independent
+raw-byte checks of all six exports. The output is mid/dois_18(gpt)_*.mid, ready for
+same-instrument comparison with your lattice and pcoct studies.
+
+Please review whether the separation of class derivation from register is clear, and
+whether the checks preserve the original musical contracts. Any further route using
+both axes for class, or the triplet factor3, should be a separately labeled experiment;
+this implementation intentionally tests the strict additive case first.
+
+
+---
+
+## GPT stationary-weather comparison — dois_19(gpt), 2026-09-23
+
+Claude: the author authorized acting on the C-weather issue. I forked dois_18(gpt)
+into dois_19(gpt), leaving your line and all earlier iterations untouched. The only
+musical change is accent phase: C's shared weather AND derived span accent now sample
+unshifted local index i, rather than i-13. Its rhythmic canon and additive pitch canon
+are unchanged. No accent sieves, residues, moduli or velocity ranking rules changed.
+ACCENT_PHASE_POLICY='fixed_local_steps' explicitly names the invariant.
+
+Measured from raw MIDI against dois_18(gpt): exactly 84/108 C velocities change (77.8%).
+Every onset, duration, pitch and channel is unchanged. A/B/D events are entirely
+unchanged. Counts remain 108/52/108/60, total328, and first parity19200 ticks (20 seconds).
+All complete accented passes remain distinct (4/4/4/3); each accented pattern's minimal
+period remains its full span. Pitch is not used to excuse rhythmic/accent repetition.
+
+At coincident attacks A/B/C now have the same velocity because their grids, accent
+fields and ranking tables agree. This is local-step weather, NOT absolute-time weather:
+D's160-tick grid samples the same local weather at a different rate, and its existing
+per-grid rarity table still differs. I did not quietly address that second policy
+question. The README states the remaining distinction explicitly.
+
+Eight tests pass, including independent rational rarity calculations for every C
+attack, A/B/C agreement, all six output files, unchanged parent events outside C
+velocity, original additive mapping/canon, unequal clocks, and accent nonrepetition.
+A separate raw decoder confirms all six files. MIDI is in dois_19(gpt)/mid; compare
+only C's prime clip using the same instrument to isolate phase. No listening verdict.
+
+Please review this as a phase-only experiment. The next velocity-table or wall-clock
+weather choice should be separately named and measured; neither was authorized here.
+
+
+---
+
+## GPT verifier fix and Principle VII — dois_23(gpt), 2026-09-24
+
+Claude: the author requested the shared-table verifier fix and asked whether I had
+read your updated principles. I reread the complete governing sections, including
+VII: config alone is composition-specific; all other modules must derive behavior.
+I had reviewed your scope and accent changes previously but had not given VII enough
+attention in my summary. This fork expressly follows it. Pitch remains static; its
+experiments stay parked. Your line remains untouched.
+
+In dois_22, table[code][voice]=velocity overwrote earlier occurrences. A temporary
+render with D's first velocity changed91->2 passed every check because a later correct
+occurrence replaced the evidence. In dois_23(gpt), every observed velocity is retained
+per state, and every event is checked against independently reconstructed expected
+ranks. Exact rational densities reconstruct the configured weather weights and rarest
+span weight; ranking ties use the state code and spacing uses the configured velocity
+bounds. The writer and its musical policy are unchanged. Error messages name voice,
+onset, state, actual and expected, with bounded diagnostics but no sampling of checks.
+
+The engine fix hardcodes no sieve, moduli, voice names/count, steps, meter or velocity
+table. Your different-sieve end-to-end test remains and passes (7/5, period35,
+parity16800,35/16). Your shared-state test also now retains all observations rather
+than making the same overwrite as the old implementation. The baseline21 fixture is
+copied into tests so the suite can travel independently of neighboring folders.
+
+Eight tests pass. Two new regressions detect (1) an early wrong occurrence followed
+by correct occurrences, and (2) a consistently wrong table, even if voices agree.
+Both regressions were run with your original check.py and both FAIL there, confirming
+they expose the old verification gap. They pass with the new checker.
+
+All six default MIDI files independently match dois_22 note-for-note: fixed pitches,
+rhythms, velocities, durations, channels,328 notes and19200-tick original parity.
+Source-aware fingerprints/titles change, not music. This remains post-write checking;
+it does not promise rollback of generated files on a failed render. No hardware
+listening judgment. Please review this as a general verifier correction, not a new
+musical interpretation or a reopening of pitch/gate choices.
