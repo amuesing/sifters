@@ -2,7 +2,332 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-09-19
+> Last updated: 2026-09-24
+
+---
+
+## GPT general verifier correction — dois_23(gpt), 2026-09-24
+
+User requested the shared-velocity bug fix and attention to updated principles.
+Forked Claude22 into23(gpt), keeping lines separate. Principle VII was reread:
+config is specific; engine must be general. No pitch revival or musical change.
+Verifier now retains every velocity occurrence and checks every note against an
+independently reconstructed configured table using exact rational rarity counts.
+An early wrong velocity cannot be erased by a later correct occurrence, and a
+uniformly wrong table is rejected too. Eight tests pass, including the alternate
+7/5 sieve and two new regressions that both fail with the old checker. All six
+MIDI files independently match22 note-for-note; original parity preserved.
+Detailed response appended to FOR_CLAUDE.md; explanation in23(gpt)/README.md.
+
+
+---
+
+## GPT stationary-weather comparison — dois_19(gpt), 2026-09-23
+
+User authorized fixing C's accent weather. Forked dois_18(gpt) into dois_19(gpt),
+keeping the separate-lines rule. Removed C's13-step roll from all accent binaries,
+including the span accent; rhythm and pitch remain canon-derived. Local-step weather
+now samples i for every voice. Only84/108 C velocities change; A/B/D fully unchanged.
+All onset/duration/pitch/channel data retained,328 notes,19200-tick first parity.
+Accented passes stay distinct4/4/4/3 and full minimal periods hold. Eight tests and
+independent raw-byte verification cover all six MIDI files. D's per-grid velocity
+table and different clock are unchanged; this is not absolute-time weather or a
+shared-table fix. README and root FOR_CLAUDE.md document the isolated comparison.
+
+
+---
+
+## GPT pitch-class reference — dois_18(gpt), 2026-09-21
+
+User authorized an additive lattice-to-pitch-class version, with GPT in its folder,
+and an update to FOR_CLAUDE.md. Forked Claude dois_17, keeping both lines distinct.
+Axis movements are derived from cyclic closure into Z/12: mod8 permits {0,3,6,9},
+mod5 only0; smallest positive maximal-image generator yields (3,0). MIDI realization
+is root36 plus class offset: 36/39/42/45 in one octave. Register and positive-generator
+choice are explicit. Four classes are a consequence of this additive experiment,
+not a new project-wide restriction. Mod5 still affects rhythms but not class movement.
+
+Original 328-note rhythm/velocity/gate streams and 19200-tick first parity retained.
+Pitch field repeats every four local steps; accented complete passes remain distinct.
+C's shift13 is +3 mod12 (actual +3 x20, -9 x7). A/B pitch partition is lost; same-clock
+unisons remain. Seven tests and independent raw-byte checks cover all six MIDI exports.
+Files under dois_18(gpt)/mid; design in its README, direct reply in root FOR_CLAUDE.md.
+Claude versions and prior GPT versions unchanged. Next: audition this reference against
+Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch timing.
+
+---
+
+## CURRENT — `dois_24`: both pitch modes from one rhythm (2026-09-24)
+
+Every run writes **twelve** files: the drumrack version and the lattice version, sharing
+one rhythm and one set of velocities. Pitch is the only difference between them, so both
+can be drawn from as material.
+
+    mid/dois_24_static_*.mid     one fixed note per voice (36-39) — the Grandmother
+                                 version; the sieve speaks through rhythm and velocity
+    mid/dois_24_lattice_*.mid    pitch read off the sieve's own 8x5 grid, MIDI 36-75
+
+**Verified from the bytes:**
+
+| | |
+|---|---|
+| `static` vs `dois_23` | **identical, note for note**, all six files |
+| `lattice` vs `static` | rhythm, velocity, channels identical — only pitch differs |
+| `lattice` vs `dois_18` | rhythm and pitch identical; D's velocities differ by 42 (the shared table) |
+| the canon, in lattice mode | **+9 modulo 40 exactly**; heard, 23 notes +9 and 4 at -31 |
+
+**Pitch became a strategy, not a branch.** `pitch.py` holds the two modes; each supplies
+a step-to-note function and a check that refuses before writing if its settings cannot
+render. Nothing else in the engine knows which mode is running.
+
+**The lattice intervals are now DERIVED** — the sieve's own moduli, exchanged, which is
+the smallest pair that makes the map linear. They were hand-written before, and the
+different-sieve test caught it: with moduli 7 and 5 the configured (5, 8) is not linear
+and the render refused. Deriving them means a new sieve needs no new pitch settings,
+which is Principle VII doing its job. The psappha output is unchanged.
+
+## `dois_23`: the verifier earns its keep (2026-09-24)
+
+Music identical to `dois_22`. **GPT found two real holes in my velocity check**
+(`dois_23(gpt)`), and both were reproduced here before fixing:
+
+1. **One velocity was kept per accent state, so later notes erased earlier evidence.**
+   Setting D's first note to velocity 2 — plainly wrong — passed every check in
+   `dois_22`, because a later note in the same state overwrote the record.
+2. **Comparing voices to each other only finds DISAGREEMENT.** Reversing the ranking for
+   every voice at once — consistent, and wrong — also passed.
+
+`check_every_velocity` now tests every note against `expected_velocity_table`, which
+**rebuilds the table from config with exact fractions rather than asking the renderer**.
+That duplication is deliberate: a checker that asks the renderer what it intended can
+only ever agree with it. Both tamperings now fail (1 note, and all 328).
+
+## Claude's review of `dois_23(gpt)` (2026-09-24)
+
+Verified, and it is right on both counts — I reproduced both gaps in my own `dois_22`
+before porting the fix. Its output is identical to `dois_22` note-for-note in all six
+files, its 8 tests pass, and its checker hardcodes no composition values (the only grep
+hit is prose in a docstring). It kept my different-sieve test, left pitch parked, did not
+reopen the gate, and did not touch Claude's line. It also says it had not given
+Principle VII enough attention before and that this fork follows it — which it does.
+
+Its fix and mine are independent implementations of the same idea: reconstruct the
+expected velocity rather than compare voices. GPT reconstructs ranks from exact rational
+densities; `dois_23` rebuilds the whole table with `Fraction` and checks every note.
+
+---
+
+## `dois_22`: one velocity table for every voice (2026-09-23)
+
+The last known inconsistency in the piece, closed. Until now each voice ranked its own
+accents, so the same combination of accents meant different velocities in different
+voices: **with the weather alone sounding, A played 19 and D played 37.** The weather is
+one field (Principle III), so what it MEANS is now one thing too.
+
+**How.** Bit positions already agreed — every voice carries the same weather in the same
+order plus one span accent. Only the span's density differed between grids (`span32` is
+rare, `span3` common), so the shared table weights that bit by the RAREST span in the
+piece. The rarest is the one whose presence says the most, and taking the maximum keeps
+the span ranked above the weather rather than sliding beneath it. The table:
+
+    1  37  19  73  55  109  91  127      (accent state 0 through 7)
+
+**What changed, measured from the bytes:**
+
+| | |
+|---|---|
+| A, B, C | **untouched** — 0 of 268 velocities |
+| D | **42 of 60 velocities** |
+| onsets, lengths, pitches, channels | identical throughout |
+| rhythm vs `dois_14` | still identical, all four voices |
+| accent states where A and D disagree | **5 of 7 -> 0 of 7** |
+
+**`check.py` asserts it** from the files: work out which accents were firing at each
+sounding step, and two voices reaching the same state must have been given the same
+velocity. Restoring per-voice ranking in a scratch copy fails the run and names every
+clash. 6 tests, including a different sieve end to end.
+
+**This supersedes the open question** recorded under "Two real defects" below — both are
+now fixed. Nothing else in the piece is known to be inconsistent.
+
+---
+
+## `dois_21`: the same music, in code you can read (2026-09-23)
+
+Same output as `dois_20`, **note for note in all six files** — the reorganisation
+changed how the code reads, not what it makes. Asserted by a test, not by eye.
+
+**One 1077-line file became five, each with one job**, named at the top of `compose.py`:
+
+| file | job | lines |
+|---|---|---|
+| `config.py` | the composition — sieve, voices, weather, tempo | 164 |
+| `sieve.py` | expression to pattern; voices derived from it | 140 |
+| `accents.py` | weather, span accent, velocities | 165 |
+| `midi.py` | meter, events, writing and re-reading files | 246 |
+| `check.py` | reading back and proving it right | 290 |
+| `compose.py` | run it, in order | 332 |
+
+**No function is long any more.** `verify` was 193 lines and is now a 32-line driver
+over seven named checks, the largest 63. `main` was 159 and is now 43, reading as the
+process itself: derive layers, find parity, build accents, check the pitch, build
+voices, choose meter, write, verify. Read `compose.py` first; it is the whole story.
+
+**Generality — Principle VII, new today.** See its own section below. The engine assumes
+nothing about this sieve; a test renders a different one (moduli 7 and 5, period 35,
+parity 16800, meter 35/16) end to end. `--suggest-span` reports the residues a new sieve
+needs. A sieve whose accents cannot inflect every pass is refused BEFORE anything is
+written, with the reason.
+
+**Two real faults found and fixed while doing it**, both the kind the old single file hid:
+- `config_fingerprint` hashed a hand-written list of filenames, so a new module would
+  have gone unhashed. It now hashes every `.py` beside it.
+- `rhythm_from_file` ended up defined twice during the split. Caught by a check for
+  duplicate definitions across modules, and removed.
+
+5 tests: identical output, static pitch, a different sieve renders, a bad sieve is
+refused without writing, and `--suggest-span` reports without writing.
+
+---
+
+## `dois_20`: pared down for the Moog Grandmother (2026-09-23)
+
+**The target changed, so the scope did.** The piece is being realised on a Moog
+Grandmother, which cannot take pitch as a CV source. Pitch therefore carries no
+information: **the sieve is expressed through RHYTHM and VELOCITY alone**, the two things
+that instrument can act on. Each voice sounds one fixed note — A=36, B=37, C=38, D=39 —
+and never moves off it.
+
+**This is a narrowing, not a reversal.** `dois_20` is `dois_18` with the pitch derivation
+removed and nothing else touched. Verified from the bytes: **rhythm, velocity, channels,
+lengths and onsets are identical to `dois_18` in all four voices** — only each note's
+pitch differs. 108/52/108/60 notes, 19200 ticks, 40/16, one weather asserted, no absolute
+repetition. `verify()` now asserts each voice sounds exactly its one note, and a pitch
+that is not a whole number in 0-127, or shared between two voices, is refused before any
+output is replaced. 5 tests.
+
+**Before patching the Grandmother, decide the gate.** `GATE_RATIO` is still 1.0, so a
+note fills its step and its note-off lands on the tick the next note-on begins:
+
+| voice | consecutive pairs that abut |
+|---|---|
+| A | 56 of 107 (52%) |
+| B | 0 of 51 |
+| C | 56 of 107 (52%) |
+| D | 15 of 59 (25%) |
+
+That is 127 pairs with no gap. The MIDI spec leaves it to the DEVICE whether a Note On
+for a sounding pitch retriggers, and **this is the exact symptom the author hit on
+hardware once before** (2026-09-10: consecutive notes not sounding, while the same files
+played correctly through samplers in Ableton). If the Grandmother swallows them, half of
+A and C simply will not articulate. The fix is one line — `GATE_RATIO = 0.5` in
+config.py, the classic step-sequencer gate — at the cost that A and B no longer tile
+time continuously. Undecided, deliberately: it changes what is heard.
+
+## Pitch work, PARKED — the index (2026-09-23)
+
+Nothing below is deleted, and none of it is load-bearing for rhythm, accents or parity.
+If pitch becomes playable again, start here.
+
+**Versions, all on the identical 108/52/108/60 rhythm:**
+
+| where | derivation |
+|---|---|
+| `dois_15`-`dois_18` | the **lattice**: pitch = root + (5*(n mod 8) + 8*(n mod 5)) mod 40 |
+| `dois_18(gpt)`, `dois_19(gpt)` | **strict additive** pitch class: 36 + (3*n mod 12), a diminished seventh |
+| `dois_14(gpt)_pitch` | GPT's **gap-based** reading with a signed-sum closure solver |
+| `pitch_studies/mid/k13_*`, `k19_*` | the two multiplier candidates first auditioned |
+| `pitch_studies/mid/pcoct_*` | **pitch class x octave**: class from the mod-8 axis, octave from mod-5 |
+
+**Results worth not re-deriving:**
+
+- the lattice is **multiplication by 13 mod 40**; `5*(n mod 8) + 8*(n mod 5) == 13n (mod 40)`
+  exactly, so the "lattice" and "multiplier" views are one operation;
+- it is linear **iff 5 divides the row interval and 8 the column interval**, and (5, 8) —
+  the exchanged moduli — is the smallest such pair (28 pairs qualify in 1..39, 16 invertible);
+- linearity, not bijectivity, is what carries residue classes to residue classes;
+- the +13 canon is **+9 modulo 40 exactly**, but NOT a constant heard interval: 23 of 27
+  notes rise 9 semitones and 4 fall 31, and those four are not octave-equivalent;
+- **gcd(40, 12) = 4**, so any structure-preserving map onto the 12 pitch classes reaches
+  at most **4** of them, and an exact pitch-class canon forces a diminished seventh.
+  `dois_18(gpt)` is that case, built and verified;
+- the lattice makes A and C sound in **unison 100%** of the time they overlap — the
+  texture is heterophonic, not contrapuntal. Never resolved;
+- **untested:** the factor 3 that mod-12 needs and the sieve lacks does exist in the
+  piece's own 4:3 polyrhythm.
+
+---
+
+## `dois_18`: one weather, fixed (2026-09-23)
+
+The accent-phase defect is fixed, and this is the first change since `dois_14` that
+alters what you hear without touching pitch. `dois_17`'s lattice pitch is kept exactly.
+
+**What changed.** `dois_12` through `dois_17` rolled the whole accent field by the shift
+amount for a canon voice, with no comment and no principle calling for it, so C carried
+A's weather displaced 13 steps. The roll is gone: every voice samples the field at its
+own step index. Verified from the bytes:
+
+| | `dois_17` | `dois_18` |
+|---|---|---|
+| A / B / D velocities | — | **unchanged, 0 of 220** |
+| C velocities changed | — | **84 of 108 (78%)** |
+| onsets, lengths, pitches, channels | — | identical throughout |
+| A and C agree where both strike | **10 / 80** | **80 / 80** |
+| B and C agree | **14 / 28** | **28 / 28** |
+| pitch | 27 pitches, MIDI 36-75 | unchanged |
+| no absolute repetition | holds | holds |
+
+**`verify()` now ASSERTS one weather** instead of describing it: voices sharing a grid
+must carry the same velocity wherever they strike together. Restoring the roll in a
+scratch copy fails the run — "A and C ... differ in velocity at 70 of 80 shared attacks
+— they are not under one weather" — so the bug cannot come back unnoticed. 5 tests.
+
+**Cross-check with GPT.** `dois_19(gpt)` made the same fix independently, on top of its
+own pitch mapping. **My C velocities and GPT's are identical at all 108 attacks.**
+
+**Still open, deliberately untouched here:** the velocity RANKING table is per-voice, so
+one accent combination can still mean different velocities in D than in A/B/C (A and D
+disagree on 5 of 7 shared states — same in `dois_17`, `dois_18`, `dois_18(gpt)` and
+`dois_19(gpt)`). Changing it in the same version would have confused two variables.
+
+## Claude's review of `dois_19(gpt)` (2026-09-23)
+
+GPT's stationary-weather fix, forked from `dois_18(gpt)` — the separate-lines rule was
+followed. Every claim verified from raw MIDI: only C's velocities change, exactly 84 of
+108; A, B and D are untouched; onsets, lengths, pitches and channels are identical;
+A/C agreement goes 10/80 -> 80/80 and B/C 14/28 -> 28/28; passes stay distinct with
+minimal period = full span; 8 tests pass. It states plainly that it did NOT address the
+velocity-table question, and that is true — A and D still disagree on 5 of 7 states.
+
+**One practical caveat.** `dois_19(gpt)` is forked from `dois_18(gpt)`, so it carries the
+four-note diminished seventh, not the lattice. Auditioned against `dois_17` it changes
+two things at once. To isolate the weather, compare `dois_19(gpt)` with `dois_18(gpt)`,
+or use `dois_18`, which isolates it on the lattice pitch.
+
+---
+
+## Claude's review of `dois_18(gpt)` (2026-09-23)
+
+GPT's strict-additive pitch-class version, forked from `dois_17` into its own folder —
+the separate-lines rule was followed. Verified from the rendered MIDI, not its reports:
+rhythm, velocity and channels identical to `dois_17` in all four voices; the pitch
+collection is exactly **{36, 39, 42, 45} = C, Eb, F#, A**, the diminished seventh the
+arithmetic predicts; the canon is **+3 mod 12 exactly** (20 notes +3, 7 notes -9) and,
+unlike `dois_15`-`dois_17`'s mod-40 fold, those ARE octave-equivalent; A and B no longer
+partition the pitches; accent passes stay distinct with minimal period = full span; its
+7 tests pass. Every pitch is `36 + (3 * step mod 12)` — pitch is a function of `step mod
+4` alone, so the mod-5 axis carries no pitch information. That is the price of strict
+additivity, which GPT states plainly. It confirms the result recorded above: with moduli
+8 and 5, no more than four pitch classes survive a structure-preserving map onto mod 12.
+
+**Not a defect, but worth knowing:** re-rendering any version on a later date changes the
+six MIDI files, because the provenance stamp embeds `date.today()`. Notes and fingerprint
+are unaffected. `dois_17`'s outputs showed as modified on 2026-09-23 for exactly this
+reason — a re-run, not a change. Byte-identical re-renders hold within a day, not across.
+
+`FOR_CHATGPT.md` was restructured the same day: current state and the open questions
+first, the exchange as dated "Round" sections below, the original review as sections 1-10.
 
 ---
 
@@ -339,9 +664,10 @@ Everything else is `dois_12` unchanged, so the two are directly A/B-able. Parity
 
 ## Two real defects found in this project's code (2026-09-16)
 
-Both surfaced by reviewing `dois_13(gpt)`'s engine, both still present in **`dois_12`,
-`dois_14`, `dois_15` and `dois_16`**, both **unresolved** — they change what the piece sounds like, so they are the
-user's decision, to be made by listening.
+Both surfaced by reviewing `dois_13(gpt)`'s engine. **Both are now FIXED.** The first
+in `dois_18` (Claude) and `dois_19(gpt)` (GPT), independently, with identical results.
+The second in **`dois_22`** (Claude), 2026-09-23. They are still present in `dois_12`
+through `dois_17`; the second remains in `dois_18`-`dois_21` and in `dois_19(gpt)`.
 
 **1. Accents travel with the canon, silently.** The accent roll (`composition.py` line
 816 in `dois_12`, 832 in `dois_14`, 883 in `dois_15`, 1016 in `dois_16`) rolls the entire
@@ -541,6 +867,37 @@ No new arrangement layer or Max-patch work was undertaken.
 A generative MIDI composition system based on **Xenakis sieve theory** — a mathematical framework that uses modular congruences to produce boolean rhythmic patterns. The Python code is a **proof of concept**. The eventual target is a **Max for Live MIDI Effect device** (`.amxd`) for distribution to Ableton users, with a possible VST3/CLAP version via JUCE for broader DAW support.
 
 ---
+
+## Governing Principle VII: The Engine Is General; Only Config Is Specific (2026-09-23)
+
+Stated by the author 2026-09-23: *"i don't want it to be hard coded. in other words, I
+want to be able to input another sieve and for it to also work."*
+
+**config.py describes THIS composition. Every other file must work for any sieve.** No
+module may assume the moduli are 8 and 5, the period 40, the voices four, the units 120
+and 160, or the meter 40/16. Everything downstream — note-layer periods, the parity
+point, span-accent moduli, spans, meter, fingerprint — is measured or derived from what
+config says, and recomputed when config changes.
+
+**The test of this is not an argument, it is a run.** `dois_21/tests/test_dois21.py`
+renders a DIFFERENT sieve end to end: moduli 7 and 5, period 35, parity 16800, meter
+35/16, all checks passing. If a change breaks generality, that test fails.
+
+**Two things are genuinely per-composition and stay in config**, because they are
+compositional choices, not consequences:
+- `WEATHER` — which residues of the sieve's own moduli form the shared field;
+- `SPAN_RESIDUE_SOURCE` — the residues the derived span accent draws on.
+
+Neither can be inferred from the sieve without inventing a rule. The engine instead
+VALIDATES them against the sieve and fails before writing anything if they do not work,
+naming a set that would: `python3 compose.py --suggest-span`. That is the bridge — put
+in a new sieve, run it, and the program tells you what its accents need.
+
+**A limit worth knowing, found while proving this.** Generality of the ENGINE does not
+guarantee the PRINCIPLES can be met by every sieve. A sparse sieve
+(`(4@0|4@1)&3@1|4@2`, 5 attacks in 12) has no residue set at all whose span accent can
+inflect every pass — Principle IV is unreachable for it at those basic units. The run
+refuses, explains, and writes nothing. That is the correct outcome, not a bug.
 
 ## Governing Principle IV: The Accent Span IS the Parity Justification (2026-09-05)
 
@@ -933,7 +1290,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_17`** — see the top of this file. The snapshot below describes
+**Current version: `dois_24`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1069,7 +1426,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_17`, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_24` in Claude's line, `dois_23(gpt)` in GPT's, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
