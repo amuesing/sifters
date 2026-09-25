@@ -57,7 +57,37 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_24`: both pitch modes from one rhythm (2026-09-24)
+## CURRENT — `dois_25`: code cleanup, and modes checked before writing (2026-09-25)
+
+**Every note identical to `dois_24`** — all twelve files, verified event by event, and
+the raw-byte audit is clean (0 problems in 1968 notes).
+
+**The fix.** `dois_24` rendered the pitch modes in turn and checked each as it came, so a
+mode that could not render left the earlier mode's six files already replaced and the run
+dead on a traceback. Fed a three-moduli sieve it wrote all six `static` files, then threw.
+Now **every mode is validated before any of them writes**: same sieve, nothing written,
+previous files byte-identical, one clear message. A test pins it.
+
+**The cleanup, all of it structural — no note moved:**
+
+- **velocity is computed once per voice, not once per mode.** Velocity depends on the
+  accent state and never on pitch, so the modes share it; `accent_voicing` split into
+  `step_velocities` (pitch-free) and `notes_for_steps` (the only thing a mode decides).
+  That relationship is now visible in the code rather than implied.
+- **the dummy-pitch hack is gone.** `dois_24` built a whole set of voices at pitch 0 just
+  to get velocities for the preflight. `require_distinct_passes` and
+  `report_span_suggestion` now take the fields they actually read.
+- **each voice's accent field is built once.** It was computed at three or four call
+  sites; `prepare_accents` does it once and hands back the fields and the table.
+- unused imports removed (`numpy` in compose, `Fraction` in midi).
+- `main` is 49 lines and reads as the process; nothing else exceeds 65.
+
+Total Python is 1671 lines against `dois_24`'s 1651 — slightly LONGER, because the new
+guarantee brought a test and the split brought docstrings. The gain is shape, not size.
+
+---
+
+## `dois_24`: both pitch modes from one rhythm (2026-09-24)
 
 **Production audit, 2026-09-25 — ready.** All twelve files checked from raw MIDI bytes
 without mido or project code: format 1, 480 tpq, real `0x8n` note-offs (no velocity-0
@@ -1314,7 +1344,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_24`** — see the top of this file. The snapshot below describes
+**Current version: `dois_25`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1450,7 +1480,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_24` in Claude's line, `dois_23(gpt)` in GPT's, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_25` in Claude's line, `dois_23(gpt)` in GPT's, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
