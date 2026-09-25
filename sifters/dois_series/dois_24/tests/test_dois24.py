@@ -8,6 +8,7 @@ Two contracts:
 
 Nothing here touches dois_24/mid.
 """
+import json
 import re
 import shutil
 import subprocess
@@ -19,7 +20,7 @@ from pathlib import Path
 import mido
 
 PROJECT = Path(__file__).resolve().parents[1]
-PRIOR = PROJECT.parent / 'dois_23' / 'mid'
+BASELINE = json.loads((PROJECT / 'tests/fixtures/dois_23_baseline.json').read_text())
 FILES = ('A_prime', 'B_prime', 'C_prime', 'D_prime', 'arrangement', 'ensemble')
 PSAPPHA = "'(8@0|8@1|8@7)&(5@1|5@3)|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))'"
 WEATHER = re.compile(r"WEATHER = \{.*?\n\}", re.S)
@@ -67,12 +68,13 @@ def project_copy(tmp, sieve=None, weather=None, span=None):
 class SameResult(unittest.TestCase):
 
     def test_static_mode_is_the_drumrack_version_note_for_note(self):
+        """Against a fixture, not the neighbouring folder: this suite travels alone."""
         with tempfile.TemporaryDirectory() as tmp:
             root = project_copy(tmp)
             self.assertEqual(run(root).returncode, 0)
             for f in FILES:
                 self.assertEqual(notes(root / 'mid' / f'dois_24_static_{f}.mid'),
-                                 notes(PRIOR / f'dois_23_{f}.mid'), f)
+                                 [[tuple(n) for n in tr] for tr in BASELINE[f]['tracks']], f)
 
     def test_lattice_shares_the_rhythm_and_velocities_of_static(self):
         """Only pitch may differ between modes; the sieve's rhythm is one thing."""

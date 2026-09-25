@@ -22,7 +22,6 @@ import json
 import math
 import os
 import sys
-from datetime import date
 
 import mido
 import numpy as np
@@ -250,7 +249,10 @@ def choose_meters(voices, periods, note_layers, total_ticks):
 def write_files(voices, periods, total_ticks, meters, ensemble_meter, parity, prefix):
     """The six files: one per voice, the arrangement, and the merged ensemble."""
     fingerprint = config_fingerprint()
-    stamp = (f"{prefix} {date.today().isoformat()} cfg={fingerprint} "
+    # No render date in the stamp. It made every re-render rewrite all twelve files
+    # with no musical change, which buries a real change in the noise. The fingerprint
+    # identifies the configuration AND the code exactly, and git records when.
+    stamp = (f"{prefix} cfg={fingerprint} "
              f"parity={parity} tempo={TEMPO_BPM} "
              f"weather={'+'.join(WEATHER)} sieve={INSTRUMENT_CONFIGS[0]['sieve']}")
     print(f"\n  provenance stamped on every track: cfg={fingerprint}")

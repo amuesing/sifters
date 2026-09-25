@@ -59,6 +59,30 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ## CURRENT — `dois_24`: both pitch modes from one rhythm (2026-09-24)
 
+**Production audit, 2026-09-25 — ready.** All twelve files checked from raw MIDI bytes
+without mido or project code: format 1, 480 tpq, real `0x8n` note-offs (no velocity-0
+shorthand), no hanging or overlapping notes, velocities 1-127, whole bars, every track
+ending at 19200. Each voice's own file equals its arrangement track and its ensemble
+channel exactly. Rhythm still identical to `dois_14`. Three faults found and fixed in
+place, none of them musical — **all twelve files are identical in every note event**:
+
+- **the render date was stamped into every file**, so re-rendering rewrote all twelve
+  with no musical change and buried real changes in the noise. Removed; the fingerprint
+  identifies configuration and code exactly, and git records when. Renders are now
+  **byte-identical** when nothing changes, so a diff in `mid/` means the music moved.
+- **the test suite reached into `../dois_23/mid` for its baseline**, so the folder could
+  not verify itself alone — checked out on its own, one test errored. The baseline is now
+  a fixture in `tests/fixtures/`, and the suite passes with no neighbouring folders.
+  (GPT hit the same thing in its line and solved it the same way.) **Every other version's
+  tests still have this dependency**; it only matters for the one being produced from.
+- two `.DS_Store` files were tracked, inside GPT's `dois_12(gpt)`/`dois_13(gpt)`
+  render folders. Untracked; no file of GPT's was altered.
+
+`README.md` added to the folder: which file to use for what, what is guaranteed, the gate,
+and how to change the sieve. **The gate stays at 1.0** — the author's decision, 2026-09-25.
+
+
+
 Every run writes **twelve** files: the drumrack version and the lattice version, sharing
 one rhythm and one set of velocities. Pitch is the only difference between them, so both
 can be drawn from as material.
