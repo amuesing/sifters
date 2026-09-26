@@ -52,19 +52,48 @@ def check_derivations(base_binaries):
     return problems
 
 
-def check_parity(check, periods):
-    """Every voice ends together — the first moment all of them converge.
+def check_parity(check, periods, parity, voices, note_layers):
+    """Every voice ends together, AT THE FIRST convergence — and the accents earn it.
 
-    Not a preference: "all voices begin and end together" plus "nothing repeats
-    identically" jointly require it. If periods differed, the cycle where they aligned
-    would be their LCM, longer than the shortest voice, which would repeat inside it.
+    Two things, and the second is the one that was only implied before.
+
+    All voices must share a period: if they differed, the cycle where they aligned would
+    be their LCM, longer than the shortest voice, which would then repeat inside it.
+
+    And that shared period must be the FIRST convergence of the raw rhythms, not some
+    later multiple of it. This is what the accents are FOR. Reaching parity across voices
+    whose basic durations differ costs repetitions — here A, B and C restate their layer
+    four times and D, on a triplet grid, three times — and the span accent exists to make
+    those restatements sound different, so the repetition is justified rather than bare.
+    Its modulus is derived as the SMALLEST one that spans exactly the repeats parity
+    requires: any larger and the piece would run past the convergence, repeating
+    something; any smaller and a restatement would go uninflected.
+
+    Checked here because nothing else catches it: an accent whose modulus does not divide
+    the note layer inflates the span, and if it inflated every voice's equally the
+    voices would still agree with each other while the piece overran its own parity.
     """
     spans = set(periods.values())
     check(len(spans) == 1,
           f"voices do not share a period: {periods}. The ensemble would then be their "
           f"LCM and the shorter voices would repeat inside it.")
-    if len(spans) == 1:
-        print(f"  parity: every voice is {spans.pop()} ticks")
+    check(spans == {parity},
+          f"the voices end at {sorted(spans)} but the first convergence of their raw "
+          f"rhythms is {parity}. The accents have stretched the piece past its own "
+          f"parity, so something inside it repeats — an accent whose modulus does not "
+          f"divide the note layer will do this.")
+    for voice in voices:
+        layer = note_layers[voice.name]
+        needed = parity // (layer * voice.step_ticks)
+        rendered = len(voice.velocities) // layer
+        check(rendered == needed,
+              f"{voice.name}: parity needs {needed} restatements of its {layer}-step "
+              f"layer, but the accents span {rendered} — the span accent must justify "
+              f"exactly the repeats parity requires, no more and no fewer")
+    if spans == {parity}:
+        print(f"  parity: every voice is {parity} ticks — the first convergence; "
+              + ", ".join(f"{v.name} justifies {len(v.velocities) // note_layers[v.name]}"
+                          f" restatement(s)" for v in voices))
 
 
 def check_weather_is_shared(check, voices, weather):
@@ -300,7 +329,7 @@ def expected_note(mode, cfg, note_layers):
 
 
 def verify(voices, periods, total_ticks, note_layers, base_binaries, prefix, mode,
-           weather):
+           weather, parity):
     """Run every check, collect every failure, and say what was found."""
     failures = []
 
@@ -313,7 +342,7 @@ def verify(voices, periods, total_ticks, note_layers, base_binaries, prefix, mod
     steps = {voice.name: len(voice.velocities) for voice in voices}
 
     failures.extend(check_derivations(base_binaries))
-    check_parity(check, periods)
+    check_parity(check, periods, parity, voices, note_layers)
     check_weather_is_shared(check, voices, weather)
     check_weather_in_the_files(check, voices, prefix)
     check_every_velocity(check, voices, periods, prefix)

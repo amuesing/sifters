@@ -59,6 +59,21 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ## CURRENT — `dois_27`: the accents derive from the sieve (2026-09-26)
 
+**Parity is now asserted as the FIRST convergence, and the accents must earn exactly the
+repeats it costs (added 2026-09-26, on the author's reminder that the weather's purpose
+is also to justify the number of restatements each voice makes).** `check_parity`
+previously only asserted that the voices share a period. That missed a real case: a
+weather accent whose modulus does not divide the note layer inflates the span, and if it
+inflates every voice's *equally* the voices still agree while the piece overruns its own
+parity. Demonstrated — a mod-7 weather accent takes A/B/C to 1120 steps x 120 and D to
+840 x 160, **both exactly 134400 ticks, seven times the 19200 parity**; `dois_25` renders
+it and passes every check. `dois_27` now refuses: "the voices end at 134400 but the first
+convergence of their raw rhythms is 19200", plus, per voice, "parity needs 4 restatements
+of its 40-step layer, but the accents span 28". The run also states the justification it
+found: *every voice is 19200 ticks — the first convergence; A justifies 4 restatement(s),
+B 4, C 4, D 3*. No note changed.
+
+
 The author, 2026-09-26: *"the velocity should generate based on the sieve being input
 automatically and without being hard coded. the velocity profile should be derived from
 the sieve itself."* Done. **Nothing musical is hand-written any more.**

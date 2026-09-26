@@ -365,7 +365,7 @@ def main():
         write_files(voices, periods, total_ticks, meters, ensemble_meter, parity,
                     f"{config.TITLE}_{mode}", weather)
         if not verify(voices, periods, total_ticks, note_layers, base_binaries,
-                      f"{config.TITLE}_{mode}", mode, weather):
+                      f"{config.TITLE}_{mode}", mode, weather, parity):
             failed.append(mode)
 
     if failed:
