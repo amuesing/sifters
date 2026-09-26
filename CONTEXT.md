@@ -57,7 +57,59 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_25`: code cleanup, and modes checked before writing (2026-09-25)
+## CURRENT — `dois_27`: the accents derive from the sieve (2026-09-26)
+
+The author, 2026-09-26: *"the velocity should generate based on the sieve being input
+automatically and without being hard coded. the velocity profile should be derived from
+the sieve itself."* Done. **Nothing musical is hand-written any more.**
+
+Forked from **`dois_26(gpt)`**, GPT's readability refactor of `dois_25`, whose structure
+this keeps and credits: qualified `config.NAME` instead of star imports, no mutation of
+the settings, a named `Voice` instead of positional tuples, and the historical prose
+moved to its `DESIGN_HISTORY.md`. I verified that fork first — all 1968 events identical
+to `dois_25`, 10 tests passing, both velocity gaps still caught. It also fixed two things
+that were mine: `dois_25` wrote `accent_dict` back into `config.INSTRUMENT_CONFIGS`
+(derived data stored into the settings, my wart since `dois_21`), and `velocity_profile`
+built a `rarity` dict nothing had read since `dois_22`.
+
+**What derives now.** `WEATHER = None` and `SPAN_RESIDUE_SOURCE = None` were the last two
+hand-written musical inputs, and they are what the velocity profile is built from.
+
+- **The weather**: one accent per modulus the sieve uses, firing on the residues the
+  sieve FAVOURS — count the attacks on each residue of m, take the densest half, ties to
+  the lower residue. The sieve's own bias in that modulus, made audible. Chosen over a
+  threshold ("above the mean") because that gave densities from 1/5 to 2/3 across the
+  sieves tried, and a near-empty or near-full accent distinguishes nothing; half is
+  always half. **For the psappha sieve this derives `mod5 = 5@1|5@3` — exactly the accent
+  every version up to `dois_26` had written by hand.**
+- **The span residues**: searched. Candidates are tried smallest first, and the first is
+  kept that leaves no two passes of any voice identical AND reaches every accent state,
+  so no velocity in the shared table goes unused. For psappha that is `(0, 1)`, all 8
+  states reached.
+
+**What it costs.** The derived mod-8 accent is `8@1|8@3|8@4|8@6`, not the hand-written
+`8@0|8@1|8@2|8@5|8@6` — which came from clauses 2 and 3 of the PRE-CORRECTION sieve and
+was historical accident. So **420 of 656 velocities change across the two pitch modes,
+and not one note moves**: every onset, length and pitch is identical to `dois_25`. Since
+velocity drives synth parameters, that is a substantial audible change and worth an A/B.
+Naming `WEATHER` explicitly in config still works if the old field is preferred.
+
+**Proven on four sieves, nothing hand-written:**
+
+| sieve | derived weather | span | parity | meter | result |
+|---|---|---|---|---|---|
+| psappha 8x5 | mod8 {1,3,4,6}, mod5 {1,3} | (0,1) | 19200 | 40/16 | renders, 8/8 states |
+| 7x5 | mod7 {0,1,5}, mod5 {0,1} | (0,) | 16800 | 35/16 | renders, 8/8 states |
+| 11x3 | mod11 {0,2,5,7,9}, mod3 {1} | (0,1) | 15840 | 33/16 | renders, 8/8 states |
+| 4x3 (5 attacks in 12) | mod4 {0,2}, mod3 {1} | — | — | — | **refuses**: no residues inflect every pass |
+
+The fourth is the structural limit found earlier, now reached by search rather than by a
+hand-written value happening to fail: too sparse a sieve cannot satisfy Principle IV at
+those basic units. It refuses, explains, and writes nothing. 12 tests.
+
+---
+
+## `dois_25`: code cleanup, and modes checked before writing (2026-09-25)
 
 **Every note identical to `dois_24`** — all twelve files, verified event by event, and
 the raw-byte audit is clean (0 problems in 1968 notes).
@@ -937,12 +989,11 @@ config says, and recomputed when config changes.
 renders a DIFFERENT sieve end to end: moduli 7 and 5, period 35, parity 16800, meter
 35/16, all checks passing. If a change breaks generality, that test fails.
 
-**Two things are genuinely per-composition and stay in config**, because they are
-compositional choices, not consequences:
-- `WEATHER` — which residues of the sieve's own moduli form the shared field;
-- `SPAN_RESIDUE_SOURCE` — the residues the derived span accent draws on.
-
-Neither can be inferred from the sieve without inventing a rule. The engine instead
+**Extended 2026-09-26 (`dois_27`): the accents derive too.** `WEATHER` and
+`SPAN_RESIDUE_SOURCE` were the last hand-written musical inputs, and being the inputs to
+the velocity profile they meant velocity was not derived. Both now default to being read
+from the sieve — the weather from its residue bias per modulus, the span residues by
+search. Naming either explicitly remains a composition choice, but nothing REQUIRES it. The engine instead
 VALIDATES them against the sieve and fails before writing anything if they do not work,
 naming a set that would: `python3 compose.py --suggest-span`. That is the bridge — put
 in a new sieve, run it, and the program tells you what its accents need.
@@ -1344,7 +1395,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_25`** — see the top of this file. The snapshot below describes
+**Current version: `dois_27`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1480,7 +1531,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_25` in Claude's line, `dois_23(gpt)` in GPT's, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_27` in Claude's line, `dois_26(gpt)` in GPT's, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
