@@ -57,7 +57,48 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_27`: the accents derive from the sieve (2026-09-26)
+## CURRENT — `dois_28`: every voice uses every state it can (2026-09-26)
+
+The author corrected a criterion I had been measuring wrongly: *"i do not need the
+velocities to be evenly distributed. i would like all of the velocity states to be
+utilized, but it can be weighted more towards some than others. I would also like
+velocity states to be shared across voices."*
+
+**Evenness was never the goal — coverage is.** I had been reporting an "imbalance"
+figure, which is irrelevant: a state may sound once or ninety times, but a state that
+never sounds is a level of the shared table the piece never reaches.
+
+**The shared table was already in place** since `dois_22`: one `levels` dictionary,
+accent state to velocity, built once and pulled from by every voice, with
+`check_every_velocity` asserting every note carries the velocity its state earns.
+
+**What is new: the span residues are now chosen to maximise states used.** Each voice
+has a CEILING — it only sounds where its rhythm has an attack, so it only meets the
+weather combinations occurring at those steps, and with the span accent free to fire or
+not on each, its ceiling is twice that count. **B lands on only three of the four
+combinations, so its ceiling is six, not eight.** Knowing this is what lets the search
+tell "as many as possible" from "not all eight". The derivation now returns the first
+residue set putting every voice at its ceiling.
+
+| | `dois_27` | `dois_28` |
+|---|---|---|
+| span residues | (0, 1) | **(1, 5)** |
+| states used | A 8/8, **B 5/6**, C 8/8, D 8/8 | A 8/8, **B 6/6**, C 8/8, D 8/8 |
+
+76 of 656 velocities change; not one note moves. How often each level sounds is
+deliberately uneven — 1:74, 19:92, 37:60, 55:7, 73:64, 91:13, 109:8, 127:10 — the rare
+accent combinations being rare events, which is the point.
+
+**The ceiling idea earns itself on other sieves.** For the 11x3 sieve voice A's ceiling
+is only 4, and it reaches 4; under the old "all eight states reached" rule that sieve
+would have reported a shortfall it could never fix. 7x5 reaches every ceiling too; the
+sparse 4x3 sieve is still refused. `true_period` gained a `quiet` flag so the search can
+discard reducible candidates by the dozen without burying the render in warnings.
+13 tests.
+
+---
+
+## `dois_27`: the accents derive from the sieve (2026-09-26)
 
 **Parity is now asserted as the FIRST convergence, and the accents must earn exactly the
 repeats it costs (added 2026-09-26, on the author's reminder that the weather's purpose
@@ -1410,7 +1451,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_27`** — see the top of this file. The snapshot below describes
+**Current version: `dois_28`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1546,7 +1587,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_27` in Claude's line, `dois_26(gpt)` in GPT's, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_28` in Claude's line, `dois_26(gpt)` in GPT's, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
