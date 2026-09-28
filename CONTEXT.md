@@ -57,7 +57,34 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_28`: every voice uses every state it can (2026-09-26)
+## CURRENT — `dois_29`: coverage is asked of the piece, not of each voice (2026-09-28)
+
+The author, having seen the ceiling argument: *"not all states need to be used by each
+voice."* So `dois_28`'s extra constraint is dropped. The rule is now:
+
+1. no two passes of any voice may be identical — the span accent's first job;
+2. **every velocity state must sound somewhere in the piece**;
+3. a VOICE need not use them all.
+
+`dois_28` had forced each voice to its own ceiling, which narrowed the residue choice to
+`(1, 5)` for no reason the music asked for. The relaxed rule picks `(0, 1)` — smallest
+first, first that satisfies both requirements — and **`dois_29`'s output is identical in
+every event to `dois_27`**, the version before that constraint was added. Verified across
+all twelve files. `dois_28` remains on disk as the stricter alternative, 76 velocities
+apart, if it turns out to sound better.
+
+Per-voice usage is still REPORTED against each ceiling, as information rather than a
+requirement: `A 8/8, B 5/6, C 8/8, D 8/8`. B's ceiling of 6 is structural — it lands on
+only three of the four weather combinations, so two states can never sound in it.
+
+Everything from `dois_28` is kept: the derived weather, the derived span residues, the
+`quiet` flag that lets the search discard reducible candidates without burying the
+render in warnings, and the parity assertion. Other sieves still derive end to end —
+7x5 picks `(0,)`, 11x3 picks `(0, 1)`, and the sparse 4x3 is still refused. 13 tests.
+
+---
+
+## `dois_28` — superseded by `dois_29`: every voice uses every state it can (2026-09-26)
 
 The author corrected a criterion I had been measuring wrongly: *"i do not need the
 velocities to be evenly distributed. i would like all of the velocity states to be
@@ -1451,7 +1478,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_28`** — see the top of this file. The snapshot below describes
+**Current version: `dois_29`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1587,7 +1614,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_28` in Claude's line, `dois_26(gpt)` in GPT's, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_29` in Claude's line, `dois_26(gpt)` in GPT's, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
