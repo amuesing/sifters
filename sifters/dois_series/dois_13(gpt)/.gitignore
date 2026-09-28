@@ -6,3 +6,4 @@ __pycache__/
 *.pyc
 .mid-render.lock
 .mid-link-*
+.mid-renders/**/.DS_Store
