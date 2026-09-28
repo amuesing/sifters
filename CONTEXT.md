@@ -57,7 +57,46 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_29`: coverage is asked of the piece, not of each voice (2026-09-28)
+## CURRENT — `dois_30`: the passes made as different as the residues allow (2026-09-28)
+
+The author chose `dois_28` — the most derived variant — and asked whether it could be
+improved. It could, in one way that matters and one that was an outright bug.
+
+**The span accent was barely doing its job.** Every qualifying residue set makes the
+passes distinct, but satisfying that barely is not satisfying it well: `dois_28` took the
+first set by NUMBER ORDER and left two of B's passes differing at **a single step out of
+forty**. It ranked 344th of 501 on that measure. `dois_30` keeps the same requirements
+and then picks the set that makes the passes differ MOST:
+
+| | `dois_28` | `dois_30` |
+|---|---|---|
+| residues | (1, 5) | **(0, 1, 5, 10)** |
+| weakest pass-pair, per voice | A 2, **B 1**, C 4, D 12 | A 4, **B 4**, C 7, D 12 |
+
+76 of 656 velocities change; no note moves. The tiebreak that remains — smaller set, then
+lower residues — now only separates sets that score equally.
+
+**Why these residues cannot be counted off the sieve like the weather.** Tried and
+rejected with a reason: the sieve's density at the span modulus is necessarily periodic
+with gcd(layer, modulus) — 8 here, not 32 — so counting it can never produce a set that
+spans 32. The span accent must be independent of the note layer; that independence is
+exactly what makes it move across the passes.
+
+**A real bug, found by the new residues and fixed.** The renderer ranked accent states
+with FLOAT arithmetic while `check.py` rebuilt the table with exact Fractions. When two
+states' summed rarity is near-equal the two can order them differently — on an 11x3 sieve
+this swapped velocities 73 and 91 across 95 notes and failed verification. The renderer
+now uses Fractions throughout, so the two agree by construction. This was latent in
+`dois_22` onward and only surfaced because `dois_30` picks different residues.
+
+**Nine times faster.** `evaluate()` is cached — the search evaluates the same weather
+expressions thousands of times and music21 dominated the cost. A render went 16s to 1.8s,
+the suite from 238s to 28s, same output. The cached array is read-only so no caller can
+corrupt another's copy. 14 tests.
+
+---
+
+## `dois_29` — the relaxed variant: coverage is asked of the piece, not of each voice (2026-09-28)
 
 The author, having seen the ceiling argument: *"not all states need to be used by each
 voice."* So `dois_28`'s extra constraint is dropped. The rule is now:
@@ -1478,7 +1517,7 @@ other hosts.
 
 ## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
 
-**Current version: `dois_29`** — see the top of this file. The snapshot below describes
+**Current version: `dois_30`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
 was the truncated 15-attack form. Read it as history, not as current state. What changed
 since:
@@ -1614,7 +1653,7 @@ This produces a period of **40 steps** — the foundational unit of the project.
 
 ## Naming convention for the dois series (2026-09-07)
 
-**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_29` in Claude's line, `dois_26(gpt)` in GPT's, so the
+**Versions are `dois_NN`, zero-padded to two digits.** `dois_01` through `dois_30` in Claude's line, `dois_26(gpt)` in GPT's, so the
 folders sort in the order they were made and the newest is always last.
 
 **Two parallel lines now share the numbering.** Folders suffixed `(gpt)` are ChatGPT's
