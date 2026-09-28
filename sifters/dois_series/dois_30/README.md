@@ -1,9 +1,14 @@
 # dois_30
 
-Forked from `dois_26(gpt)`, ChatGPT's readability refactor of dois_25, whose
-structure this keeps and credits. What is new here: **the accents, and so the whole
-velocity profile, are derived from the sieve** rather than written by hand. The sieve, rhythm, accents, velocities,
-lattice formula, gate and parity are unchanged. Both pitch modes are exported.
+The current version. Everything musical is derived from the sieve in `config.py` — the
+rhythms, the accent field the velocities are built from, the parity point, the meter and
+the pitch lattice. Change the sieve and all of it recomputes. Both pitch modes are
+exported from one rhythm.
+
+Its structure is ChatGPT's, adopted from `dois_26(gpt)` and credited: small modules,
+qualified `config.NAME` settings, a named `Voice`, and no mutation of the composition
+settings. The long historical commentary lives in `../dois_26(gpt)/DESIGN_HISTORY.md`
+and in `CONTEXT.md` at the repo root, not in the code.
 
 ## Start here
 
@@ -89,21 +94,35 @@ With the current settings, each file ends at 19,200 ticks: 40 quarter notes, or 
 at 120 BPM. The declared meter is 40/16. Voice note counts are 108, 52, 108 and 60.
 Gate remains 1.0; audition articulation on the intended instrument.
 
-## What changed and why
+## What is derived, and what you still choose
 
-- Removed `velocity_profile()`: its per-voice rarity values were unused. Velocities now
-  receive the accent masks and shared table directly.
-- Stopped adding derived accents to the original composition settings.
-- Replaced positional voice tuples with the small `Voice` data class.
-- Qualified settings as `config.NAME`, making their source visible.
-- Removed unused imports and an unused return value.
-- Shortened long historical docstrings and config commentary. The original explanations
-  are preserved in `DESIGN_HISTORY.md`; they are historical context, not current API docs.
+Derived from the sieve, for any sieve:
 
-The musical checks remain. New output filenames and provenance fingerprints differ,
-but musical note events must match dois_25. The fingerprint covers source code too,
-so a MIDI byte difference can reflect a comment change rather than changed music.
+- each voice's rhythm and the period it actually closes on;
+- **the weather** — one accent per modulus the sieve uses, firing on the residues that
+  sieve favours (count the attacks on each residue, keep the densest half);
+- **the span accent's modulus** — forced by the parity arithmetic: the smallest M where
+  `lcm(layer, M)` equals the steps that voice needs to reach parity. Voices with longer
+  basic units need fewer steps and so get smaller moduli;
+- **the span accent's residues** — searched, keeping the set that puts every voice at
+  its ceiling and then makes the passes differ most;
+- the parity point, the meter, and the lattice's axes and intervals.
 
-Exports are still written directly: pitch preflight protects against invalid pitch
-settings, but a disk failure can interrupt replacement. Atomic export is a separate
-future improvement, outside this readability refactor.
+Still yours: the sieve, how the voices relate (complement, shift, intersection), the
+basic units, tempo, root note, gate and velocity range. Naming `WEATHER` or
+`SPAN_RESIDUE_SOURCE` explicitly in `config.py` overrides the derivation and is checked
+the same way.
+
+## Known limits
+
+- Exports are written directly. The preflight checks refuse bad settings before anything
+  is replaced, but a failure during writing can leave the folder half-updated. Atomic
+  export is not implemented.
+- The span residues are found by search, not counted off the sieve. They cannot be
+  counted: the sieve's density at the span modulus is necessarily periodic with
+  `gcd(layer, modulus)` — 8 here, not 32 — so counting can never produce a set that
+  spans the modulus. The span accent has to be independent of the note layer, and that
+  independence is what makes it move across the passes.
+- A sieve too sparse for its span accent to inflect every pass is refused, with the
+  reason. That is a real limit of the material, not a bug.
+- No listening judgment is claimed anywhere. Every check here is structural.

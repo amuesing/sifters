@@ -1,15 +1,15 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Latest version: `dois_15`** — pitch derived from the sieve's own 8x5 lattice, so a
-> voice's pitches and its rhythm come from one structure. See `CONTEXT.md`.
-> **`dois_14`** corrected the base sieve to the full 27-attack psappha form.
+> **Current version: `dois_30`** — `sifters/dois_series/dois_30/`, with its own README.
+> Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
+> accent field the velocities are built from, the parity point, the meter, and the pitch
+> lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
+> one rhythm — `static` (one fixed note per voice, for hardware that cannot take pitch as
+> a CV source) and `lattice` (pitch read off the sieve's own grid).
 >
-> **Latest GPT iteration: dois_14(gpt).** See `sifters/dois_series/dois_14(gpt)/README.md`.
-> It provides separately selectable correction-only, accent-policy and creative
-> comparisons, verified ordinary MIDI files in `mid/<preset>/`, and explicit musical
-> reasoning. Folders suffixed `(gpt)` are a parallel line; bare `dois_NN` are Claude's,
-> and the numbers do not correspond between them.
-> The detailed dois_10 description below is historical.
+> **Two parallel lines share the numbering.** Bare `dois_NN` are Claude's; `dois_NN(gpt)`
+> are ChatGPT's, most recently `dois_26(gpt)`. The numbers do not correspond between
+> them, and each line's work is committed separately.
 
 Sifters is a data-driven system for developing musical compositions, using logical sieves as the foundation for creative exploration. The core idea behind Sifters is to synthesize data that generates musical forms, all derived from a single logical source. This approach draws inspiration from Iannis Xenakis’ analysis of Psappha (1975), where logical sieves are used to determine rhythmic and structural elements. In this system, the sieve functions similarly to an oscillator in an analog synthesizer, guiding the generation of musical material.
 
@@ -30,9 +30,12 @@ A sieve is a set of integers described by modular congruences, combined with boo
 
 ```
 (8@0|8@1|8@7)&(5@1|5@3)|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))
+|8@3|8@4|(8@1&5@2)|(8@6&5@1)
 ```
 
 draws on moduli 8 and 5, so it closes after LCM(8,5) = **40 steps**. That 40-step period is the unit the whole project is built on.
+
+The four terms on the second line are a correction made in `dois_14`: earlier versions of this repository used the first line alone, which is the expression printed in the *Frontiers in Psychology* article on Psappha. That article contradicts itself — the expression it prints gives 15 attacks in 40 steps while its own prose claims 27. The reading here matches the open-access copy (PMC7849451), and gives 27. `CONTEXT.md` records the check.
 
 ## How a sieve becomes music
 
@@ -48,7 +51,8 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_10
+  dois_series/     the main line of development, dois_01 through dois_30,
+                   interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
   sixty/  third/  starbird/    earlier standalone pieces
@@ -58,39 +62,79 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_10`
+## Current work: `dois_30`
 
-A stripped-down, plugin-oriented version: one 40-step beat, four voices, no arrangement layer.
+One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
+single base sieve** rather than independently written, so the relationships between them
+are exact by construction rather than by coincidence:
 
-Every voice is **derived from a single base sieve** rather than independently written, so the relationships between them are exact by construction rather than by coincidence:
-
-| Voice | Derivation | Basic unit | Pad |
+| Voice | Derivation | Basic unit | Static pitch |
 |---|---|---|---|
 | A | the psappha sieve itself | 16th note | 36 |
 | B | complement of A | 16th note | 37 |
 | C | A shifted 13 steps — a rhythmic canon | 16th note | 38 |
 | D | intersection of A and C — where they converge | **triplet 8th** | 39 |
 
-A and B together fill all 40 steps with no gaps and no collisions, because they are complements. D sounds only where A and C coincide. D's triplet unit against the others' sixteenths gives a 4:3 polyrhythm.
+A and B together fill all 40 steps with no gaps and no collisions, because they are
+complements. D sounds only where A and C coincide. D's triplet unit against the others'
+sixteenths gives a 4:3 polyrhythm.
 
-**Accents.** Four accent sieves overlay each voice. Velocity is the sum of the weights of the accents firing, and an accent's weight is derived from how *rarely* it fires — an accent covering two-thirds of the steps says little and lifts a note barely; a sparse one lifts it a lot.
+**Accents.** Accents are not written; they are read off the sieve. Each modulus the sieve
+uses contributes one accent firing on the residues that sieve *favours* — count the
+attacks landing on each residue of that modulus and keep the densest half. This field is
+the same for every voice (that is what makes a shared velocity meaningful), so it is
+called the **weather**.
 
-Because an accent's modulus need not divide 40, the accent layer takes several passes of the rhythm to come back around: the same figure is re-accented on each pass, and a voice has not fully stated itself until rhythm and accents realign.
+**Velocity.** The combination of accents sounding at a step is a bitmask, and one shared
+table maps each combination to a velocity, ranked by how rare the combination is: a
+common one lifts a note barely, a rare one a lot. Because the table is shared, one
+combination means the same velocity in every voice. How often each level occurs is
+deliberately uneven — rare events should be rare. Velocity here is a control signal, not
+just loudness; on a synthesizer it can be routed to filter or envelope rather than volume.
 
-**Parity.** Accent moduli are chosen so that voices on *different* basic units still arrive at the same period — 480 steps × 120 ticks for the sixteenth voices, 360 × 160 for the triplet voice, both 57600 ticks. The step counts invert the unit ratio exactly. Parity is earned through the choice of sieve, never imposed by padding.
+**Parity.** A voice's rhythm closes at its own period, and voices on different basic
+units close at different times. Parity is the *first* moment they all close together —
+LCM(4800, 6400) = **19,200 ticks** here, 40 quarter notes. Reaching it means some voices
+restate their rhythm several times, so a further accent, the **span accent**, is given a
+modulus that does not divide the rhythm; its period is forced by the parity arithmetic,
+and its residues are searched for the set that makes those restatements differ as much as
+the sieve allows. Nothing is padded: parity is earned by the choice of sieve, and refused
+with an explanation when the material cannot earn it.
 
-Output is six MIDI files: one per voice, a four-track arrangement, and a single-track version with all voices on Drum Rack pads 36–39. Each per-voice file is identical note-for-note to its track in the ensemble files, so it can be used to verify them.
+**Pitch.** Two modes render from the same rhythm and velocities. `static` gives each voice
+one fixed note, for hardware that cannot take pitch as a CV source — a Moog Grandmother is
+the intended instrument. `lattice` reads pitch off the sieve's own grid: because 8 and 5
+are coprime, every step has a unique address `(n mod 8, n mod 5)`, and
+`root + (5·(n mod 8) + 8·(n mod 5)) mod 40` turns that address into a pitch.
+
+Output is twelve MIDI files, six per pitch mode: one per voice, a four-track arrangement,
+and a single-track ensemble. Each per-voice file is identical note-for-note to its track
+in the ensemble files, so it can be used to verify them.
+
+**Change the sieve and all of this recomputes** — rhythms, weather, span moduli and
+residues, parity, meter and the lattice axes. Nothing above is written into the code; only
+`config.py` describes this particular composition.
 
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_10
-python composition.py
+cd sifters/dois_series/dois_30
+python3 compose.py                      # renders and then verifies every file
+python3 compose.py --suggest-span       # searches accent residues, writes nothing
+python3 -B -m unittest discover -s tests
 ```
 
-Requires `mido`, `music21`, `numpy`. Output appears in `mid/`. (`sifters/amen/compression_indices.py` additionally uses `matplotlib`.)
+Requires `mido`, `music21`, `numpy`. Output appears in `mid/`.
+(`sifters/amen/compression_indices.py` additionally uses `matplotlib`.)
 
-The first run after a reboot can take about a minute before printing anything — that is macOS verifying numpy's compiled extensions on first load, not the script hanging.
+The first run after a reboot can take about a minute before printing anything — that is
+macOS verifying numpy's compiled extensions on first load, not the script hanging.
+
+## Earlier versions
+
+Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
+detailed account of `dois_10` that used to be in this file is there, under its own
+heading, along with the reasoning that led from it to `dois_30`.
 
 ## Further reading
 

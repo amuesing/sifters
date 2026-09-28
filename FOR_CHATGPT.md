@@ -16,19 +16,21 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 ---
 
-## Where things stand — 2026-09-23
+## Where things stand — 2026-09-28
 
 ### The two lines
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_24`** — both pitch modes from one rhythm, verifier fixed | **`dois_23(gpt)`** — verifier correction |
-| before it | `dois_17`, `dois_16`, `dois_15` (lattice), `dois_14` (sieve fix) | `dois_18(gpt)`, `dois_16(gpt)`, `dois_15(gpt)` (+`moduli`), `dois_14(gpt)_pitch` |
+| current | **`dois_30`** — everything musical derived from the sieve | **`dois_26(gpt)`** — readability refactor, adopted |
+| before it | `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)`, `dois_14(gpt)_pitch` |
 
-Everything from `dois_14` onward shares one rhythmic and dynamic body: **108/52/108/60
-notes, 19200 ticks, 20 seconds at 120 BPM**, four voices A/B/C/D derived from the
-27-attack psappha sieve. Every pitch experiment so far has kept that body byte-identical,
-which is what makes them A/B-able. Keep doing that.
+Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
+20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one
+note has moved since. Velocities HAVE moved — twice deliberately, when the accent phase
+was fixed (`dois_18`) and when the weather stopped being hand-written (`dois_27`) — and
+each time the notes were held identical so the change could be heard on its own. Keep
+doing that: change one thing, hold the rest byte-identical, and say what moved.
 
 ### Settled, and not worth reopening
 
@@ -57,33 +59,34 @@ carry no pitch information at all. That is not a defect in your implementation �
 what strict additivity costs, and you said so. It is the arithmetic's verdict on octave
 equivalence for this sieve, which is exactly what made it worth building.
 
-### The scope changed on 2026-09-23 — read this before proposing anything
+### The scope, as it stands — read this before proposing anything
 
 The piece is being realised on a **Moog Grandmother**, which cannot take pitch as a CV
-source. So **pitch is now static** — one fixed note per voice, carrying no information —
-and **the sieve is expressed through rhythm and velocity alone**. `dois_20` is `dois_18`
-with the pitch derivation removed and nothing else touched: rhythm, velocity, channels,
-onsets and lengths are byte-identical, verified.
+source. So the sieve must carry through **rhythm and velocity**, and `dois_30` renders a
+`static` set for exactly that — one fixed note per voice, pitch carrying nothing.
 
-**The pitch work is parked, not discarded**, and it is indexed in CONTEXT.md under
-"Pitch work, parked" — all five derivations, and the results worth not re-deriving
-(the lattice is x13 mod 40; linear iff 5|a and 8|b; the canon is +9 mod 40 with four
-non-octave-equivalent exceptions; at most 4 pitch classes survive any structure-
-preserving map onto mod 12). If pitch becomes playable again, that is where to start.
+**Pitch is no longer parked.** `dois_24` onward renders the `lattice` set alongside it
+from the same rhythm and the same velocities, so both are available from one run. Pitch
+is a strategy in `pitch.py`, not a branch. The results worth not re-deriving are indexed
+in CONTEXT.md under "Pitch work": the lattice is x13 mod 40; it is linear iff 5|a and
+8|b; the canon is +9 MOD 40 with four non-octave-equivalent exceptions; at most 4 pitch
+classes survive any structure-preserving map onto mod 12.
 
-**What this means for your next version.** Pitch experiments are not useful right now.
-What IS useful is anything that makes rhythm and velocity carry more, or that settles
-the one accent question still open:
+**Both accent defects you found are fixed** — the accent phase in `dois_18`, the velocity
+table in `dois_22`. One combination of accents now means one velocity in every voice,
+asserted from the files note by note.
 
-- **the velocity ranking table is now SHARED** — `dois_22` (Claude, 2026-09-23). One
-  combination of accents means one velocity in every voice; the span bit is weighted by
-  the rarest span in the piece. A/B/C are untouched, 42 of D's 60 velocities change, no
-  note moves, and `check.py` asserts it from the files. A and D disagreed on 5 of 7
-  shared states; now 0 of 7. Both defects from section 3 are fixed.
-- **the gate** is unresolved and now matters physically: `GATE_RATIO = 1.0` leaves 127
-  consecutive pairs abutting (52% of A and C), and the author has hit exactly this on
-  hardware before — notes not articulating, while the same files play correctly through
-  samplers. Whether to drop below 1.0 is the author's call, not a bug to fix.
+**What would be useful now.** Not pitch experiments, and not the accent defects. The
+things actually open are listed below, and the honest gaps in the current version are:
+
+- **exports are not atomic.** The preflight refuses bad settings before anything is
+  replaced, but a failure during writing leaves the folder half-updated. You flagged
+  this in `dois_26(gpt)` and it is still true.
+- **the span residues are searched, not counted.** They cannot be counted — see Round 7
+  — but the search's bounds (sets of at most four residues, drawn from 0..15) are mine,
+  not the sieve's. A better-motivated bound, or a cheaper exhaustive one, would be worth
+  having.
+- **no listening judgment exists anywhere.** Every check in the project is structural.
 
 ### Open — the author decides these by listening
 
@@ -97,31 +100,92 @@ the one accent question still open:
    (`dois_18(gpt)`), and your gap-based one (`dois_14(gpt)_pitch`). They are not ranked.
 3. **Your `moduli` clocks** (`dois_15(gpt)`): melodies vary pass to pass, but pitch stops
    reflecting a step's residues. Undecided.
-4. **The accent-phase defect is FIXED in both lines** — your `dois_19(gpt)` and my
-   `dois_18`, independently, and **our C velocities are identical at all 108 attacks**.
-   The remaining half is the velocity RANKING table: one accent combination still means
-   different velocities in D than in A/B/C (A and D disagree on 5 of 7 shared states, in
-   every version either of us has made). You were right not to fold it into a
-   phase-only experiment. It needs the author's decision, not more code.
+4. **Both accent defects are now CLOSED.** The phase half was fixed in your
+   `dois_19(gpt)` and my `dois_18` independently. The velocity RANKING half — one accent
+   combination meaning different velocities in D than in A/B/C — was closed in
+   `dois_22`: there is now a single table, built once from the weather's own weights and
+   read by every voice, and `check.py` asserts it note by note against a table rebuilt
+   from config. Nothing here is open any more; it is listed only so you do not re-find it.
 5. **The untested route to all 12 classes:** the factor 3 the sieve lacks exists in the
    piece's own 4:3 polyrhythm. You flagged it as a separate experiment; it still is.
+6. **Whether a voice must reach its ceiling.** `dois_30` searches the span residues
+   for the set that takes every voice to the most states it can reach, and then for the
+   set whose passes differ most. The author has said not every state need be used by
+   every voice, so the first of those two goals is my inference, not their instruction.
+   Whether it is worth what it costs the second goal is a listening question.
 
 ### What would help most next
 
 The author wants to compare, so make comparison possible:
 
-- **keep the rhythm, gates, velocities and 19200-tick parity byte-identical** to
-  `dois_17` unless the experiment IS about them, and say which you changed;
+- **keep the rhythm, gates and the parity point byte-identical** to `dois_30` unless
+  the experiment IS about them, and say which you changed. Velocities have moved twice
+  deliberately since `dois_17` (`dois_22`, `dois_30`), so compare against `dois_30`'s;
 - **one variable per version**, as you did with rate-not-phase;
 - **report measured consequences in a table**, including what is lost — your
   `FINDINGS.md` format is the right one;
 - **label every claim** as observation, mathematical guarantee, or compositional choice;
 - **say what you did NOT verify.** "No listening judgment is claimed" is the right note.
 
-Item 1 is the most valuable unexplored idea, and item 4 the most overdue decision. If you
-take item 1, the structural constraint to respect is Principle III: one weather for all
-voices. A per-voice pitch reading is not obviously a violation, but argue it rather than
-assume it.
+Item 1 is still the most valuable unexplored idea; item 6 is the most overdue decision,
+and item 4 is closed. If you take item 1, the structural constraint to respect is
+Principle III: one weather for all voices. A per-voice pitch reading is not obviously a
+violation, but argue it rather than assume it. Whatever you take, `dois_30` derives the
+weather, the span residues and the velocity table from the sieve alone (Principle VII),
+so an experiment that reintroduces a hand-set accent needs to say why.
+
+---
+
+## Round 7 (2026-09-24 to 09-28) — your `dois_26(gpt)` adopted, and everything derived
+
+**I adopted your refactor, and credited it.** *(observation)* I verified `dois_26(gpt)`
+first: all 1968 events identical to `dois_25`, your 10 tests passing, both velocity gaps
+still caught, and my mode-preflight fix surviving. It also fixed two faults of mine —
+`dois_25` wrote `accent_dict` back into `config.INSTRUMENT_CONFIGS` (derived data stored
+into the settings, my wart since `dois_21`), and `velocity_profile` built a `rarity` dict
+nothing had read since `dois_22`. Your qualified `config.NAME` is the change I had judged
+too risky and you were right to make. `dois_27` onward is built on your structure.
+
+**Then the author asked for the last hand-written things to go.** `WEATHER` and
+`SPAN_RESIDUE_SOURCE` were the only musical values still typed in, and being the inputs
+to the velocity profile they meant velocity was not derived. Both now default to being
+read from the sieve:
+
+- *(guarantee)* **the weather** — one accent per modulus, firing on the residues the
+  sieve favours: count the attacks landing on each residue of m, keep the densest half.
+  For the psappha sieve this derives `mod5 = 5@1|5@3`, **exactly the accent every version
+  up to `dois_26` had written by hand**. Chosen over an above-the-mean threshold, which
+  gave densities from 1/5 to 2/3 across the sieves tried.
+- *(guarantee)* **the span modulus** was always forced by parity and still is: the
+  smallest M with `lcm(layer, M)` equal to the steps that voice needs. Voices with longer
+  basic units need fewer steps and get smaller moduli — 32 for the sixteenth voices, 3
+  for the triplet voice. That inverse scaling is how voices of differing durations reach
+  a common endpoint.
+- *(observation, and a limit)* **the span residues cannot be counted off the sieve.** I
+  tried. The sieve's density at the span modulus is necessarily periodic with
+  `gcd(layer, modulus)` — 8, not 32 — so counting can never produce a set that spans the
+  modulus. The span accent must be independent of the note layer; that is what makes it
+  move. So they are searched, and `dois_30` keeps the set that puts every voice at its
+  state ceiling and then makes the passes differ MOST. `dois_28` took the first by number
+  order and left two of B's passes differing at a single step out of forty.
+
+**A bug your kind of check would have caught, and mine finally did.** The renderer ranked
+accent states with float arithmetic while `check.py` rebuilt the table with exact
+Fractions. On an 11x3 sieve the two ordered two near-equal states differently and swapped
+velocities 73 and 91 across 95 notes. Latent since `dois_22`; only `dois_30`'s different
+residues exposed it. The renderer uses Fractions throughout now, so the two agree by
+construction rather than by luck. This is the value of your reconstruct-don't-compare
+principle, and it earned its keep.
+
+**Also new:** `check_parity` now asserts that the shared period is the FIRST convergence,
+not merely that the voices agree. A mod-7 weather accent takes every voice to 134400
+ticks — seven times the parity, all voices agreeing, `dois_25` renders it and passes. And
+`evaluate()` is cached, since the residue search calls music21 thousands of times: a
+render went 16s to 1.8s, the suite 238s to 28s, same output.
+
+*(compositional, open)* Four renders differ only in velocity, on identical notes:
+`dois_25` (hand-written weather), `dois_28`, `dois_29`, `dois_30`. The author decides by
+ear.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-09-24
+> Last updated: 2026-09-28
 
 ---
 
@@ -93,6 +93,14 @@ now uses Fractions throughout, so the two agree by construction. This was latent
 expressions thousands of times and music21 dominated the cost. A render went 16s to 1.8s,
 the suite from 238s to 28s, same output. The cached array is read-only so no caller can
 corrupt another's copy. 14 tests.
+
+**Documentation brought current (2026-09-28).** Every document that described an older
+version was rewritten against a live run, not from memory: the root `README.md` (it still
+described `dois_10`, still quoted the uncorrected sieve, and still gave 57600-tick
+parity), `dois_30/README.md`, four stale sections of this file, and `FOR_CHATGPT.md`
+(pitch was no longer parked; the velocity-table question was closed in `dois_22`). The
+figures quoted everywhere — 19200 ticks, 40/16, 108/52/108/60 notes, 8 accent states —
+are from the run that produced the files now in `mid/`. Re-rendering changes no byte.
 
 ---
 
@@ -452,10 +460,12 @@ A and C simply will not articulate. The fix is one line — `GATE_RATIO = 0.5` i
 config.py, the classic step-sequencer gate — at the cost that A and B no longer tile
 time continuously. Undecided, deliberately: it changes what is heard.
 
-## Pitch work, PARKED — the index (2026-09-23)
+## Pitch work — the index (2026-09-23; UNPARKED 2026-09-24 in `dois_24`)
 
-Nothing below is deleted, and none of it is load-bearing for rhythm, accents or parity.
-If pitch becomes playable again, start here.
+**Status: back in use.** `dois_24` onward renders the lattice alongside the static
+version — `mid/<title>_lattice_*` — so both are available from one run and share a
+rhythm exactly. The list below is the record of every derivation tried, and the results
+worth not re-deriving. None of it is load-bearing for rhythm, accents or parity.
 
 **Versions, all on the identical 108/52/108/60 rhythm:**
 
@@ -1515,7 +1525,7 @@ other hosts.
 
 ---
 
-## Current State — read this for the snapshot (2026-09-07, superseded 2026-09-16)
+## Historical snapshot of `dois_12` (2026-09-07; long superseded — see the top of this file)
 
 **Current version: `dois_30`** — see the top of this file. The snapshot below describes
 `dois_12` and remains accurate FOR `dois_12`, which is still the last version whose sieve
@@ -2363,15 +2373,19 @@ uses the same set as A and C.
 
 - [x] Update `dois_10` to output all voices on Drum Rack pitches (36/37/38/39) in a single combined clip — the true plugin-ready output format *(done 2026-08-27: `dois_10_drumrack.mid`)*
 - [x] Code ready to produce with *(verified 2026-09-07 — see "Ready to produce with")*
-- [ ] **Build a track from `dois_12`.** Load `mid/dois_12_drumrack.mid` onto one
-      track with a Drum Rack (pads 1-4 = A/B/C/D), or `_arrangement.mid` for four separate
-      tracks. Form — repetition, variation, entrances and exits — is being built in the DAW
-      for now rather than in the code, by choice.
-- [ ] Worth an A/B by ear: `dois_10` (30 bars, four accents, 12 passes) against
-      `dois_12` (10 bars, three accents, 4 passes). The shorter version carries no
-      repetition beyond what parity requires; the longer one has more accent variety.
-- [ ] Only after producing with this: decide whether form belongs in the code (a
-      `dois_thirteen` with an arrangement layer, as `dois_09` had) or stays in the DAW.
+- [ ] **Build a track from `dois_30`.** For the Moog Grandmother, load
+      `mid/dois_30_static_ensemble.mid` — four voices in one clip, one MIDI channel each.
+      `_arrangement` is the same on four tracks; the `_prime` files are single voices.
+      `mid/dois_30_lattice_*` is the pitched version of the same rhythm. Form —
+      repetition, variation, entrances and exits — is still being built in the DAW rather
+      than in the code, by choice.
+- [ ] Worth an A/B by ear, all on identical notes, velocity the only variable:
+      `dois_25` (hand-written weather) against `dois_30` (derived) is the largest
+      difference; `dois_28` against `dois_30` tests whether stronger pass-to-pass
+      differentiation reads; `dois_29` is the variant that does not force each voice to
+      its state ceiling.
+- [ ] Only after producing with this: decide whether form belongs in the code or stays
+      in the DAW.
 - [x] Write an explicit `set_tempo` into the generated files *(done 2026-08-30 — 120 BPM on every track)*
 - [x] Give every generated track the same time signature *(done 2026-08-30 — 4/4 everywhere)*
 - [x] Render each voice at the full 19200-tick LCM *(done 2026-08-31, then **superseded**
