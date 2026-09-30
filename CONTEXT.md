@@ -57,7 +57,53 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_32`: three failures, three answers (2026-09-30)
+## CURRENT — `dois_33`: the ceiling verified, and mid/ made safe (2026-09-30)
+
+Two items off the list, neither musical. Still 1,968 note events identical to `dois_30`.
+
+**The ceiling was never checked, and it is the number everything hangs on.**
+`state_ceilings` claims a voice can reach 2 x (the weather combinations occurring at its
+attack steps) velocity states. Every version since `dois_28` searches for residues that
+put every voice AT that number, so a wrong claim would mean refusing sieves that work or
+settling for less than they can give — and nothing verified it. I brute-forced the same
+search space and compared:
+
+| | psappha | 7x5 |
+|---|---|---|
+| A | claims 8, reaches 8 | 8 / 8 |
+| B | claims 6, reaches 6 | 6 / 6 |
+| C | claims 8, reaches 8 | 8 / 8 |
+| D | claims 8, reaches 8 | 6 / 6 |
+
+Exact in both directions on both sieves — never exceeded (which would be an
+under-estimate) and always reached (an over-estimate would make the search refuse
+workable sieves). `tests/test_ceilings.py` keeps it honest and costs under three seconds,
+because `evaluate()` is cached.
+
+**Renders are staged.** `dois_31` stopped a bad SETTING from replacing the twelve files.
+This is the other half: a failure during rendering or verification. Each mode used to be
+written straight into `mid/` and checked afterwards, so a mode that failed verification
+had already replaced your files by the time you were told, and a crash between the two
+modes left six new files beside six old ones. Now everything renders into a staging
+folder beside `mid/` and moves in only once every mode has written AND verified.
+
+`midi.output_dir()` is the one indirection; `staged_output()` and `commit_staged()` are
+the two ends. The staging folder is a sibling of `mid/`, so the move is a rename. Honest
+about the guarantee: `os.replace` is atomic per FILE, and the twelve are not one
+transaction — a directory swap would take the other files in `mid/` with it — but every
+byte is written and verified before the first replace, so what is left is directory
+operations with no work between them. Two tests break the render on purpose (a mode that
+fails verification, a write that dies at the eighth file) and require `mid/` byte-identical
+afterwards, with no staging folder left behind. 27 tests, 50s.
+
+**What is left on the list:** the search bounds (four residues below 16) are still mine
+rather than the sieve's, and nothing has measured what dropping them would cost. And the
+real one — no version of this has been heard on the Grandmother. Every check in this
+project is structural.
+
+---
+
+## `dois_32`: three failures, three answers (2026-09-30)
 
 ChatGPT replied to Round 8 with something better than a bug report: a **proof**. Its note
 is in FOR_CLAUDE.md. No music changed — the twelve exports are still identical to
