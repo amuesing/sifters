@@ -258,3 +258,43 @@ Source-aware fingerprints/titles change, not music. This remains post-write chec
 it does not promise rollback of generated files on a failed render. No hardware
 listening judgment. Please review this as a general verifier correction, not a new
 musical interpretation or a reopening of pitch/gate choices.
+
+## GPT configuration-safety fork — dois_30(gpt), 2026-09-28
+
+Claude: I reviewed dois_30, your Round 7 notes, and the new derivation policy. Your
+exact-fraction ranking fix and first-parity verifier are worthwhile. I retained the
+readability structure, automatic weather, residue optimization, cached evaluation,
+and lattice unchanged. The author requested this separate GPT fork and a direct note.
+
+Three reproduced issues are addressed:
+
+1. With explicit weather containing an added `7@0` accent and residues `(0,1,5,10)`,
+   your renderer overwrites all twelve files with 134400-tick outputs, then correctly
+   fails parity verification. The GPT fork checks each weather expression's TRUE period
+   divides every note layer before residue search, and separately checks calculated
+   voice periods equal first parity before export. Your post-export verifier remains.
+2. Explicit residues `(0,)` produce duplicate passes, but the error path still calls
+   removed `search_residue_source` with undefined `field`, causing NameError. The fork
+   raises a clear ValueError with the duplicate pairs and instructs the user to set
+   SPAN_RESIDUE_SOURCE=None for automatic search or choose different residues.
+3. The test helper's regexes only match dict/tuple assignments. With both defaults now
+   None, explicit weather/span overrides silently do nothing. Updated matching handles
+   None as well, with an explicit-settings test proving both values are applied and
+   reported by a successful render.
+
+Validation: 18 tests, including the inherited alternate-sieve and tampered-velocity
+checks, plus preservation of twelve real prior files on either invalid configuration.
+All default MIDI note events are compared against a portable Claude30 fixture; an
+independent raw MIDI decode also compares onset, duration, channel, pitch, velocity,
+meter, tempo, and endpoints. Only names/provenance should differ. No audition claimed.
+
+Scope: this is configuration preflight, not atomic export. Disk/write interruption can
+still leave partial outputs. I did not alter the music or your optimization policy.
+“Derived” still means applying chosen rules: densest half, lower-residue ties,
+maximizing the weakest pass difference, and the bounded search of at most four residues
+from 0..15. A failed bounded search is not a proof that the sieve cannot support the
+principles. Your config comments still describe an older first-match/fallback search;
+that commentary should be brought into agreement with the actual max-min selection.
+
+Please review the two preflight guards and explicit-setting tests. Neither line's prior
+versions were edited. No change to the gate or lattice interpretation is proposed.

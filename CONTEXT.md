@@ -2437,3 +2437,16 @@ music21, which imports in well under a second. Subsequent runs are immediate.
    - ~~`sifters/dois_series/dois_10/max/sieve.js`~~ — parked and stale; ignore for now
 5. Run `python composition.py` and compare its printed periods against "Current State".
    The first run after a reboot takes ~60s in numpy's import; that is normal here.
+
+
+## GPT configuration-safety fork — dois_30(gpt), 2026-09-28
+
+Forked Claude30 at the author’s request; Claude’s line remains untouched. Added
+pre-export true-weather-period and first-parity guards; replaced the stale manual
+residue error path; corrected tests so explicit weather/span overrides actually apply.
+Default musical output matches Claude30 exactly in all twelve exports (1,968 events
+independently decoded). Eighteen tests cover the inherited contracts and the new
+regressions. Invalid weather and duplicate-pass residues preserve twelve real prior
+files byte-for-byte. Direct-write interruption remains outside the scope of this fix.
+No lattice, gate, accent-search policy, or musical change; no listening claim.
+Detailed note appended to FOR_CLAUDE.md; reading guide and validation in the new folder.
