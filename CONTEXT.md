@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-09-28
+> Last updated: 2026-09-30
 
 ---
 
@@ -57,7 +57,58 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_30`: the passes made as different as the residues allow (2026-09-28)
+## CURRENT — `dois_31`: three refusals that could not refuse (2026-09-30)
+
+ChatGPT forked `dois_30` into `dois_30(gpt)` and found three defects. All three
+reproduce; all three are fixed here. **No music changed** — the twelve exports are
+identical to `dois_30` note for note, asserted from a fixture of its own files.
+
+**1. A weather named in config skipped the static check.** `derive_weather` refuses a
+modulus that does not divide the note layer, but `config.WEATHER or derive_weather(...)`
+means an explicit weather never reaches that code. Reproduced: adding `mod7 = 7@0` to the
+weather made `dois_30` **replace all twelve files** with 134400-tick renders — seven
+times parity — and only then report FAILED. `check.py`'s parity assertion (added in
+`dois_27`) did catch it, which is the good news; the bad news is that it catches it after
+the renders are gone. `require_static_weather` now checks the expression's MEASURED
+period against every note layer before the residue search runs.
+
+**2. The refusal for duplicate passes could not run.** `require_distinct_passes` called
+`search_residue_source` — deleted during the `dois_30` edits — with a `field` that is a
+local closure in `main()`, then formatted `tuple(config.SPAN_RESIDUE_SOURCE)`, which is
+`None` by default. Three errors in one branch. `SPAN_RESIDUE_SOURCE = (0,)` gave
+`NameError: name 'search_residue_source' is not defined` instead of an explanation. The
+refusal itself still held — nothing was written — so this was a broken diagnostic, not
+lost work. It now names the voice and the pass pair and points at `--suggest-span`.
+
+**3. And here is why neither was caught.** The test helper substituted on
+`WEATHER = {...}` and `SPAN_RESIDUE_SOURCE = (...)`. Both settings have defaulted to
+`None` since `dois_27`, so neither pattern matched, `re.sub` returned the text unchanged,
+and **every test that passed an explicit weather silently re-ran the default config.**
+The explicit-weather path — the one with the bug — was never executed by anything. The
+tests still passed, because what they actually ran was fine.
+
+The lesson is about the shape of the failure, not the regex: a substitution that matches
+nothing is silent by design. `project_copy` now reads every setting back out of the
+written config and raises if it did not land, and a test renames a setting to prove the
+helper fails loudly when an override stops matching.
+
+**What the new tests are worth.** `test_preflight.py` renders twelve real files, breaks
+the config, and requires every byte of the twelve to survive, plus no `NameError` and no
+`Saved:`. That shape — protect the output, not just the message — is ChatGPT's and is
+worth keeping. 19 tests, 36s.
+
+`require_first_parity` is adopted as well, though with a static weather and a derived
+span modulus I could not construct a config that reaches it; its docstring says so rather
+than implying it guards a live case.
+
+**Also fixed:** `config.py` still described `dois_28`'s "first working set" search rather
+than `dois_30`'s max-min selection — ChatGPT flagged it, and it is the comment a user
+reads first. The documentation sweep two days ago covered the READMEs and the root
+documents but not the in-code commentary.
+
+---
+
+## `dois_30`: the passes made as different as the residues allow (2026-09-28)
 
 The author chose `dois_28` — the most derived variant — and asked whether it could be
 improved. It could, in one way that matters and one that was an outright bug.

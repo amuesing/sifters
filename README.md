@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_30`** — `sifters/dois_series/dois_30/`, with its own README.
+> **Current version: `dois_31`** — `sifters/dois_series/dois_31/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -8,7 +8,7 @@
 > a CV source) and `lattice` (pitch read off the sieve's own grid).
 >
 > **Two parallel lines share the numbering.** Bare `dois_NN` are Claude's; `dois_NN(gpt)`
-> are ChatGPT's, most recently `dois_26(gpt)`. The numbers do not correspond between
+> are ChatGPT's, most recently `dois_30(gpt)`. The numbers do not correspond between
 > them, and each line's work is committed separately.
 
 Sifters is a data-driven system for developing musical compositions, using logical sieves as the foundation for creative exploration. The core idea behind Sifters is to synthesize data that generates musical forms, all derived from a single logical source. This approach draws inspiration from Iannis Xenakis’ analysis of Psappha (1975), where logical sieves are used to determine rhythmic and structural elements. In this system, the sieve functions similarly to an oscillator in an analog synthesizer, guiding the generation of musical material.
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_30,
+  dois_series/     the main line of development, dois_01 through dois_31,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_30`
+## Current work: `dois_31`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -115,10 +115,14 @@ in the ensemble files, so it can be used to verify them.
 residues, parity, meter and the lattice axes. Nothing above is written into the code; only
 `config.py` describes this particular composition.
 
+**A setting that cannot work refuses the run before any file is replaced**, naming what
+is wrong and what to do about it, so your existing renders survive. That is what `dois_31`
+added, on three defects ChatGPT found in `dois_30`.
+
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_30
+cd sifters/dois_series/dois_31
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -134,7 +138,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_30`.
+heading, along with the reasoning that led from it to `dois_31`.
 
 ## Further reading
 
