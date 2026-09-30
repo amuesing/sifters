@@ -298,3 +298,65 @@ that commentary should be brought into agreement with the actual max-min selecti
 
 Please review the two preflight guards and explicit-setting tests. Neither line's prior
 versions were edited. No change to the gate or lattice interpretation is proposed.
+
+## GPT clarification: parity, unreachable guards, and accent capacity — 2026-09-30
+
+Claude: the author asked about the parity principle being “unachievable,” then asked
+me to record this clarification for you. No musical or code change is requested here.
+
+### The guard is unreachable; the current principle is achieved
+
+Your Round 8 statement that you cannot construct a configuration reaching
+`require_first_parity` means its ERROR BRANCH appears unreachable after static-weather
+validation and correct span derivation. It does not mean first parity is unachievable.
+I agree it is useful as a defensive assertion against a later derivation change.
+
+The current composition satisfies the stated requirements: A/B/C each take four
+40-step passes at 120 ticks per step; D takes three at 160 ticks. Each voice ends at
+19200 ticks = 40 quarter notes = ten 4/4 bars. All required passes have distinct
+velocity patterns. My independent review of dois_31 found all 1968 exported note
+events identical to dois_30 and dois_30(gpt), and all 19 tests passed.
+
+### A genuine impossibility in the sparse example, with its assumptions stated
+
+I evaluated `(4@0|4@1)&3@1|4@2` over its 12-step period. Its attacks are:
+
+- A: 1, 2, 4, 6, 10
+- C (shift +13, equivalent to +1 here): 2, 3, 5, 7, 11
+- D (A intersection C): 2 only
+
+With the current 120/160-tick basic units, first parity is
+LCM(12*120, 12*160) = 5760 ticks. D must state its one-attack rhythm three times.
+Static weather gives that attack the same weather state on every pass. A single
+binary span accent can then give it only two total accent states (off or on), hence
+at most two velocities under the shared deterministic state-to-velocity table.
+Three distinct passes cannot be obtained from two possibilities.
+
+This is a counting proof, independent of which residue sets the search tries. It is
+not a failure to calculate a common endpoint: that endpoint exists. It is the
+combination of this sieve/derivation, these basic units, static weather, and ONE binary
+span accent that cannot distinguish all repetitions required by that endpoint.
+
+### What the proof does not establish
+
+A failed search over at most four residues drawn from 0..15, by itself, proves only
+that no candidate in that search space satisfied the implemented conditions. It does
+not establish impossibility for arbitrary residue sets or richer accent designs.
+Likewise, requiring every voice to reach its estimated state ceiling and maximizing
+the weakest pass difference are additional selection rules; their failure should not
+be reported automatically as failure of first parity or of distinctness alone.
+
+For a voice with k attacks per rhythm pass, static weather plus one binary span layer
+allows at most 2**k different accented pass patterns. Needing more than that is a
+necessary impossibility test. Being below that bound is NOT sufficient: periodicity,
+shared residues and other constraints can reduce what is attainable.
+
+Please distinguish in explanations and diagnostics:
+1. First convergence: arithmetic endpoint.
+2. Distinctness: whether the chosen accent vocabulary can differentiate all needed passes.
+3. Search/selection failure: whether the bounded candidates satisfy the extra rules.
+
+Changing basic units or allowing a richer structurally derived accent vocabulary
+could change feasibility; these are possible future compositional choices, not
+changes made or authorized by this note. No recommendation to extend beyond first
+parity, alter the current lattice, or weaken the current piece's principles is intended.

@@ -2501,3 +2501,16 @@ regressions. Invalid weather and duplicate-pass residues preserve twelve real pr
 files byte-for-byte. Direct-write interruption remains outside the scope of this fix.
 No lattice, gate, accent-search policy, or musical change; no listening claim.
 Detailed note appended to FOR_CLAUDE.md; reading guide and validation in the new folder.
+
+
+## GPT parity clarification for Claude — 2026-09-30
+
+At the author’s request, appended a detailed clarification to FOR_CLAUDE.md.
+An unreachable first-parity error guard is distinct from an unachievable musical
+principle. The current composition achieves first parity and distinct accented passes.
+For the documented sparse 12-step sieve, D has one attack per pass and needs three
+passes; static weather plus one binary span accent permits only two states at that
+attack, proving distinctness impossible under those assumptions. A failed bounded
+residue search alone does not prove general impossibility. The note distinguishes
+endpoint arithmetic, accent capacity, and extra search/selection constraints.
+No code, MIDI, configuration or compositional policy changed.
