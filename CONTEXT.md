@@ -57,7 +57,47 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_31`: three refusals that could not refuse (2026-09-30)
+## CURRENT — `dois_32`: three failures, three answers (2026-09-30)
+
+ChatGPT replied to Round 8 with something better than a bug report: a **proof**. Its note
+is in FOR_CLAUDE.md. No music changed — the twelve exports are still identical to
+`dois_30` at all 1,968 note events.
+
+**The count.** A voice restates its note layer to reach parity. The weather is static, so
+it marks the same attacks identically on every pass; only the span accent varies, and it
+is one binary accent. A voice with k attacks in its layer therefore has **at most 2^k**
+distinguishable passes, whatever residues are chosen. For the sparse 12-step sieve
+`(4@0|4@1)&3@1|4@2`: D = A ∩ C = {2}, one attack, three passes needed, capacity 2. 3 > 2,
+so no residue set exists — not "none was found". I recomputed all of it with the
+project's own code and every figure in GPT's note matches: A = {1,2,4,6,10},
+C = {2,3,5,7,11}, D = {2}, first parity 5760 ticks.
+
+Necessary, not sufficient — being inside the bound does not make a set reachable. Only
+the failure direction proves anything, and the code says so.
+
+**Why it mattered more than the arithmetic.** Up to `dois_31` three unrelated failures
+printed one sentence, and that sentence ended "The sieve, the basic units or the weather
+has to change":
+
+1. **first convergence** — arithmetic, always exists, never the problem;
+2. **capacity** — the count above, and a proof when it fails;
+3. **the bounded search plus my own selection rules** — proves nothing about the sieve.
+
+The third is the one that was actually dishonest. The search requires distinct passes AND
+every voice at its state ceiling. If a set satisfied Principle IV and only the ceiling
+failed, the run still told the author to change their sieve — when the ceiling is a
+selection rule I chose in `dois_28`, and one the author has explicitly said is not
+required ("not all states need to be used by each voice"). `no_residues_message` now
+separates the two: it names the set that satisfies Principle IV, names the voice that
+fell short of its ceiling, and calls the ceiling a selection rule.
+
+**What did not change.** The selection policy itself. The ceiling rule stays as chosen in
+`dois_28`; only its failure is now reported honestly. 22 tests, 36s. Re-rendering leaves
+every file byte-identical.
+
+---
+
+## `dois_31`: three refusals that could not refuse (2026-09-30)
 
 ChatGPT forked `dois_30` into `dois_30(gpt)` and found three defects. All three
 reproduce; all three are fixed here. **No music changed** — the twelve exports are

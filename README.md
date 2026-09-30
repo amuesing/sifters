@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_31`** — `sifters/dois_series/dois_31/`, with its own README.
+> **Current version: `dois_32`** — `sifters/dois_series/dois_32/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_31,
+  dois_series/     the main line of development, dois_01 through dois_32,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_31`
+## Current work: `dois_32`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -116,13 +116,15 @@ residues, parity, meter and the lattice axes. Nothing above is written into the 
 `config.py` describes this particular composition.
 
 **A setting that cannot work refuses the run before any file is replaced**, naming what
-is wrong and what to do about it, so your existing renders survive. That is what `dois_31`
-added, on three defects ChatGPT found in `dois_30`.
+is wrong and what to do about it, so your existing renders survive (`dois_31`, on three
+defects ChatGPT found in `dois_30`). And a sieve that genuinely cannot work is refused
+with the count that proves it, kept separate from a search that merely found nothing
+(`dois_32`).
 
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_31
+cd sifters/dois_series/dois_32
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -138,7 +140,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_31`.
+heading, along with the reasoning that led from it to `dois_32`.
 
 ## Further reading
 
