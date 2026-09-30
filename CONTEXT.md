@@ -57,7 +57,57 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_33`: the ceiling verified, and mid/ made safe (2026-09-30)
+## CURRENT — `dois_34`: the search bounds measured, and the last arbitrary number removed (2026-09-30)
+
+The first musical change since `dois_30`, and it was authorised after measurement rather
+than argued for. **No note moved** — onsets, durations, pitches and channels are still
+exactly `dois_30`'s, asserted field by field. 124 of the 656 velocities changed.
+
+**What the bounds were costing.** "Up to four residues below 16" was mine, with no reason
+behind either number. Measured on the psappha sieve:
+
+| bound | candidates | best weakest-pass-difference | time |
+|---|---|---|---|
+| ≤4 residues below 16 (`dois_30`–`dois_33`) | 2,516 | 4 | 1.5s |
+| ≤4 residues below 32 | 41,448 | **4**, same set | 23s |
+| ≤5 residues below 32 | 242,824 | **6**, at (0, 9, 10, 21, 31) | 158s |
+
+The "16" never bound anything. `largest` is now the span accent's own modulus, which
+`span_accent` already uses as its cutoff, so that number is derived rather than chosen.
+The SIZE was the real bound: a fifth residue takes the two most similar passes anywhere
+in the piece from 4 steps apart to 6 — the measure `dois_30` was built to maximise.
+
+**Making it affordable, exactly rather than approximately.** 158s per render was not
+shippable and would have made the suite take an hour. `sieve.py` now evaluates a union of
+ONE modulus (`M@a|M@b|...`) with numpy instead of music21 — that is the shape the search
+builds for every candidate, and parsing it was the slowest thing in the program.
+`nominal_period` takes the same shortcut and `true_period` is cached.
+`tests/test_fast_path.py` asserts the shortcut equals music21 on every union of every
+modulus up to 40 over every span used here, and that anything else — the base sieves, the
+intersections, the complements — still goes to music21. **A render went from 1.8s to
+0.3s**; the full search from 158s to 37s.
+
+**The answer is pinned, and the pin is checked.** `config.SPAN_RESIDUE_SOURCE` now carries
+(0, 9, 10, 21, 31), which is exactly what the search derives, so a render does not repeat
+a 37s search. `tests/test_derivation.py` runs the real search and fails if it ever chooses
+differently. Change the sieve and it goes back to `None` — the test helper does that
+automatically when a test overrides the sieve, and the preflight refuses residues that do
+not suit a new one.
+
+**The Max device is marked.** `dois_10/max/sieve.js` hard-codes arrays measured today at
+15 attacks per 40 steps — the uncorrected sieve — on 120-step voices. It now says so at
+the top of the file, and CONTEXT's reference says why. Its transport logic is still the
+right approach for a Max for Live device; the arrays are not.
+
+34 tests, 49s. Re-rendering leaves every file byte-identical.
+
+**Still open:** `most = 5` is still a chosen stopping point — six and beyond have not been
+measured. And the real one, unchanged: no version of this has been heard on the
+Grandmother.
+
+---
+
+## `dois_33`: the ceiling verified, and mid/ made safe (2026-09-30)
 
 Two items off the list, neither musical. Still 1,968 note events identical to `dois_30`.
 
@@ -2571,7 +2621,11 @@ music21, which imports in well under a second. Subsequent runs are immediate.
 4. The key files to read are:
    - `sifters/dois_series/dois_10/config.py` — voices, accent sieves, meter/tempo constants
    - `sifters/dois_series/dois_10/composition.py` — full pipeline
-   - ~~`sifters/dois_series/dois_10/max/sieve.js`~~ — parked and stale; ignore for now
+   - ~~`sifters/dois_series/dois_10/max/sieve.js`~~ — SUPERSEDED, and now marked as
+     such in the file itself. Measured 2026-09-30: its A has 15 attacks per 40
+     steps (the uncorrected sieve) and 120-step voices (pre-19200 parity), so it
+     encodes music abandoned in `dois_14`. Its transport logic is still sound;
+     regenerate the arrays from the current version before reusing it.
 5. Run `python composition.py` and compare its printed periods against "Current State".
    The first run after a reboot takes ~60s in numpy's import; that is normal here.
 

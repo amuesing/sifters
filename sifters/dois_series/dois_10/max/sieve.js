@@ -1,3 +1,25 @@
+// ===========================================================================
+// SUPERSEDED — DO NOT USE THIS AS A REFERENCE FOR THE PIECE
+//
+// This device hard-codes velocity arrays generated from dois_10 in September 2026.
+// The music in it was abandoned in dois_14 and nothing has regenerated it since.
+// Measured from the arrays below, not guessed:
+//
+//   * A has 15 attacks per 40 steps. That is the sieve expression PRINTED in the
+//     Frontiers article, which contradicts its own prose. The corrected reading
+//     (PMC7849451), used from dois_14 onward, gives 27. So every voice here is
+//     wrong: B is the complement of a wrong A, C its shift, D their intersection.
+//   * A and C run 120 steps. The current piece runs 160, because parity is the
+//     first convergence of the raw rhythms (19200 ticks), not 14400.
+//   * The velocities come from the pre-dois_18 accent scheme, before one shared
+//     weather and before the single velocity table of dois_22.
+//
+// It is kept because the TRANSPORT logic — absolute ticks, phase-locked voices,
+// per-voice step sizes — is still the right approach for a Max for Live device, and
+// whoever builds one should start from that part. Regenerate the arrays from the
+// current version's mid/ files first. See ../../dois_33/ and CONTEXT.md.
+// ===========================================================================
+
 autowatch = 1;
 inlets  = 1;  // beat position (float) from [transport]
 outlets = 2;  // 0: pitch, 1: velocity

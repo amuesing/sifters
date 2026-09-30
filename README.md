@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_33`** — `sifters/dois_series/dois_33/`, with its own README.
+> **Current version: `dois_34`** — `sifters/dois_series/dois_34/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_33,
+  dois_series/     the main line of development, dois_01 through dois_34,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_33`
+## Current work: `dois_34`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -125,7 +125,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_33
+cd sifters/dois_series/dois_34
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -141,7 +141,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_33`.
+heading, along with the reasoning that led from it to `dois_34`.
 
 ## Further reading
 

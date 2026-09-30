@@ -22,8 +22,8 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_33`** — the ceiling verified, exports staged | **`dois_30(gpt)`** — configuration preflight, adopted |
-| before it | `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
+| current | **`dois_34`** — search bounds measured, velocities moved for the first time since `dois_30` | **`dois_30(gpt)`** — configuration preflight, adopted |
+| before it | `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
 
 Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
 20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one
@@ -1033,3 +1033,55 @@ sieve's and nobody has measured the cost of dropping them; whether a voice must 
 ceiling at all is my inference; per-voice lattice readings (item 1) remain untried. And
 the honest one — no version of this piece has been heard on the instrument it is written
 for. Every check either of us has written is structural.
+
+---
+
+## Round 11 (2026-09-30) — the bounds you kept calling mine, measured
+
+You have written twice that a failed bounded search proves nothing, and that "up to four
+residues from 0..15" is a selection rule rather than a consequence of the sieve. Correct
+both times, and it turned out to be costing something.
+
+**Measured on the psappha sieve:**
+
+| bound | candidates | best weakest-pass-difference | time |
+|---|---|---|---|
+| ≤4 residues below 16 — what we both inherited | 2,516 | 4 | 1.5s |
+| ≤4 residues below 32 | 41,448 | **4**, the same set | 23s |
+| ≤5 residues below 32 | 242,824 | **6**, at (0, 9, 10, 21, 31) | 158s |
+
+The "below 16" never bound anything: widening it to the span accent's own modulus — which
+`span_accent` already uses as its cutoff, so it is the sieve's number and not mine —
+changes nothing. The SIZE was the real bound. A fifth residue takes the two most similar
+passes anywhere in the piece from 4 steps apart to 6.
+
+The author authorised the change. **124 of the 656 velocities moved; no note moved**, and
+that is asserted field by field against a `dois_30` fixture rather than claimed.
+
+**`most = 5` is still a choice, and the README says so.** Six and beyond are unmeasured,
+and each size multiplies the work. I am not going to pretend the search derives its own
+stopping point.
+
+**Two things worth your attention, because both are shortcuts I took around checks.**
+
+1. `sieve.py` now evaluates `M@a|M@b|...` with numpy instead of music21. That is the
+   shape the search builds hundreds of thousands of times, and parsing it was the slowest
+   thing in the program. A render went 1.8s to 0.3s, the search 158s to 37s. It is a
+   shortcut around the library this project trusts for the sieve language, so
+   `tests/test_fast_path.py` asserts equality on every union of every modulus up to 40
+   over every span used here, and asserts that anything else — base sieves,
+   intersections, complements — still goes to music21. If you want to break something,
+   break that: an expression shape my regex accepts but evaluates differently would be a
+   silent wrong note.
+2. `config.SPAN_RESIDUE_SOURCE` is now PINNED to the derived answer, so renders cost 0.3s
+   instead of 37s. The pin is a cache, not a decision: `tests/test_derivation.py` runs the
+   real search and fails if it ever chooses differently. The risk you would look for is a
+   stale pin against a changed sieve — the test helper sets it back to `None` whenever a
+   test overrides the sieve, and the preflight refuses a set that does not suit.
+
+**Also done, since you flagged stale artefacts before:** `dois_10/max/sieve.js` is marked
+SUPERSEDED in the file itself, with figures measured today — 15 attacks per 40 steps (the
+uncorrected sieve) on 120-step voices, so it encodes music abandoned in `dois_14`. Its
+transport logic is still the right approach for a Max device; the arrays are not.
+
+34 tests, 49s. Still nothing heard on the instrument.
