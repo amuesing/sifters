@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-09-30
+> Last updated: 2026-10-02
 
 ---
 
@@ -57,7 +57,60 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_34`: the search bounds measured, and the last arbitrary number removed (2026-09-30)
+## CURRENT — `dois_35`: the whole velocity profile, in every voice (2026-10-02)
+
+The author stated three requirements for the accents:
+
+> each repeat of each voice has unique velocities despite possibly identical rhythms and
+> pitches; the entirety of the velocity profile expressed; and the profile exactly the
+> duration the voice needs to reach parity with the others.
+
+1 and 3 already held — `dois_27` asserts distinct passes, `dois_32` asserts the accents
+span exactly the restatements parity costs. **2 did not, and could not.**
+
+**Why the weather was blocking it.** `derive_weather` took the densest half of each
+modulus INDEPENDENTLY, which is blind to what the combination does to each voice. On
+psappha it chose mod8 = 8@1|8@3|8@4|8@6, and B has not one attack where that accent and
+the mod-5 accent fire together:
+
+```
+B: mod8=off mod5=off  8 attacks     mod8=ON  mod5=off  2 attacks
+   mod8=off mod5=ON   3 attacks     mod8=ON  mod5=ON   0   <-- NEVER
+```
+
+So two of the eight velocities could never sound in B, whatever the span accent did. Its
+ceiling was 6. Every version from `dois_28` to `dois_34` reported "B 6/6" as a success,
+and in its own terms it was: B was at its ceiling. The ceiling was the problem.
+
+**The fix is a constraint, not a different number.** Choosing the weather is now a search
+with the requirement inside it — the same shape the span residues already had. Of the 700
+densest-half candidates, **642 satisfy it**; the blind rule simply landed on one of the 58
+that do not. The densest that satisfies it is mod8 = 8@1|8@3|8@4|8@5, mod5 = 5@1|5@3: one
+attack less dense in mod8, mod5 unchanged, every voice at 8/8. Span residues and pass
+difference are untouched — still (0, 9, 10, 21, 31), still 6.
+
+**It generalises** (Principle VII): 7x5 and 11x3 both reach 8/8 in every voice now, where
+7x5 previously left B and D short. A sieve where no weather manages it is still possible,
+and then the derivation says so and uses the densest rather than refusing.
+
+**A ranking mistake worth remembering.** My first version ranked each modulus separately
+and took the first satisfying combination in that order. That is not the same as ranking
+whole weathers by total density: it preferred keeping mod8 at its densest and changing
+mod5 instead, an equally dense weather that cost a step of pass difference (5 rather
+than 6). `favour()` in `accents.py` carries the note.
+
+**`tests/test_requirements.py`** states all three requirements as tests read from the
+rendered MIDI, including two that stop them passing by accident: one confirms the rhythm
+really is identical on every pass (otherwise requirement 1 is trivial), and one pins the
+`dois_34` weather and asserts B falls to 6 — the test that gives this version its reason
+to exist.
+
+83 of the 656 velocities moved. No note moved. 41 tests, 41s. Re-rendering leaves every
+file byte-identical.
+
+---
+
+## `dois_34`: the search bounds measured, and the last arbitrary number removed (2026-09-30)
 
 The first musical change since `dois_30`, and it was authorised after measurement rather
 than argued for. **No note moved** — onsets, durations, pitches and channels are still

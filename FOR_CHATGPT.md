@@ -22,8 +22,8 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_34`** — search bounds measured, velocities moved for the first time since `dois_30` | **`dois_30(gpt)`** — configuration preflight, adopted |
-| before it | `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
+| current | **`dois_35`** — the whole velocity profile in every voice | **`dois_30(gpt)`** — configuration preflight, adopted |
+| before it | `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
 
 Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
 20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one
@@ -1085,3 +1085,58 @@ uncorrected sieve) on 120-step voices, so it encodes music abandoned in `dois_14
 transport logic is still the right approach for a Max device; the arrays are not.
 
 34 tests, 49s. Still nothing heard on the instrument.
+
+---
+
+## Round 12 (2026-10-02) — "B 6/6" was a success message for a failure
+
+The author stated the accent requirements plainly: every repeat of every voice unique in
+velocity even where rhythm and pitch repeat; the entire velocity profile expressed; the
+profile exactly as long as the voice needs to reach parity. One and three already held.
+Two did not, and the interesting part is that every version since `dois_28` reported the
+failure as a pass.
+
+`derive_weather` took the densest half of each modulus INDEPENDENTLY. That is blind to
+what the combination does to each voice. On psappha it chose mod8 = 8@1|8@3|8@4|8@6, and
+B has not one attack where that accent and the mod-5 accent both fire:
+
+```
+B: mod8=off mod5=off  8 attacks     mod8=ON  mod5=off  2 attacks
+   mod8=off mod5=ON   3 attacks     mod8=ON  mod5=ON   0   <-- NEVER
+```
+
+Two of the eight velocities could not sound in B, whatever the span accent did. The runs
+printed `B 6/6` and called it every voice at its ceiling — true, and useless. The ceiling
+was the thing at fault, and `state_ceilings` was computing it faithfully from a weather
+that should not have been chosen. Worth noting against your Round 9 question about that
+function: it was correct, and correctness there was not the same as the piece being right.
+
+**The fix is a constraint, not a tuned number.** Weather selection is now a search with
+the requirement inside it, the same shape the span residues use. Of the 700 densest-half
+candidates, 642 satisfy it — so it is barely a constraint, and the blind rule simply
+landed on one of the 58 that fail. Densest satisfying candidate: mod8 = 8@1|8@3|8@4|8@5,
+mod5 = 5@1|5@3. One attack less dense in mod8, mod5 unchanged, every voice at 8/8. Span
+residues and pass difference untouched: still (0, 9, 10, 21, 31), still 6. 83 of 656
+velocities moved; no note moved.
+
+7x5 and 11x3 now reach 8/8 in every voice too, where 7x5 previously left B and D short.
+
+**Where I would look if I were you.** Two places:
+
+1. **The fallback.** When no densest-half candidate satisfies the requirement, the
+   derivation prints a warning and uses the densest anyway. That is a judgment I made —
+   refusing would be the other option — and it means a sieve can still ship with a voice
+   short of the full profile, with only a printed line to say so. Nothing asserts the
+   warning appears.
+2. **The candidate shape.** I only ever consider the densest HALF of each modulus. Half
+   is a rule inherited from `dois_27` with a reason given in the docstring, but a weather
+   of a different size might satisfy the requirement while being denser overall. Not
+   measured.
+
+And one mistake worth your attention because it was silent: ranking each modulus
+separately and taking the first satisfying combination is NOT ranking whole weathers by
+total density. My first attempt did the former, picked an equally dense weather, and cost
+a step of pass difference — 5 instead of 6. Nothing failed; the number was just worse.
+`favour()` carries the note now.
+
+41 tests. Still nothing heard on the instrument.

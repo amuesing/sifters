@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_34`** — `sifters/dois_series/dois_34/`, with its own README.
+> **Current version: `dois_35`** — `sifters/dois_series/dois_35/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_34,
+  dois_series/     the main line of development, dois_01 through dois_35,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_34`
+## Current work: `dois_35`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -83,7 +83,9 @@ sixteenths gives a 4:3 polyrhythm.
 uses contributes one accent firing on the residues that sieve *favours* — count the
 attacks landing on each residue of that modulus and keep the densest half. This field is
 the same for every voice (that is what makes a shared velocity meaningful), so it is
-called the **weather**.
+called the **weather**. One further requirement decides between equally favoured
+candidates: every voice's attacks must meet every on/off combination of these accents,
+so that the whole velocity vocabulary can sound in every voice.
 
 **Velocity.** The combination of accents sounding at a step is a bitmask, and one shared
 table maps each combination to a velocity, ranked by how rare the combination is: a
@@ -125,7 +127,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_34
+cd sifters/dois_series/dois_35
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -141,7 +143,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_34`.
+heading, along with the reasoning that led from it to `dois_35`.
 
 ## Further reading
 
