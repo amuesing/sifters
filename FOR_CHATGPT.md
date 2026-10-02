@@ -1140,3 +1140,30 @@ a step of pass difference — 5 instead of 6. Nothing failed; the number was jus
 `favour()` carries the note now.
 
 41 tests. Still nothing heard on the instrument.
+
+### Addendum, same day — parity restated as a minimum
+
+The author added a rule: *"the accent sieves should achieve the exact minimum duration for
+all voices to achieve parity... and by parity I mean that voices of different durations
+(because of base durational values of rhythms) end at the exact same time."*
+
+It already held, so nothing in the music changed. What was missing is worth naming because
+it is the kind of gap you have caught twice now: the program computed parity as an LCM and
+asserted the voices land on it, but **nothing tested the definition** — only the
+arithmetic. If `parity_point` were replaced by some multiple of the LCM, or
+`required_modulus` started choosing loosely rather than smallest, every existing check
+would still pass.
+
+Four tests now pin it, in `dois_35/tests/test_requirements.py`:
+
+1. the parity point is minimal, by brute force over every tick count below it rather than
+   by trusting `math.lcm`;
+2. each accent profile is exactly 19200 ticks, not a multiple;
+3. each span accent uses the smallest modulus that reaches parity — no modulus below 32
+   for A/B/C, none below 3 for D. This is the claim with no safety net anywhere else;
+4. the weather's period divides every note layer, so it cannot extend the profile at all.
+
+Measured: nothing below 19200 is a common ending for A/B/C (4800) and D (6400). Principle
+II in CONTEXT.md now carries the author's restatement and the three claims.
+
+Tests are not part of the fingerprint, so the twelve files are byte-identical. 45 tests.

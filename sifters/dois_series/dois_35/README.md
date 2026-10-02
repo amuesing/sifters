@@ -114,8 +114,9 @@ Derived from the sieve, for any sieve:
   what lets the whole velocity profile sound in every voice. Where the two pull against
   each other the requirement wins and the densest candidate satisfying it is taken; on
   psappha that costs one attack of density in the mod-8 accent and nothing in mod-5;
-- **the span accent's modulus** — forced by the parity arithmetic: the smallest M where
-  `lcm(layer, M)` equals the steps that voice needs to reach parity. Voices with longer
+- **the span accent's modulus** — forced by the parity arithmetic: the SMALLEST M where
+  `lcm(layer, M)` equals the steps that voice needs to reach parity. Smallest matters: a
+  larger modulus would also reach parity, and overshoot on the way. Voices with longer
   basic units need fewer steps and so get smaller moduli;
 - **the span accent's residues** — searched, keeping the set that puts every voice at
   its ceiling and then makes the passes differ most. The search range is the span
@@ -130,6 +131,32 @@ Still yours: the sieve, how the voices relate (complement, shift, intersection),
 basic units, tempo, root note, gate and velocity range. Naming `WEATHER` or
 `SPAN_RESIDUE_SOURCE` explicitly in `config.py` overrides the derivation and is checked
 the same way.
+
+## Parity is a minimum, not a target
+
+Parity means voices of different basic units **end at the exact same time**, and the
+accents must get them there at the **earliest moment that is possible** — not a multiple
+of it. For this sieve:
+
+```
+A, B, C   40 steps x 120 ticks = 4,800
+D         40 steps x 160 ticks = 6,400
+                          LCM  = 19,200 ticks   <- nothing shorter works
+```
+
+Three things have to hold for that to mean anything, and `tests/test_requirements.py`
+asserts each one from the project itself rather than trusting the arithmetic:
+
+1. **the parity point is minimal** — checked by brute force over every tick count below
+   it, because an LCM is only minimal if it really is an LCM;
+2. **each accent profile is exactly that long** — A/B/C 160 steps, D 120 steps, all four
+   19,200 ticks. Not 38,400, not any other multiple;
+3. **each span accent uses the smallest modulus that reaches it** — no modulus below 32
+   gets A/B/C there, none below 3 gets D there.
+
+A fourth test covers the way this could be broken from the other side: a weather accent
+whose period did not divide the note layer would extend the profile past parity. That is
+what `require_static_weather` refuses, and the test states the requirement positively.
 
 ## When a setting is wrong
 

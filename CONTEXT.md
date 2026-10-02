@@ -59,6 +59,27 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ## CURRENT — `dois_35`: the whole velocity profile, in every voice (2026-10-02)
 
+### Parity restated as a minimum (2026-10-02)
+
+The author added a rule to the weather: *"the accent sieves should achieve the exact
+minimum duration for all voices to achieve parity... so the accents should achieve the
+minimum possible duration to achieve parity."*
+
+**It already held.** `parity_point` is an LCM — minimal by construction — and
+`require_first_parity` asserts the voices land on it, with `check.py` confirming it from
+the written files. What was missing was any test of the DEFINITION rather than the
+arithmetic: nothing would have noticed if the LCM were replaced by a multiple of itself,
+or if `required_modulus` started choosing loosely. Four tests now pin it (Principle II,
+restated below): the parity point checked minimal by brute force rather than by trusting
+`math.lcm`; each accent profile exactly 19200 and not a multiple; each span accent on the
+smallest modulus that reaches parity; and the weather's period dividing every note layer
+so it cannot extend the profile at all.
+
+Measured: nothing below 19200 is a common ending for A/B/C (4800 each) and D (6400); every
+profile is exactly 19200; no modulus below 32 reaches it for A/B/C, none below 3 for D.
+No music changed — tests are not part of the fingerprint, and the twelve files are
+byte-identical.
+
 The author stated three requirements for the accents:
 
 > each repeat of each voice has unique velocities despite possibly identical rhythms and
@@ -1527,10 +1548,33 @@ repetition parity never asked for. Depth of variation and total duration are one
 
 ---
 
-## Governing Principle II: Parity Through Accent Choice (2026-09-02)
+## Governing Principle II: Parity Through Accent Choice (2026-09-02, restated 2026-10-02)
 
 > Stated by the user: *"it is important to try to create accent sieves that create parity
 > between durations in the event where the base unit of one voice differs from another."*
+>
+> Restated by the user 2026-10-02, adding the minimum: *"the accent sieves should achieve
+> the exact minimum duration for all voices to achieve parity. And by parity I mean that
+> voices of different durations (because of base durational values of rhythms) end at the
+> exact same time. So the accents should achieve the minimum possible duration to achieve
+> parity."*
+
+**The minimum is not a preference, it is the definition.** Parity is the FIRST tick at
+which every voice ends together, and the accents must reach exactly that — not a multiple
+of it. Three separate things have to be true, and all three are now asserted in
+`dois_35/tests/test_requirements.py` rather than merely computed:
+
+1. **the parity point is minimal.** Checked by brute force over every tick count below it,
+   not by trusting the LCM: for this piece nothing below 19200 is a common ending.
+2. **each accent profile is exactly that long.** A/B/C run 160 steps x 120 ticks, D runs
+   120 x 160 — all four exactly 19200.
+3. **each span accent uses the SMALLEST modulus that gets there.** A larger one would also
+   reach parity, and overshoot on the way. For A/B/C no modulus below 32 reaches it; for D
+   none below 3.
+
+Measured 2026-10-02, all three hold. The third is the one with no safety net elsewhere:
+`required_modulus` picks the smallest by construction, and nothing else in the program
+would notice if that changed.
 
 This refines — it does not contradict — the principle below. Equal lengths must never be
 **imposed** by padding or repeating. But they can be **earned**, by choosing accent moduli

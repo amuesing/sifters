@@ -122,3 +122,87 @@ class TheWeatherIsWhatMakesRequirementTwoPossible(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ParityIsTheMinimum(unittest.TestCase):
+    """The accents must reach parity at the EARLIEST moment it is possible, not later.
+
+    The author's wording: *"the accent sieves should achieve the exact minimum duration
+    for all voices to achieve parity... and by parity I mean that voices of different
+    durations (because of base durational values of rhythms) end at the exact same
+    time."*
+
+    Three separate claims hide in that, and each is tested here:
+
+      1. the parity point is the SMALLEST tick count at which every voice ends together;
+      2. every voice's accent profile is exactly that long — not a multiple of it;
+      3. each voice's span accent uses the SMALLEST modulus that gets it there, since a
+         larger one would reach parity too and overshoot on the way.
+
+    `compose.parity_point` computes an LCM, which is minimal by construction, and
+    `require_first_parity` asserts the voices land on it. Neither of those would notice
+    if the definition itself drifted — if the LCM were replaced by some multiple, or the
+    modulus chosen loosely. These tests pin the definition, not the arithmetic.
+    """
+
+    def setUp(self):
+        import math
+        import sys
+        sys.path.insert(0, str(PROJECT))
+        import config, compose
+        from sieve import build_binary
+        self.math = math
+        base, layers = {}, {}
+        for cfg in config.INSTRUMENT_CONFIGS:
+            binary, period = build_binary(cfg, base)
+            base[cfg['name']], layers[cfg['name']] = binary, period
+        self.base, self.layers = base, layers
+        self.units = {c['name']: compose.get_step_ticks(c)
+                      for c in config.INSTRUMENT_CONFIGS}
+        self.raw = {n: layers[n] * self.units[n] for n in layers}
+        self.parity = math.lcm(*self.raw.values())
+        self.addCleanup(sys.path.remove, str(PROJECT))
+
+    def test_1_no_shorter_duration_lets_every_voice_end_together(self):
+        """Brute force, not an LCM: check every tick count below the parity point."""
+        self.assertEqual(self.parity, PARITY_TICKS)
+        earlier = [t for t in range(1, self.parity)
+                   if all(t % raw == 0 for raw in self.raw.values())]
+        self.assertEqual(earlier, [], 'a shorter shared ending exists')
+        # and it IS an ending for every voice, not merely the smallest candidate
+        for name, raw in self.raw.items():
+            self.assertEqual(self.parity % raw, 0, name)
+
+    def test_2_each_accent_profile_is_exactly_that_long(self):
+        for voice, passes in PASSES.items():
+            ticks = passes * LAYER * STEP_TICKS[voice]
+            self.assertEqual(ticks, self.parity,
+                             f'{voice} runs {ticks} ticks, parity is {self.parity}')
+
+    def test_3_the_span_modulus_is_the_smallest_that_reaches_parity(self):
+        import sys
+        from accents import required_modulus
+        for voice, layer in self.layers.items():
+            target = self.parity // self.units[voice]
+            chosen = required_modulus(layer, target)
+            self.assertIsNotNone(chosen, voice)
+            self.assertEqual(self.math.lcm(layer, chosen), target, voice)
+            smaller = [k for k in range(1, chosen)
+                       if self.math.lcm(layer, k) == target]
+            self.assertEqual(smaller, [],
+                             f'{voice} could have used modulus {smaller} instead '
+                             f'of {chosen}')
+
+    def test_4_the_weather_never_extends_the_profile(self):
+        """A weather accent whose period did not divide the layer would push past it."""
+        from accents import derive_weather
+        from sieve import true_period
+        import config
+        weather = config.WEATHER or derive_weather(
+            self.base, config.INSTRUMENT_CONFIGS[0]['sieve'], self.layers, quiet=True)
+        for label, expression in weather.items():
+            period = true_period(expression, quiet=True)
+            for voice, layer in self.layers.items():
+                self.assertEqual(layer % period, 0,
+                                 f'{label} (period {period}) does not divide '
+                                 f"{voice}'s {layer}-step layer")

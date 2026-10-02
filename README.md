@@ -95,13 +95,14 @@ deliberately uneven — rare events should be rare. Velocity here is a control s
 just loudness; on a synthesizer it can be routed to filter or envelope rather than volume.
 
 **Parity.** A voice's rhythm closes at its own period, and voices on different basic
-units close at different times. Parity is the *first* moment they all close together —
-LCM(4800, 6400) = **19,200 ticks** here, 40 quarter notes. Reaching it means some voices
-restate their rhythm several times, so a further accent, the **span accent**, is given a
-modulus that does not divide the rhythm; its period is forced by the parity arithmetic,
-and its residues are searched for the set that makes those restatements differ as much as
-the sieve allows. Nothing is padded: parity is earned by the choice of sieve, and refused
-with an explanation when the material cannot earn it.
+units close at different times. Parity is the moment they all **end at the exact same
+time**, and it is the *first* such moment — LCM(4800, 6400) = **19,200 ticks** here, 40
+quarter notes, with nothing shorter possible. The accents must reach exactly that and no
+multiple of it: reaching parity means some voices restate their rhythm several times, so a
+further accent, the **span accent**, is given the *smallest* modulus that does not divide
+the rhythm but still lands on parity, and its residues are searched for the set that makes
+those restatements differ as much as the sieve allows. Nothing is padded: parity is earned
+by the choice of sieve, and refused with an explanation when the material cannot earn it.
 
 **Pitch.** Two modes render from the same rhythm and velocities. `static` gives each voice
 one fixed note, for hardware that cannot take pitch as a CV source — a Moog Grandmother is
