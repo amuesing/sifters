@@ -360,3 +360,60 @@ Changing basic units or allowing a richer structurally derived accent vocabulary
 could change feasibility; these are possible future compositional choices, not
 changes made or authorized by this note. No recommendation to extend beyond first
 parity, alter the current lattice, or weaken the current piece's principles is intended.
+
+
+## GPT review of current dois_35 and the lattice — 2026-10-05
+
+Claude: the author asked for my thoughts on the latest project update, ways to improve it,
+and a plain explanation of the lattice. I reviewed the current `dois_35` code and notes.
+This is a review note only; I did not change your version's code or music.
+
+### Lattice: sound arithmetic, with a precise musical scope
+
+I found no arithmetic defect in the current lattice. For the 8-by-5 grid, each step `n`
+has coordinates `(n mod 8, n mod 5)`. Because 8 and 5 are coprime, these coordinates
+identify each of the 40 step positions uniquely. The renderer assigns an offset
+`(5 * row + 8 * column) mod 40`, which equals `13 * n mod 40`; since 13 is coprime to 40,
+all 40 offsets occur once before the cycle repeats. `pitch.py` constructs the grid form,
+and `check.py` verifies the independent multiplier form.
+
+For the author, the simplest distinction is: **the sieve decides when a voice sounds;
+the lattice assigns a pitch to that step.** Pitch does not depend on whether that exact
+step is included in a particular voice's sieve. All voices use the same step-to-pitch
+map, so simultaneous attacks at the same step are unisons. Also, modulo 40 describes a
+40-semitone pitch field, not octave-equivalent pitch classes; the +13 step canon is +9
+modulo 40, with wraparounds that sound as -31 semitones. These are consequences of the
+chosen structure, not implementation bugs. The author may want a small 8-by-5 example in
+the `dois_35/README.md` making the timing-versus-pitch distinction explicit.
+
+One robustness improvement: `pitch.lattice_axes()` extracts the moduli with a regular
+expression from the first voice's raw sieve string. This works for the present expression,
+but couples pitch setup to its textual spelling. Consider exposing the base moduli from
+the parsed sieve representation, or declaring them once as structured configuration, so
+the lattice and sieve parser share a reliable source of truth.
+
+### Weather search: current configuration succeeds; general fallback weakens the promise
+
+The current psappha configuration finds a weather that lets every voice reach the full
+velocity profile, and the tests pin that result. In `accents.py`, however, if no
+qualifying candidate is found, or the Cartesian search exceeds 500,000 candidates, the
+function prints a warning and returns the densest-half fallback without checking the
+whole-profile requirement. A different sieve could therefore render with a shortfall.
+If the full profile is a hard requirement, consider refusing before export in either case.
+If best-effort behavior is desired for other compositions, make it an explicit option and
+have the result/check output state clearly whether the requirement was met.
+
+The search also considers only half-sized residue sets for each modulus. The documented
+reason for half is understandable, but it is still a candidate-shape choice; other set
+sizes might satisfy all voices with equal or greater total density. Measuring that would
+be a useful bounded follow-up, while preserving the current output until an intentionally
+separate comparison is made.
+
+### Export safety and listening
+
+The notes still identify export atomicity as open: configuration preflight protects files
+from invalid settings, but a failure during output can leave a partially replaced MIDI
+set. Consider staging and verifying the complete set before replacing the prior exports.
+And structural checks cannot establish whether the pitches, unisons, or velocity profiles
+sound right with the intended patches; that remains an audition question. I did not run
+the test suite for this review.
