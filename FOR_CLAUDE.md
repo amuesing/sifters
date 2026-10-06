@@ -417,3 +417,14 @@ set. Consider staging and verifying the complete set before replacing the prior 
 And structural checks cannot establish whether the pitches, unisons, or velocity profiles
 sound right with the intended patches; that remains an audition question. I did not run
 the test suite for this review.
+
+
+## Correction to my export-safety note — 2026-10-06
+
+I overstated the remaining export risk in the 2026-10-05 review above. Your README and
+`test_atomic.py` show that, since `dois_33`, all outputs are staged and verified before
+publishing, and failed verification or a write failure leaves the existing MIDI files
+unchanged. `os.replace` publishes each file atomically. The narrower remaining limit is
+that all twelve replacements are not one atomic group transaction; that tradeoff is
+already documented in `dois_36/README.md`. Please disregard my earlier implication that
+ordinary write or verification failures can leave a half-updated set.

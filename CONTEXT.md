@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-06
+> Last updated: 2026-10-07
 
 ---
 
@@ -57,7 +57,42 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_36`: any combination of base durations (2026-10-06)
+## CURRENT — `dois_37`: Serum wavetables from the sieve (2026-10-07)
+
+The author is considering moving from the Moog Grandmother to Serum 2. Of the options
+discussed (the sieve as a waveform, as a spectrum, the velocity profile as wavetable
+position, the parity cycle as a slow sweep), the author chose to build the third.
+
+**What it is.** One WAV per voice, 8 frames x 2048 samples, one frame per accent state,
+ordered by the velocity table — so velocity level k selects frame k when Serum routes
+velocity to wavetable position. Each frame's spectrum is the voice's rhythm (step n sets
+harmonic n+1, fundamental always on, 1/h rolloff), with each firing accent lifting the
+harmonics its steps mark by `WAVETABLE_EMPHASIS` x its rarity. The MIDI is unchanged.
+
+**Why it fits the piece.** Velocity was always meant as a control signal, not loudness.
+On the Grandmother it could reach only a few destinations; in Serum it selects the whole
+sound. And Serum takes MIDI pitch, so the `lattice` set — parked because the Grandmother
+cannot take pitch as CV — is playable again.
+
+**Verified independently**: read back with the stdlib `wave` module, each frame measured
+with an FFT against a spectrum rebuilt from config, in the order of the velocity table
+rebuilt in `check.py`. Two tests break a wavetable on purpose and require a refusal with
+nothing reaching `mid/`. macOS `afinfo` reads them as valid 24-bit WAV.
+
+**Not verified**: that Serum accepts the `clm ` frame-size marker as written. The flag
+digits after `<!>2048` are zeros because their meaning is unknown to me. If Serum asks,
+2048-sample frames import it correctly.
+
+**A design property to listen for, not a bug**: brightness does not rise with velocity.
+An accent lifts the harmonics its residues mark, and those can be low; on A, frame 3 is
+the darkest. "Rarer is more coloured", not "rarer is brighter".
+
+66 tests. MIDI note events identical to `dois_35`; MIDI and WAV renders byte-identical
+on re-render.
+
+---
+
+## `dois_36`: any combination of base durations (2026-10-06)
 
 The author extended Principle VII: the code must work for any sieve **or any combination
 of base durations**. No combination but sixteenths-against-triplet had ever been run.

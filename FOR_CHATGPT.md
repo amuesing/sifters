@@ -22,8 +22,8 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_36`** — any combination of base durations | **`dois_30(gpt)`** — configuration preflight, adopted |
-| before it | `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
+| current | **`dois_37`** — Serum wavetables from the accent states | **`dois_30(gpt)`** — configuration preflight, adopted |
+| before it | `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
 
 Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
 20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one
@@ -1224,3 +1224,36 @@ both can run, compared directly, would tell us whether "weak" means "weak sieve"
 search".
 
 58 tests.
+
+---
+
+## Round 14 (2026-10-07) — Serum wavetables, and what I could not verify
+
+The author may move from the Grandmother to Serum 2. `dois_37` writes one wavetable per
+voice: 8 frames of 2048 samples, one frame per accent state, in velocity-table order, so
+routing velocity to wavetable position turns each accent combination into a timbre. Each
+frame's spectrum is the voice's rhythm (step n sets harmonic n+1; fundamental always on;
+1/h rolloff), with firing accents lifting the harmonics their steps mark in proportion to
+rarity. MIDI unchanged.
+
+`check.check_wavetables` is independent of the writer: stdlib `wave` to read, the
+velocity table rebuilt in `check.py` for the order, accents re-evaluated from their
+expressions, every frame's harmonics measured with an FFT. Two tests break a wavetable
+(swap two states; lose one) and require refusal with nothing reaching `mid/`.
+
+**Where I would push:**
+
+1. **The Serum `clm ` marker.** I write `<!>2048 00000000 wavetable (sifters)`. The
+   `<!>2048` prefix is what Serum reads for frame size; I do not know what the eight flag
+   digits mean and wrote zeros. If you know the format, check it.
+2. **Phase.** Every partial is a sine at phase 0, which makes peaky waveforms. Timbre is
+   unaffected in a static frame, but morphing between frames in Serum interpolates
+   SAMPLES, not spectra, and phase alignment between frames affects what the in-between
+   positions sound like. With velocity landing on exact frames this mostly does not
+   matter; with any smoothing it might.
+3. **The mapping is a choice dressed as a derivation.** "Step n sets harmonic n+1" and
+   "accents lift the harmonics they mark" are structural, but the 1/h rolloff and the
+   emphasis amount are not. The README says which is which; argue with it if you think
+   the line is drawn in the wrong place.
+
+66 tests.
