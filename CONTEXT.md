@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-02
+> Last updated: 2026-10-06
 
 ---
 
@@ -57,7 +57,59 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_35`: the whole velocity profile, in every voice (2026-10-02)
+## CURRENT — `dois_36`: any combination of base durations (2026-10-06)
+
+The author extended Principle VII: the code must work for any sieve **or any combination
+of base durations**. No combination but sixteenths-against-triplet had ever been run.
+
+**Measured first, through the real pipeline:** of nine combinations, five rendered,
+three were refused, and one (120 against 180) would have needed 64.6 million candidates —
+about three hours. **Now all nine render with every voice at 8/8**, and this piece's
+twelve files are note-for-note and velocity-for-velocity identical to `dois_35`.
+
+What broke, in the order it was found — each fix exposed the next:
+
+1. **Single-pass voices got an accent that never switches.** When one pass reaches
+   parity, `required_modulus` returned 1. The voice now takes its own layer as the
+   modulus, which still ends it after one pass. Not its smallest factor: a 2-step
+   accent was MEASURED at 7 of 8, because evenness is already fixed by the 8-step
+   weather cycle — any short cycle inside one pass is built from the same steps as the
+   weather.
+2. **The checker read file length from the last note.** A single pass ending on a rest
+   came back a step short and failed the derivation check on correct music. Several
+   passes had always masked it. It now reads where the track ends.
+3. **`state_ceilings` assumed every attack recurs.** "Twice the combinations met" is
+   right when a voice repeats — the same attack comes round each pass, span accent on
+   one time, off another. In one pass an attack happens once. With every voice on one
+   unit, B met the both-accents combination at a single attack: real maximum 7, promised
+   8. Ceilings and the weather's requirement now count OCCURRENCES across passes
+   (`accents.states_reachable`). This was the unproven "2x" assumption I had pointed
+   ChatGPT at in Round 10, and it failed exactly where I said it might.
+4. **Searches too large to run.** Above 300,000 candidates, `local_span_search` takes
+   over: deterministic, one change at a time, stops when nothing helps, and says it may
+   have missed the best. 120/180 renders in about a second, with a weak but honest
+   result — closest passes 2 steps apart, against 6 here.
+5. **The weather fallback** ChatGPT flagged (2026-10-05) now refuses instead of rendering
+   a voice short of the profile behind a printed warning.
+
+Also from that review: the lattice and the weather read the moduli through one function,
+`sieve.sieve_moduli`, cross-checked against music21's own parse.
+
+**ChatGPT's review was wrong on one point, and the fault was mine:** it listed export
+atomicity as open, but `dois_33` staged exports. The "Where things stand" summary at the
+top of `FOR_CHATGPT.md` still said otherwise; rewritten.
+
+**Working environment.** The repo and its `.venv` live in iCloud-synced `Documents`,
+and evicted ("dataless") files made every import and `git status` hang for minutes. This
+round ran in a fresh environment outside iCloud with identical library versions,
+confirmed by reproducing `dois_35`'s twelve files byte for byte. Setting the
+`Development` folder to **Keep Downloaded** in Finder prevents it.
+
+58 tests.
+
+---
+
+## `dois_35`: the whole velocity profile, in every voice (2026-10-02)
 
 ### Parity restated as a minimum (2026-10-02)
 
@@ -1367,10 +1419,17 @@ A generative MIDI composition system based on **Xenakis sieve theory** — a mat
 
 ---
 
-## Governing Principle VII: The Engine Is General; Only Config Is Specific (2026-09-23)
+## Governing Principle VII: The Engine Is General; Only Config Is Specific (2026-09-23, extended 2026-10-03)
 
 Stated by the author 2026-09-23: *"i don't want it to be hard coded. in other words, I
 want to be able to input another sieve and for it to also work."*
+
+Extended by the author 2026-10-03: *"I want the code to be useful for any given sieve, or
+combination of base durations."* The second half had never been tested — every run had
+used three voices on sixteenths against one on a triplet eighth. `dois_36` tested nine
+combinations, fixed what broke, and keeps three of the hardest as end-to-end tests in
+`tests/test_any_durations.py`: every voice on one unit, one voice reaching parity in a
+single pass, and 120 against 180.
 
 **config.py describes THIS composition. Every other file must work for any sieve.** No
 module may assume the moduli are 8 and 5, the period 40, the voices four, the units 120

@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_35`** — `sifters/dois_series/dois_35/`, with its own README.
+> **Current version: `dois_36`** — `sifters/dois_series/dois_36/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_35,
+  dois_series/     the main line of development, dois_01 through dois_36,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_35`
+## Current work: `dois_36`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -114,8 +114,10 @@ Output is twelve MIDI files, six per pitch mode: one per voice, a four-track arr
 and a single-track ensemble. Each per-voice file is identical note-for-note to its track
 in the ensemble files, so it can be used to verify them.
 
-**Change the sieve and all of this recomputes** — rhythms, weather, span moduli and
-residues, parity, meter and the lattice axes. Nothing above is written into the code; only
+**Change the sieve, or any voice's basic unit, and all of this recomputes** — rhythms,
+weather, span moduli and residues, parity, meter and the lattice axes. Nine combinations
+of base durations are verified to render, from every voice on one unit to 120 against
+180. Nothing above is written into the code; only
 `config.py` describes this particular composition.
 
 **A setting that cannot work refuses the run before any file is replaced**, naming what
@@ -128,7 +130,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_35
+cd sifters/dois_series/dois_36
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -144,7 +146,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_35`.
+heading, along with the reasoning that led from it to `dois_36`.
 
 ## Further reading
 
