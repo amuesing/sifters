@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-07
+> Last updated: 2026-10-10
 
 ---
 
@@ -57,7 +57,56 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_37`: Serum wavetables from the sieve (2026-10-07)
+## CURRENT — `dois_38`: the wavetables reworked, and three questions measured (2026-10-10)
+
+The author imported `dois_37`'s wavetables into Serum 2, which asked for a frame size,
+and asked whether this was the best way to make them. The answer, built here:
+
+**Serum 2's exact format.** The 288 factory tables Serum 2 installs were read to find the
+real layout instead of guessing: 32-bit float, mono, `clm ` chunk
+`<!>2048 11000000 wavetable (www.xferrecords.com)` (240 of 288 use `11000000`, the rest
+`21000000`). `dois_37` had written 24-bit integers and zeros for the flags. The new
+format chunk is byte-for-byte identical to Serum's own. Serum itself is still unverified.
+
+**The mapping — and a correction from the author.** I proposed reading the sieve up to
+~1,000 harmonics, calling 40 "just where it starts repeating". The author: *"40 isn't just
+a random number though, it represents the periodicity of the sieve."* Right, and decisive:
+stating the period once in frequency is Principle I in another domain, and repeating it
+up the spectrum would be padding — 1,023 isn't even a multiple of 40. So: harmonic h
+sounds if h is in the sieve, for h = 1..period, fundamental always. That removes
+`dois_37`'s step-n-to-harmonic-n+1 offset and keeps exactly one period. Cost, accepted
+and documented: low notes are dark; brighten downstream in Serum, not in the derivation.
+
+**I was wrong about phases, and measured it.** I'd said in-phase partials make a tall,
+harsh spike and spread phases would be smoother. Measured over every frame, peak-to-
+average went 1.65 in phase -> 1.90 Newman, 1.79 Schroeder: spreading made it 1.2 dB
+quieter. Those phases suit FLAT spectra; 1/h in phase is a sawtooth's shape. Reverted;
+phases stay identical in every frame, which keeps Serum's in-between positions clean.
+
+**128 velocity frames** (frame v = velocity v, each timbre filling a band) replace eight,
+which left the lowest level ~5% of a frame off. **A sweep table** per voice follows the
+whole parity statement step by step and closes on itself — carrying the span accent's
+drift, which a frame per state cannot.
+
+**Three open questions, measured; the piece unchanged by all three:**
+- local span search vs exhaustive, on psappha: both reach 6 (local in 0.2s) — evidence
+  that 120/180's weak result is the material, not the search;
+- a sixth residue: also 6. `most = 5` is now measured enough on this sieve, not assumed;
+- weather sizes: density cannot arbitrate between sizes (bigger sets count more attacks),
+  and the full-profile requirement is satisfiable at nearly every size. Half stays a
+  stated choice.
+
+**Also:** the lattice explained with a worked example (ChatGPT's "the sieve decides when,
+the lattice decides pitch"); Serum setup and retrigger notes — where notes abut, the
+note-off always comes first, 127 of 127; `requirements.txt` pinning mido 1.3.3, music21
+10.5.0, numpy 2.4.6; `*.asd` ignored. The author set `Development` to Keep Downloaded;
+imports went from ~60s to under one.
+
+70 tests. MIDI note events identical to `dois_35`; renders byte-identical.
+
+---
+
+## `dois_37`: Serum wavetables from the sieve (2026-10-07)
 
 The author is considering moving from the Moog Grandmother to Serum 2. Of the options
 discussed (the sieve as a waveform, as a spectrum, the velocity profile as wavetable

@@ -1,2 +1,4 @@
 .*
 __pycache__/
+# Ableton writes an analysis file beside every audio file it opens
+*.asd
