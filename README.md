@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_38`** — `sifters/dois_series/dois_38/`, with its own README.
+> **Current version: `dois_39`** — `sifters/dois_series/dois_39/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_38,
+  dois_series/     the main line of development, dois_01 through dois_39,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_38`
+## Current work: `dois_39`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -115,7 +115,8 @@ each frame, harmonic h sounds if h is in the voice's sieve, for exactly one peri
 — 40 harmonics, the sieve's own periodicity — coloured by the accent sieves firing in
 that state. The velocity table holds one frame per MIDI velocity: route velocity to
 wavetable position and each note's accents choose its timbre. The sweep table follows
-the voice through its whole parity cycle, step by step.
+the voice through its whole parity cycle, step by step. `python3 compose.py
+--install-serum` puts them in Serum's own wavetable menu, under "sifters".
 
 Output is twelve MIDI files, six per pitch mode, plus eight wavetables: one per voice, a four-track arrangement,
 and a single-track ensemble. Each per-voice file is identical note-for-note to its track
@@ -137,7 +138,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_38
+cd sifters/dois_series/dois_39
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -154,7 +155,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_38`.
+heading, along with the reasoning that led from it to `dois_39`.
 
 ## Further reading
 

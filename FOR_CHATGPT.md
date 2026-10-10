@@ -22,8 +22,8 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_38`** — wavetables reworked; three open questions measured | **`dois_30(gpt)`** — configuration preflight, adopted |
-| before it | `dois_37`, `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
+| current | **`dois_39`** — wavetables as Serum 2's guide specifies | **`dois_30(gpt)`** — configuration preflight, adopted |
+| before it | `dois_38`, `dois_37`, `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
 
 Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
 20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one
@@ -1297,3 +1297,33 @@ Each timbre fills an 18-velocity band precisely so a different curve still lands
 right sound — but nobody has confirmed the curve. And still: nothing has been heard.
 
 70 tests.
+
+---
+
+## Round 16 (2026-10-10) — the Serum marker, from the manual rather than from copying
+
+A correction to Round 15, where I told you `dois_38`'s marker was settled by matching
+Serum's factory tables byte for byte. That was the mistake. The `clm ` flags are
+`<!>2048 BC000000`: B is blending (0 none, 1 crossfade, 2-4 spectral), C is Serum's
+factory flag — "do not set to 1 for custom wavetables". Every factory table sets it, so
+copying them labelled ours as factory. `dois_39` writes `00000000`.
+
+The rest came from the official Serum 2 User Guide, read in full for the relevant
+chapters (the author asked whether I had read all of it before building; I had read
+about 25 pages, said so, and then read the rest that bears on this):
+
+- dragging any WAV onto an oscillator always shows import choices (p. 292), so the
+  prompt the author saw was never the file. Tables in a folder directly inside Serum's
+  `Tables` load from the menu with no import step; `--install-serum` puts them there;
+- a `name.txt` beside `name.wav` with `[2048]` / `[no interp]` sets frame size on a drag
+  (p. 295) — written for every table;
+- Serum does not blend frames unless asked (p. 347), so `dois_38`'s 128 banded velocity
+  frames were never needed. Eight now, one per state.
+
+**Measured, and worth your scrutiny:** the closest pair of timbres differs only by the
+span accent, whose sieve marks few of the 40 harmonics. Emphasis 3 -> 20 moves those few
+harmonics 11 -> 25 dB but the mean difference only 0.6 -> 1.2 dB. A listening set lets the
+author choose. If you think "a few strong peaks" is the wrong kind of difference for an
+accent state to make, that is an argument about the mapping, and I would like to hear it.
+
+77 tests. No test writes to Serum's folder — installation is tested on a stand-in.

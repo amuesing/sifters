@@ -57,7 +57,48 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_38`: the wavetables reworked, and three questions measured (2026-10-10)
+## CURRENT — `dois_39`: the wavetables, as Serum 2's own guide says (2026-10-10)
+
+Serum 2 still asked how to import `dois_38`'s tables, and the author asked for Serum 2's
+documentation to be read — all of it — before building. The official User Guide is on
+this Mac (`Documents/Production/VSTs/Xfer Records/Serum 2 Presets/Serum 2 User Guide.pdf`,
+355 pages). At first only ~25 targeted pages were read; asked directly, I said so, then
+read the oscillator, Wavetable Editor, import, modulation, voicing and file-structure
+chapters in full and searched all 355 pages for anything else.
+
+**I had marked the tables as factory ones.** The `clm ` marker is `<!>2048 BC000000`: B is
+blending between frames (0 none, 1 crossfade, 2-4 spectral), C is the Serum factory flag
+— "do not set to 1 for custom wavetables". `dois_38` copied `11000000` from Serum's own
+files. Now `00000000`.
+
+**The prompt is Serum's design.** Dragging any WAV onto an oscillator offers import
+methods (guide p. 292), so the file was never the cause. Tables in a folder directly
+inside Serum's `Tables` (not deeper, p. 345) appear in the wavetable menu and load with no
+import step: `compose.py --install-serum` copies them to `Tables/sifters`. A plain render
+never writes outside the project, and no test does. `.txt` sidecars (`[2048]`,
+`[no interp]`, p. 295) cover drag-and-drop.
+
+**Eight velocity frames, not 128.** The author saw "many frames almost the same": 120 of
+128 were band duplicates. Serum does not blend frames unless asked (p. 347), so each
+velocity plays the frame it lands on; all land within 0.06 of a frame of their own.
+
+**The near-identical timbres, measured.** The closest pair differs only by the span
+accent, whose sieve marks a handful of the 40 harmonics. Mean difference stays small at
+any emphasis (A: 0.6 dB at 3, 1.2 at 20), but those few harmonics move 11 -> 25 dB.
+Stronger emphasis sharpens a peak; it does not change the whole colour. `emphasis_set.py`
+writes the velocity tables at 3, 8 and 20 into `listening/` for the author to choose.
+
+**Also from the guide**: Embed in Preset when saving (p. 303); Smooth Interpolation on WT
+POS for gliding (p. 46); the matrix curve to reshape a routing (p. 211); Limit Same Note
+Poly to 1 (p. 217); Warp modes for brightening low notes downstream (pp. 50-57). The guide
+advises dull-to-bright frame order (p. 346); the velocity table's order IS the velocity
+table, and each note jumps to its frame rather than sweeping, so it is kept.
+
+77 tests. MIDI note events identical to `dois_35`; renders byte-identical.
+
+---
+
+## `dois_38`: the wavetables reworked, and three questions measured (2026-10-10)
 
 The author imported `dois_37`'s wavetables into Serum 2, which asked for a frame size,
 and asked whether this was the best way to make them. The answer, built here:
