@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-10
+> Last updated: 2026-10-11
 
 ---
 
@@ -57,7 +57,45 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_39`: the wavetables, as Serum 2's own guide says (2026-10-10)
+## CURRENT — `dois_40`: a frame for every whole number (2026-10-11)
+
+**The first listening.** The author heard `dois_39`'s tables in Serum 2 and found the frames
+too alike, "like a distorted sine wave". Measured, they were: 71–85% of each frame's energy
+in the fundamental, 88–96% in three harmonics, frames correlated 0.95–0.98. The 1/h rolloff
+gave the lows nearly everything; accent states only nudged a few harmonics.
+
+**The author's terms.** Pitch-centric is not required; complexity or noise is welcome where
+the sieve supplies it; and NOTE (with pitch tracking OFF) or VELO will drive wavetable
+position. Also asked: what the table would be with no choices at all.
+
+**Five designs, measured before choosing** (each also auditioned in Serum as a prototype):
+rhythm AND accents as pulses (collapsed to 4–5 timbres on B and D; empty frame on A); attacks
+raised by agreement with the state, smoothed to one period (8 distinct, but built of choices);
+fully derived at one step per sample (the sieve repeats, so it buzzes rather than varies;
+energy at harmonic 51+, above what Serum keeps at most pitches); sieve-seeded noise from a
+40-bit LFSR seeded with the sieve (genuinely noisy, little to choose between frames); and
+**whole number i -> harmonic h sounds iff i + h is in the sieve**: no choices, 40 of 40
+distinct timbres, neighbours 39–45 dB apart, the 8 velocity levels 21–42 dB apart.
+
+**Why it fits.** A note number is a whole number and so is a velocity; the sieve is a rule
+about whole numbers; so it needs no mapping. The lattice set's notes cover every residue of
+the period, so with pitch tracking off the PITCH lattice becomes a TIMBRE lattice. B (the
+complement) holds the harmonics A's frame lacks; C (the canon) holds A's timbres 13 frames
+along. 128 frames, because MIDI values run 0–127 and NOTE/VELO at default put v on frame v.
+
+**Install fixed.** `dois_39` assumed Serum's default presets folder; this user's Serum reads
+`Documents/Production/VSTs/Xfer Records/Serum 2 Presets` (from `Serum2Prefs.json`). Tables
+now go to `Tables/sifters dois_40/` — one top-level folder per project and version, at the
+author's request; Serum scans no deeper. The earlier tables were reorganised the same way
+into `sifters dois_39` and `sifters dois_39 experiments`, after checking no saved preset
+referred to them.
+
+Removed: `WAVETABLE_EMPHASIS`, `WAVETABLE_ROLLOFF`, `emphasis_set.py` — nothing is chosen any
+more. 80 tests. MIDI identical to `dois_35`; renders byte-identical. `dois_40` not yet heard.
+
+---
+
+## `dois_39`: the wavetables, as Serum 2's own guide says (2026-10-10)
 
 Serum 2 still asked how to import `dois_38`'s tables, and the author asked for Serum 2's
 documentation to be read — all of it — before building. The official User Guide is on

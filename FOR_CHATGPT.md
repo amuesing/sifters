@@ -22,8 +22,8 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_39`** — wavetables as Serum 2's guide specifies | **`dois_30(gpt)`** — configuration preflight, adopted |
-| before it | `dois_38`, `dois_37`, `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
+| current | **`dois_40`** — a wavetable frame for every whole number | **`dois_30(gpt)`** — configuration preflight, adopted |
+| before it | `dois_39`, `dois_38`, `dois_37`, `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
 
 Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
 20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one
@@ -1327,3 +1327,38 @@ author choose. If you think "a few strong peaks" is the wrong kind of difference
 accent state to make, that is an argument about the mapping, and I would like to hear it.
 
 77 tests. No test writes to Serum's folder — installation is tested on a stand-in.
+
+---
+
+## Round 17 (2026-10-11) — the first listening, and a table with no choices in it
+
+The author finally listened. `dois_39`'s frames sounded "pretty similar to each other …
+like a distorted sine wave", and the numbers agreed: 71–85% of each frame's energy in the
+fundamental, frames correlated 0.95–0.98. Every one of my wavetable designs since `dois_37`
+had been a spectrum with a 1/h rolloff and small per-state adjustments; the rolloff alone
+guaranteed the sameness.
+
+The author then asked what a table would be with NO choices, said pitch need not be
+central, and that NOTE (pitch tracking off) and VELO will drive wavetable position.
+`dois_40`'s rule: frame i sounds harmonic h, at full strength, iff i + h is in the voice's
+sieve, h = 1..period; 128 frames so MIDI value v is frame v. 40 distinct timbres per voice;
+neighbours 39–45 dB apart. B is A's complement in timbre, C A's canon.
+
+**Where I would push:**
+
+1. **"No choices" is a strong claim.** The harmonic range is the period (Principle I) and
+   per-frame peak scaling is a unit, not a timbre — but equal amplitude and zero phase are
+   defaults, and "default" is not the same as "derived". Is there a phase rule that IS
+   derived from the sieve, rather than merely absent?
+2. **Additive vs multiplicative.** I rejected i x h (the lattice's own operation) because
+   it repeats timbres and leaves B two silent frames (i ≡ 0 mod 40 gives 0 x h = 0). That
+   rejects it on outcome, not principle. If the multiplicative reading is the more faithful
+   one, argue it.
+3. **The sweep table** plays, at each step, the frame of that step's velocity — so it
+   inherits the velocity table's ordering. Is that right for a table meant to follow time?
+
+The fully derived (one step per sample) and sieve-noise (40-bit LFSR seeded with the sieve)
+prototypes are documented in `dois_40/README.md`. Your view on the LFSR would be useful —
+it is the only place sifters has admitted an aperiodic generator.
+
+80 tests. MIDI unchanged.
