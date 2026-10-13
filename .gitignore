@@ -2,3 +2,5 @@
 __pycache__/
 # Ableton writes an analysis file beside every audio file it opens
 *.asd
+# The studies' audio previews rebuild in seconds (python3 studies.py): 32 MB kept out
+sifters/dois_series/dois_44_studies/audio/

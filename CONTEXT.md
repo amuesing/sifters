@@ -57,6 +57,24 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
+## `dois_44_studies` — five ideas built to be heard (2026-10-12)
+
+`sifters/dois_series/dois_44_studies/`: the ideas the review raised but did not build, each
+on dois_44 with one change, as MIDI, wavetables (in Serum under sifters → dois_44
+experiments) and audio previews synthesised in Python by `preview.py` — not by Serum. Not
+versions of the piece; each README section lists what holds, what diverges, what was
+chosen. (1) a second moving accent, 16 velocity states — extends Principle IV, B and D fall
+short of the full profile (14/16, 12/16); (2) A and C orchestrated by the sieve's seven
+clauses — depends on the sieve's spelling; (3) FM wavetables: an 8 × 5 grid table (ratio,
+depth), brightness 4.4 octaves, and a PM table with the voice's own frame as modulator,
+depth derived from the two-period bound; (4) a prolation canon at all eight divisors of 40,
+100 s — no span accent, so it repeats identically on purpose; (5) the four powers of ×13
+(×13, ×37, ×9, ×1), one per voice. `python3 studies.py` rebuilds everything in ~5 s; the
+audio is not in git. The superseded `dois_40 experiments` prototypes were moved out of
+Serum to the Trash on the author's say-so.
+
+---
+
 ## `eight_five` — a piece at 8:5 (2026-10-12)
 
 `sifters/eight_five/`: the `dois_44` engine, unchanged, with D on a quintuplet eighth (192

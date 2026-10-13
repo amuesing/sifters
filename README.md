@@ -53,6 +53,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 sifters/
   dois_series/     the main line of development, dois_01 through dois_44,
                    interleaved with ChatGPT's dois_NN(gpt) folders
+                   — and dois_44_studies/, five ideas built to be heard, not versions
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
   sixty/  third/  starbird/    earlier standalone pieces

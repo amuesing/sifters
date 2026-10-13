@@ -1,0 +1,194 @@
+{
+ "1": {
+  "second moduli": {
+   "A": 16,
+   "B": 16,
+   "C": 16,
+   "D": 6
+  },
+  "second residues": {
+   "16": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "6": [
+    1,
+    2
+   ]
+  },
+  "table": [
+   1,
+   9,
+   18,
+   43,
+   26,
+   51,
+   68,
+   93,
+   35,
+   60,
+   77,
+   102,
+   85,
+   110,
+   119,
+   127
+  ],
+  "states used": {
+   "A": 16,
+   "B": 14,
+   "C": 16,
+   "D": 12
+  },
+  "pass differences": {
+   "A": [
+    "17",
+    "27"
+   ],
+   "B": [
+    "8",
+    "13"
+   ],
+   "C": [
+    "18",
+    "27"
+   ],
+   "D": [
+    "20",
+    "20"
+   ]
+  },
+  "dois_44 pass differences": {
+   "A": [
+    "17",
+    "19"
+   ],
+   "B": [
+    "8",
+    "9"
+   ],
+   "C": [
+    "18",
+    "18"
+   ],
+   "D": [
+    "12",
+    "15"
+   ]
+  }
+ },
+ "2": {
+  "clause sizes": [
+   6,
+   3,
+   6,
+   5,
+   5,
+   1,
+   1
+  ],
+  "pads": "A and C: 36-42 by clause (C takes the clause of the attack it copies); B 43; D 44"
+ },
+ "3": {
+  "fm grid": {
+   "distinct frames": 40,
+   "brightness range (octaves)": 4.43,
+   "neighbours (octaves, median)": 1.24
+  },
+  "pm depth (radians, derived)": {
+   "A": 1.453,
+   "B": 1.308,
+   "C": 1.659,
+   "D": 1.559
+  },
+  "pm by sieve (A)": {
+   "distinct frames": 40,
+   "brightness range (octaves)": 0.79,
+   "neighbours (octaves, median)": 0.26
+  }
+ },
+ "4": {
+  "layers (statements of the sieve)": [
+   1,
+   2,
+   4,
+   5,
+   8,
+   10,
+   20,
+   40
+  ],
+  "step ticks": [
+   2400,
+   1200,
+   600,
+   480,
+   300,
+   240,
+   120,
+   60
+  ],
+  "length ticks": 96000,
+  "seconds at 120 BPM": 100.0,
+  "velocity table (weather only)": [
+   1,
+   43,
+   85,
+   127
+  ]
+ },
+ "5": {
+  "multipliers": {
+   "A": 13,
+   "B": 37,
+   "C": 9,
+   "D": 1
+  },
+  "meetings": {
+   "AC": {
+    "meetings": 80,
+    "unisons": 8
+   },
+   "AD": {
+    "meetings": 16,
+    "unisons": 1
+   },
+   "BC": {
+    "meetings": 28,
+    "unisons": 4
+   },
+   "BD": {
+    "meetings": 4,
+    "unisons": 1
+   },
+   "CD": {
+    "meetings": 14,
+    "unisons": 1
+   }
+  },
+  "one-step and two-step moves (mod 40)": {
+   "A": [
+    13,
+    26
+   ],
+   "B": [
+    34,
+    37
+   ],
+   "C": [
+    9,
+    18
+   ],
+   "D": [
+    1,
+    2
+   ]
+  }
+ }
+}
