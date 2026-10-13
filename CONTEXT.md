@@ -57,7 +57,22 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_43`: a canon in pitch, the period as an octave (2026-10-12)
+## CURRENT — `dois_44`: a form read from the sieve (2026-10-12)
+
+`form.py`: the lattice and canon sets also render as a 40-section form, one section per step
+of the period, each a whole parity statement. Voice X plays in section s iff its layer has
+an attack at step s (A 27, B the other 13, C 27, D 20); each section reads the lattice s
+steps on (transposition 13s mod 40), so all 40 differ — checked from the file section by
+section, and refused when the transposition is removed. 768,000 ticks, 13'20" at 120 BPM.
+No static form: its sections would repeat. The form question "code or DAW" (open since
+`dois_12`) gets a derived answer offered as material; nothing existing changed. dois_09's
+form used hand-set density thresholds; this uses membership.
+
+110 tests. Unheard.
+
+---
+
+## `dois_43`: a canon in pitch, the period as an octave (2026-10-12)
 
 **Canon set.** `canon` reads the lattice at the step each note descends from
 (`pitch.source_step`: a shift reads back by its distance, retrograde reflects,

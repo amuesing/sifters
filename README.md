@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_43`** — `sifters/dois_series/dois_43/`, with its own README.
+> **Current version: `dois_44`** — `sifters/dois_series/dois_44/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_43,
+  dois_series/     the main line of development, dois_01 through dois_44,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_43`
+## Current work: `dois_44`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -126,12 +126,18 @@ reading gives 40 different frames, the cut gives each its own register, 13 harmo
 its neighbours. Route NOTE (pitch tracking off) or VELO to wavetable position in Serum 2
 and every note, or every accent state, selects its own timbre — the pitch lattice becomes a
 lattice of timbres. `python3 compose.py --install-serum` puts the tables in Serum's menu,
-under sifters → dois_43.
+under sifters → dois_44.
 
 Output is eighteen MIDI files, six per pitch mode, plus eight wavetables and the tuning
 files: per mode, one file per voice, a four-track arrangement,
 and a single-track ensemble. Each per-voice file is identical note-for-note to its track
 in the ensemble files, so it can be used to verify them.
+
+**Form.** The lattice and canon sets also come as a form: 40 sections, one per step of the
+sieve's period, each a whole parity statement. A voice plays in section *s* exactly when its
+rhythm has an attack at step *s* — the rhythm read again, one level up — and each section
+reads the lattice *s* steps further on, so no two are alike. 13 minutes 20 seconds at
+120 BPM.
 
 **Change the sieve, or any voice's basic unit, and all of this recomputes** — rhythms,
 weather, span moduli and residues, parity, meter and the lattice axes. Nine combinations
@@ -149,7 +155,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_43
+cd sifters/dois_series/dois_44
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
