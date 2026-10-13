@@ -57,7 +57,32 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_41`: a register for every frame, and one derived number (2026-10-12)
+## CURRENT — `dois_42`: the span accent fills half of every block (2026-10-12)
+
+**Why.** The passes were nearly identical: A's four differed at 6–7 of 27 attacks, B's at 6
+of 13. The span accent fired on 5 of 32 positions — `dois_34`'s cap of five residues, ties to
+fewer.
+
+**The arithmetic, now the rule.** Pass k reads (k·L + i) mod M; with L = 40, M = 32 that is
+four positions 8 apart — a block of four, 8 blocks. An attack whose block holds f of n
+positions separates f(n−f) pass pairs, maximal at f = n/2, so the TOTAL pass difference is
+maximal exactly when every block is half full: the accent takes half its modulus, derived.
+Among the 1,679,616 half-full sets (exhaustive, meet-in-the-middle, under a second), leximin
+over every pass pair, then lowest residues: `{32: (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 20,
+22, 27, 31), 3: (0,)}`. One set per span modulus now (`SPAN_RESIDUES`, a dict); D's 1-of-3 is
+its own half and unchanged.
+
+**Result.** Closest passes 8 apart (B's ceiling under one binary accent, proved by the same
+block count); A 17–19, C 18 in every pair, D 12–15 unchanged. Notes identical to `dois_35`;
+744 of 1,968 note events changed velocity (A, B, C). Velocity table unchanged. Cost: rare
+states are less rare (A's 127 sounds 14 times, was 3). 120/180 improves from 2 to 6 even
+though its moduli (96, 64) need the local search. Search code moved to `span.py`.
+
+91 tests. Not yet heard.
+
+---
+
+## `dois_41`: a register for every frame, and one derived number (2026-10-12)
 
 **Why.** The author, on `dois_40`: "each frame is so similar." Right, and `dois_40`'s own
 figure (neighbours 39–45 dB apart) was the wrong measure — it counted a missing harmonic as

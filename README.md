@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_41`** — `sifters/dois_series/dois_41/`, with its own README.
+> **Current version: `dois_42`** — `sifters/dois_series/dois_42/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_41,
+  dois_series/     the main line of development, dois_01 through dois_42,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_41`
+## Current work: `dois_42`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -102,8 +102,11 @@ time**, and it is the *first* such moment — LCM(4800, 6400) = **19,200 ticks**
 quarter notes, with nothing shorter possible. The accents must reach exactly that and no
 multiple of it: reaching parity means some voices restate their rhythm several times, so a
 further accent, the **span accent**, is given the *smallest* modulus that does not divide
-the rhythm but still lands on parity, and its residues are searched for the set that makes
-those restatements differ as much as the sieve allows. Nothing is padded: parity is earned
+the rhythm but still lands on parity. Each pass of a step reads that accent at a different
+position of one small block, so filling every block exactly halfway makes the restatements
+differ most in total — the accent takes half its modulus — and among those sets the one
+whose closest passes are furthest apart is chosen. A's four passes now differ at 17–19 of
+its 27 attacks. Nothing is padded: parity is earned
 by the choice of sieve, and refused with an explanation when the material cannot earn it.
 
 **Pitch.** Two modes render from the same rhythm and velocities. `static` gives each voice
@@ -119,7 +122,7 @@ reading gives 40 different frames, the cut gives each its own register, 13 harmo
 its neighbours. Route NOTE (pitch tracking off) or VELO to wavetable position in Serum 2
 and every note, or every accent state, selects its own timbre — the pitch lattice becomes a
 lattice of timbres. `python3 compose.py --install-serum` puts the tables in Serum's menu,
-under sifters → dois_41.
+under sifters → dois_42.
 
 Output is twelve MIDI files, six per pitch mode, plus eight wavetables: one per voice, a four-track arrangement,
 and a single-track ensemble. Each per-voice file is identical note-for-note to its track
@@ -141,7 +144,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_41
+cd sifters/dois_series/dois_42
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
