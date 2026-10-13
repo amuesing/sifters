@@ -57,7 +57,28 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_42`: the span accent fills half of every block (2026-10-12)
+## CURRENT — `dois_43`: a canon in pitch, the period as an octave (2026-10-12)
+
+**Canon set.** `canon` reads the lattice at the step each note descends from
+(`pitch.source_step`: a shift reads back by its distance, retrograde reflects,
+augmentation divides; complement/intersection keep the step). C becomes A's melody 13
+steps later, note for note; A–C meetings go from 80/80 unisons to 80/80 at 31 steps. This
+answers the heterophony-or-counterpoint question open since `dois_15`, without changing
+`lattice`: it is a third set. Checked from the files, origins recomputed in `check.py`.
+
+**Tuning.** `tuning.py` writes the period as one octave (`.tun`; `.scl` + `.kbm` for
+MTS-ESP), root MIDI 36 at 65.41 Hz. ×13 = 390 ¢ ≈ 5/4, +9 = 270 ¢ ≈ 7/6, 31 = 930 ¢ ≈ 12/7; the
+canon's −31 fold notes become octave-equivalent. The original `archive/sifters_orig` had a
+40-step Scala scale; this is its return, applied to the lattice. Unheard.
+
+**Held notes.** `ARTICULATION = 'held'`: each note lasts to its voice's next attack. Default
+`'step'`, so no existing file changed. 18 MIDI files per render now.
+
+102 tests. Static and lattice identical to `dois_42`.
+
+---
+
+## `dois_42`: the span accent fills half of every block (2026-10-12)
 
 **Why.** The passes were nearly identical: A's four differed at 6–7 of 27 attacks, B's at 6
 of 13. The span accent fired on 5 of 32 positions — `dois_34`'s cap of five residues, ties to

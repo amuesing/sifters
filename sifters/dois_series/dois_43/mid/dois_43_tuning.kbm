@@ -1,0 +1,16 @@
+! dois_43_tuning.kbm
+! Size of map (0: every key is the next scale degree):
+0
+! First MIDI note number to retune:
+0
+! Last MIDI note number to retune:
+127
+! Middle note where the first entry of the mapping is mapped to:
+36
+! Reference note for which frequency is given:
+36
+! Frequency to tune the above note to:
+65.406391
+! Scale degree to consider as formal octave:
+40
+! Mapping.
