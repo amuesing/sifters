@@ -1,32 +1,33 @@
-# dois_42
+# dois_43
 
 The current version. Everything musical is derived from the sieve in `config.py` — the
 rhythms, the accent field the velocities are built from, the parity point, the meter, the
 pitch lattice and the canon distance. Change the sieve, or any voice's basic unit, and all
-of it recomputes. Both pitch modes are exported from one rhythm.
+of it recomputes. Three pitch modes are exported from one rhythm.
 
-**`dois_42` makes the restatements differ as much as the sieve allows.** Parity makes A, B
-and C play their rhythm four times; the span accent is the only thing that tells those
-passes apart, and until now it fired on 5 of its 32 positions — A's four passes differed at
-only 6 or 7 of its 27 attacks, so the piece was close to a loop. Now every span accent fills
-exactly half of each block its passes cycle through (the most total difference there can
-be — the same half the weather takes, derived rather than stated), and among those sets the
-one whose closest passes are furthest apart wins:
+**`dois_43` gives pitch a second voice and an octave.**
 
-| how many attacks differ between passes | `dois_41` | `dois_42` |
-|---|---|---|
-| A (27 attacks) | 6–7 | **17–19** |
-| B (13 attacks) | 6 | **8–9** — 8 is B's limit with one binary accent |
-| C (27 attacks) | 6–11 | **18** in every pair |
-| D (20 attacks) | 12–15 | 12–15, unchanged |
+- **A `canon` set.** In `lattice` every voice reads the lattice at its own step, so voices
+  that strike together play the same pitch: A and C meet 80 times and are in unison all 80.
+  In `canon` each voice reads the lattice at the step its note DESCENDS from, so C — A's
+  canon, 13 steps later — plays A's melody 13 steps later, note for note, and where the two
+  meet they sound a fixed interval (31 lattice steps) instead of a unison. B and D read
+  their own steps, as before.
+- **The lattice's period as an octave.** `dois_43_tuning.tun` (load it per Serum
+  instance) and `.scl` + `.kbm` (for MTS-ESP) tune MIDI 36–75 as 40 equal steps of one
+  octave, root at its usual pitch. The lattice's ×13 becomes 390 cents — a 5/4 major third
+  — where it was 13 semitones; the canon's +9 is 270 cents (7/6); C against A in canon mode
+  is 930 (12/7); and the canon's four "wrong-way" notes become the same pitch class as the
+  rest.
+- **Held notes, if you want them.** `ARTICULATION = 'held'` holds every note until the
+  same voice's next attack, so the sieve's gaps become durations. The default is still one
+  step, so nothing already rendered changed.
 
-No note moved: onsets, lengths, pitches and channels are `dois_35`'s. Velocities moved at
-124 of each file's 328 notes, all in A, B and C. The cost, stated: rare accent states are
-less rare — A's top velocity sounds 14 times where it sounded 3. See "What dois_42 changed".
+The `static` and `lattice` sets are note-for-note and velocity-for-velocity `dois_42`'s.
 
-`dois_31`–`dois_41` hardened the engine (refusals, generality across sieves and base
-durations, staged exports) and took the wavetables through five designs; each is recorded
-under its own "What dois_NN changed" below.
+`dois_31`–`dois_42` hardened the engine, took the wavetables through five designs and
+made the passes as different as the sieve allows; each is recorded under its own "What
+dois_NN changed" below.
 
 ## The four voices
 
@@ -60,7 +61,8 @@ timbres. A number in its place still works.
 | `transformations.py` | Complement, shift, intersection and the other available rhythm operations. |
 | `accents.py` | Derives the weather and span moduli and turns accent combinations into velocities. |
 | `span.py` | The span accents' residues: one set per modulus, half of every block, searched exactly. |
-| `pitch.py` | Static and lattice pitch rules, plus pitch validation. |
+| `pitch.py` | Static, lattice and canon pitch rules, plus pitch validation. |
+| `tuning.py` | The lattice's period as one octave: `.tun`, `.scl` and `.kbm`. |
 | `voice.py` | Names the calculated parts of a voice: `name`, `notes`, `velocities`, `step_ticks`, `accents`. |
 | `midi.py` | Timing, meter and MIDI file writing/reading. |
 | `check.py` | Verifies structure and exported events, including an independent velocity calculation and every wavetable frame. |
@@ -138,9 +140,12 @@ python3 -B -m unittest discover -s tests -v
 
 Exports go into **this folder’s `mid/`**, regardless of the directory you run from:
 
-- `dois_41_static_*`: fixed pitches A=36, B=37, C=38, D=39.
-- `dois_41_lattice_*`: pitches derived from the sieve’s lattice.
-- `dois_41_wavetable_*`: the Serum wavetables, each with a `.txt` sidecar — see below.
+- `dois_43_static_*`: fixed pitches A=36, B=37, C=38, D=39.
+- `dois_43_lattice_*`: pitches derived from the sieve’s lattice.
+- `dois_43_canon_*`: the lattice read at each note's source step — C a literal canon of A.
+- `dois_43_tuning.tun`, `.scl`, `.kbm`: the 40-step period as one octave, for the lattice
+  and canon sets.
+- `dois_43_wavetable_*`: the Serum wavetables, each with a `.txt` sidecar — see below.
 
 Each mode has four `_prime` voice files, a four-track `_arrangement`, and a single-track
 `_ensemble` with voices on separate MIDI channels. The prime files are convenient for
@@ -149,6 +154,45 @@ routing voices separately in a DAW.
 With the current settings, each file ends at 19,200 ticks: 40 quarter notes, or 20 seconds
 at 120 BPM. The declared meter is 40/16. Voice note counts are 108, 52, 108 and 60.
 Gate remains 1.0; audition articulation on the intended instrument.
+
+## The canon set and the tuning
+
+**Canon.** The lattice gives every step a pitch; `lattice` lets every voice read it at the
+step where it sounds. `canon` lets every voice read it at the step its note comes FROM —
+a shift reads back by its distance, a retrograde reflects, an augmentation divides; a
+complement or intersection keeps its step, because that step is where its note comes from.
+For this piece only C differs: C's note at step *n* is A's note at step *n* − 13. Heard:
+
+| | `lattice` | `canon` |
+|---|---|---|
+| A and C where they sound together | unison, 80 of 80 | 31 steps apart, 80 of 80 |
+| C's melody | A's melody shifted +9 (mod 40) | A's melody, note for note, 13 steps later |
+
+So the canon is a canon in pitch as well as rhythm, and the pair is counterpoint rather
+than heterophony — the question CONTEXT.md had left open since `dois_15`. The checker reads
+both files back and requires every one of C's 108 notes to be A's 13 steps earlier.
+
+**Tuning.** With the period as an octave each lattice step is 30 cents:
+
+| lattice move | steps | 12-TET semitones (untuned) | 40 steps to the octave | nearest simple ratio |
+|---|---|---|---|---|
+| one step of the sieve | ×13 | 13 (a minor ninth) | 390 cents | 5/4 (386) |
+| the canon's displacement | +9 | 9, or −31 at the fold | 270 cents, always | 7/6 (267) |
+| C against A, canon set | 31 | 31 | 930 cents | 12/7 (933) |
+
+Load `dois_43_tuning.tun` in Serum (Global → TUN FILE → Load Tuning, p. 320), or load the
+`.scl` and `.kbm` into the free MTS-ESP MINI to retune every Serum instance at once
+(p. 321). Tuning only matters where pitch is heard: with pitch tracking off and NOTE → WT
+POS, a note number picks a frame, not a frequency.
+
+The one choice is that the period spans an octave. Not yet heard: the files follow the
+AnaMark and Scala formats and are read back by parsers of their own, but no tuned note has
+been played.
+
+**Held notes.** `ARTICULATION = 'held'` in `config.py` makes every note last until its
+voice's next attack — B's notes ring 2–6 steps, A's 1–2, and each voice tiles its own time.
+On Serum that gives envelopes and wavetable motion time to happen; every note then abuts
+the next, so a device that will not retrigger needs the default, `'step'`.
 
 ## Serum wavetables
 
@@ -222,10 +266,10 @@ python3 compose.py --install-serum
 
 That finds the presets folder your Serum actually uses — read from Serum's own
 preferences, `~/Library/Preferences/Serum2Prefs.json`, not assumed — and copies the tables
-into `Tables/sifters/dois_41/` as `A.wav`, `A sweep.wav`, and so on: one `sifters` folder
+into `Tables/sifters/dois_43/` as `A.wav`, `A sweep.wav`, and so on: one `sifters` folder
 in Serum's menu, with a folder per version inside it. Serum 2's own factory tables sit at
 the same depth (`Tables/S2 Tables/Analog/`), so it scans there. Restart Serum, or use
-**Rescan Folders on Disk** in the main menu, and they appear under **sifters → dois_41**,
+**Rescan Folders on Disk** in the main menu, and they appear under **sifters → dois_43**,
 loading with no import step. A plain render never writes outside the project.
 
 If you drag a WAV instead, Serum always offers import methods (p. 292). Type **2048** in
@@ -234,7 +278,7 @@ the Wavetable Editor's formula field first and release on **Constant Framesize**
 
 ### Using them
 
-1. Load `A` from **sifters → dois_41**.
+1. Load `A` from **sifters → dois_43**.
 2. **Turn pitch tracking off**: right-click the oscillator's label, untick *Enable Pitch
    Tracking* (p. 35). Keep the oscillator's OCT at 0 or below: an octave up doubles every
    frequency, and the top of the register would rise past what Serum can play.
@@ -437,14 +481,32 @@ Files in `mid/` that this run did not produce are never touched, and are reporte
   warning and used the densest weather anyway — and nothing downstream would have
   noticed. For moduli too large to search fully, the weather search keeps only each
   modulus's densest choices and says the refusal is not a proof.
-- **Listening drives the wavetables, and this version is not yet heard.** The author heard
-  `dois_39`'s and `dois_40`'s tables in Serum and found the frames too alike; `dois_41`
+- **Listening drives the wavetables, and these versions are not yet heard.** The author
+  heard `dois_39`'s and `dois_40`'s tables in Serum and found the frames too alike; `dois_41`
   answers that with a measure of what the ear hears (brightness) rather than of which
-  harmonics are present, which is what misled `dois_40`. Every check here is still
-  structural.
+  harmonics are present. `dois_42`'s velocities, `dois_43`'s canon set and its tuning are
+  all unheard. Every check here is structural.
 - The fixed pitch of a non-tracking Serum oscillator is not documented. Two periods of
   harmonics are safe up to about 276 Hz at 44.1 kHz; raise the oscillator's OCT and the
   highest frames lose their top.
+
+## What dois_43 changed
+
+Three things, each new, none changing a file that existed:
+
+1. **The `canon` pitch mode** (`pitch.canon_notes`, `pitch.source_step`): the lattice read
+   at each note's source step. A and C, in unison at all 80 meetings in `lattice`, sound 31
+   steps apart at all 80 in `canon`; C's 108 notes are A's, 13 steps later. The checker
+   recomputes each note's source its own way (`check.origin_of`) and verifies the
+   imitation from both files. Six more files per render.
+2. **The tuning files** (`tuning.py`): the period as one octave, as AnaMark `.tun` and
+   Scala `.scl` + `.kbm`, written when a lattice or canon set is, and read back by
+   `check.check_tuning`. A test breaks one note's tuning and requires the run refused.
+3. **`ARTICULATION = 'held'`** (`midi.note_lengths`): the sieve's gaps as durations,
+   checked from the files when chosen. Default `'step'`.
+
+102 tests. `static` and `lattice` identical to `dois_42`, note for note and velocity for
+velocity.
 
 ## What dois_42 changed
 

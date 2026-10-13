@@ -138,9 +138,9 @@ python3 -B -m unittest discover -s tests -v
 
 Exports go into **this folder’s `mid/`**, regardless of the directory you run from:
 
-- `dois_41_static_*`: fixed pitches A=36, B=37, C=38, D=39.
-- `dois_41_lattice_*`: pitches derived from the sieve’s lattice.
-- `dois_41_wavetable_*`: the Serum wavetables, each with a `.txt` sidecar — see below.
+- `dois_42_static_*`: fixed pitches A=36, B=37, C=38, D=39.
+- `dois_42_lattice_*`: pitches derived from the sieve’s lattice.
+- `dois_42_wavetable_*`: the Serum wavetables, each with a `.txt` sidecar — see below.
 
 Each mode has four `_prime` voice files, a four-track `_arrangement`, and a single-track
 `_ensemble` with voices on separate MIDI channels. The prime files are convenient for
@@ -222,10 +222,10 @@ python3 compose.py --install-serum
 
 That finds the presets folder your Serum actually uses — read from Serum's own
 preferences, `~/Library/Preferences/Serum2Prefs.json`, not assumed — and copies the tables
-into `Tables/sifters/dois_41/` as `A.wav`, `A sweep.wav`, and so on: one `sifters` folder
+into `Tables/sifters/dois_42/` as `A.wav`, `A sweep.wav`, and so on: one `sifters` folder
 in Serum's menu, with a folder per version inside it. Serum 2's own factory tables sit at
 the same depth (`Tables/S2 Tables/Analog/`), so it scans there. Restart Serum, or use
-**Rescan Folders on Disk** in the main menu, and they appear under **sifters → dois_41**,
+**Rescan Folders on Disk** in the main menu, and they appear under **sifters → dois_42**,
 loading with no import step. A plain render never writes outside the project.
 
 If you drag a WAV instead, Serum always offers import methods (p. 292). Type **2048** in
@@ -234,7 +234,7 @@ the Wavetable Editor's formula field first and release on **Constant Framesize**
 
 ### Using them
 
-1. Load `A` from **sifters → dois_41**.
+1. Load `A` from **sifters → dois_42**.
 2. **Turn pitch tracking off**: right-click the oscillator's label, untick *Enable Pitch
    Tracking* (p. 35). Keep the oscillator's OCT at 0 or below: an octave up doubles every
    frequency, and the top of the register would rise past what Serum can play.
