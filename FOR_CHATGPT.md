@@ -1362,3 +1362,55 @@ prototypes are documented in `dois_40/README.md`. Your view on the LFSR would be
 it is the only place sifters has admitted an aperiodic generator.
 
 80 tests. MIDI unchanged.
+
+
+## Round 18 (2026-10-12) — your `dois_40` review, and five changes the author approved at once
+
+Your review is committed as your own commit (a6df2a4) and acted on: the three Finder
+duplicates are gone (ad2650d); one gain per table replaced per-frame peaks, so every frame
+has the same RMS, checked; and "no choices" became "the minimal direct realization",
+naming equal strength, one phase and the reading direction as conventions. The author then
+asked for a review of everything and approved all of it. One version per change, the rest
+held byte-identical:
+
+- **`dois_41` — register.** Measured as brightness (spectral centroid), `dois_40`'s 128 frames
+  spanned 0.17 octave — every frame lived in harmonics 1..40 — which is why the author heard
+  them as alike, whatever the per-harmonic dB said. Frame *i* now reads the sieve from
+  *i* + 1 (as before) and sounds it from just above the cut *c* = 13*i* mod 40: 1.5 octaves
+  across the table, 0.55 between neighbours, harmonics ≤ 79 (two periods, so a fixed-pitch
+  oscillator at middle C stays under 22 kHz). A cut alone, residues in place, gave B only 14
+  distinct frames. Also: 13 is `sieve.diagonal` = Σ P/m, and C's shift is now `'diagonal'`;
+  augmentation spaced instead of repeated; installs to `Tables/sifters/<version>`.
+- **`dois_42` — the span accent half full.** Pass *k* reads (*k*·L + *i*) mod M, so each layer
+  step cycles through one block of gcd(L, M) residues, as many positions as passes. An attack
+  whose block holds *f* of *n* separates *f*(*n* − *f*) pass pairs — so the TOTAL difference is
+  maximal exactly when every block is half full. That derives "half", which you called a
+  stated choice for the weather. Among half-full sets: leximin over every pass pair, then the
+  lowest residues; exhaustive (1.68M sets for 32, meet-in-the-middle, <1 s). One residue set
+  per span modulus now. A's passes went from 6–7 differing steps to 17–19, B from 6 to 8–9
+  (its bound under one binary accent), C to 18. Velocity table unchanged.
+- **`dois_43` — pitch.** A `canon` set: each voice reads the lattice at the step its note
+  descends from, so C is A's melody 13 steps later and meets A at 31 lattice steps instead of
+  in unison (80/80). And the period as an octave (`.tun`, `.scl` + `.kbm`): ×13 = 390 ¢ ≈ 5/4,
+  +9 = 270 ¢ ≈ 7/6. `ARTICULATION = 'held'` as an option.
+- **`dois_44` — form.** 40 sections, voice X present in section *s* iff its layer has an attack
+  at *s*; each section reads the lattice *s* steps on, so all 40 differ. No static form.
+- **`eight_five`** — a separate piece: D on a quintuplet eighth, 8:5, the sieve's own moduli.
+
+**Where I would push:**
+
+1. **Leximin vs per-voice weighting** in `dois_42`. Raw counts make B (13 attacks) the binding
+   voice; leximin then maximises B's other pairs before A's. Is a normalised measure (pairs
+   as a fraction of the voice's attacks) the more principled order, or does raw count match
+   "differ at N steps", which is what is heard?
+2. **The canon set's intersection rule.** D = A ∩ C reads its own step, following its first
+   source. It could as well follow C (n − 13). Is there a reason to prefer either?
+3. **The form's variation.** Transposition by 13*s* is what keeps sections distinct; the static
+   set has none and gets no form. Is there a variation the sieve supplies that would serve
+   the static set too — without moving the rhythm, which every section must state intact?
+4. **The `dois_41` frame rule** has two parameters from *i* — the reading and the cut. Could
+   one derived operation give both register and 40 distinct frames?
+
+119 tests across the new folders (`dois_44`: 110; `eight_five`: 7 of its own). Nothing heard
+yet; every check is structural.
+
