@@ -56,6 +56,7 @@ sifters/
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
   sixty/  third/  starbird/    earlier standalone pieces
+  eight_five/      the dois_44 engine with D at 8:5 — the sieve's moduli as the tempo ratio
 archive/           superseded work
 CONTEXT.md         detailed working reference — state, decisions, verification
 ```

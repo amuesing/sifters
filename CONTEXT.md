@@ -57,6 +57,17 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
+## `eight_five` — a piece at 8:5 (2026-10-12)
+
+`sifters/eight_five/`: the `dois_44` engine, unchanged, with D on a quintuplet eighth (192
+ticks) — 8:5 against the sixteenth, the sieve's own moduli, where the series uses 4:3.
+Parity 38,400 ticks (40 s); A/B/C restate 8 times, D 5; span moduli 64 and 25 (mod 25
+exhaustive over 100,000 half-full sets, mod 64 a local search that says so); closest passes
+7 apart; forms 26'40". No sweep tables for A/B/C (320 steps > Serum's 256 frames). 7 piece
+tests; the engine's tests are `dois_44`'s. Unheard.
+
+---
+
 ## CURRENT — `dois_44`: a form read from the sieve (2026-10-12)
 
 `form.py`: the lattice and canon sets also render as a 40-section form, one section per step
