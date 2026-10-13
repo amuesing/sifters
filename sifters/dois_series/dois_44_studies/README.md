@@ -40,6 +40,38 @@ with the sieve's period as an octave.
 
 ---
 
+## Serum 2 renders
+
+`serum_render.py` plays the same MIDI through **Serum 2 itself**, into `audio_serum/`, with
+the same file names and loudness as the Python previews. It loads Serum with Spotify's
+pedalboard library, which hosts VST3 instruments in Python and renders offline: no DAW,
+no Serum window. Each patch is Serum's init patch with oscillator A's wavetable, pitch
+tracking, pitch and mod routings written into Serum's saved state (`serum_state.py`).
+
+```sh
+python3 -m venv ~/serum-venv && ~/serum-venv/bin/pip install pedalboard zstandard cbor2 mido numpy
+~/serum-venv/bin/python serum_render.py      # about 20 seconds for all eleven
+```
+
+Found while building it, on Serum 2.1.5:
+
+- **With pitch tracking off, the oscillator plays MIDI note 0, 8.18 Hz.** OCT and SEM move
+  it from there; OCT +4 is 130.8 Hz. The User Guide does not say this.
+- **NOTE is mod source 17 and VELO is 16**, and at 100% each puts value *v* exactly on frame
+  *v* of a 128-frame table — checked by measuring which harmonics sounded.
+- Serum's state is an `XferJson` container: a JSON header, then the patch as zstd-
+  compressed CBOR, a map of modules (`Oscillator0`, `ModSlot0`…). A `.SerumPreset` file is
+  the same container.
+
+**Unofficial.** Xfer does not document the state format, so the script refuses any Serum
+version but the one it was read from. The 40-step versions of study 5 are not rendered:
+how Serum keeps a tuning file in its state was not found.
+
+The Serum renders match the Python previews closely wherever both play the same tables —
+median brightness within a few percent — which is the check that Serum loaded the tables
+and landed on the same frames. The pitched studies differ by design: Serum's init patch is
+a bright, sustained tone at the written pitch.
+
 ## 1. A second moving accent — 16 velocity states
 
 **What.** `dois_44` has one moving accent per grid, the span accent. This adds a second,

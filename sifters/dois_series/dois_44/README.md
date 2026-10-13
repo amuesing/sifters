@@ -269,11 +269,13 @@ all 40 in every voice.
 `dois_40`'s frames all differed — each had its own set of harmonics — but every one lived
 in harmonics 1..40, the same register at the same density, so they sounded alike.
 
-**Why two periods and no more.** With pitch tracking off, Serum plays a wavetable at a
-fixed pitch that the User Guide does not state. At middle C (261.6 Hz) harmonic 79 is
-20.7 kHz, still under Nyquist at 44.1 kHz. The leap prototypes installed before this
-version reached harmonic 166: at that pitch about a third of their frames would have
-sounded nothing at all, and those prototypes are superseded by this table.
+**Why two periods and no more.** With pitch tracking off, Serum plays the oscillator at
+MIDI note 0 — 8.18 Hz — and its OCT and SEM controls move it from there. The User Guide
+does not say so; it was measured on 2026-10-13 by rendering through Serum 2.1.5 itself
+(see `dois_44_studies/serum_render.py`). At OCT +4, 130.8 Hz, harmonic 79 is 10.3 kHz, and
+two periods stay under Nyquist (44.1 kHz) up to about 276 Hz. The leap prototypes
+installed before this version reached harmonic 166 — 21.7 kHz at OCT +4, at the edge of
+what Serum can play; they are superseded and have been moved out of Serum.
 
 **One level.** Every frame has one harmonic per member of the sieve, all equally strong, so
 every frame has the same RMS. One gain, set by the table's loudest peak (0.95), keeps that,
@@ -311,8 +313,9 @@ the Wavetable Editor's formula field first and release on **Constant Framesize**
 
 1. Load `A` from **sifters → dois_44**.
 2. **Turn pitch tracking off**: right-click the oscillator's label, untick *Enable Pitch
-   Tracking* (p. 35). Keep the oscillator's OCT at 0 or below: an octave up doubles every
-   frequency, and the top of the register would rise past what Serum can play.
+   Tracking* (p. 35). **Then raise OCT to +4.** With tracking off the oscillator plays MIDI
+   note 0, 8.18 Hz, far too low to hear a table's colours; OCT +4 is 130.8 Hz. Use SEM to
+   taste — anything up to about 276 Hz keeps every frame's top harmonic below Nyquist.
 3. Route a source to **WT POS**, amount 100%, knob at its start:
    - **NOTE → WT POS** with the **lattice** MIDI: its notes cover every residue of the
      sieve's period, so every step gets its own register — the lattice becomes a lattice
@@ -517,9 +520,9 @@ Files in `mid/` that this run did not produce are never touched, and are reporte
   answers that with a measure of what the ear hears (brightness) rather than of which
   harmonics are present. `dois_42`'s velocities, `dois_43`'s canon set and tuning, and
   `dois_44`'s form are all unheard. Every check here is structural.
-- The fixed pitch of a non-tracking Serum oscillator is not documented. Two periods of
-  harmonics are safe up to about 276 Hz at 44.1 kHz; raise the oscillator's OCT and the
-  highest frames lose their top.
+- A non-tracking Serum oscillator plays MIDI note 0 (8.18 Hz) until OCT/SEM move it —
+  measured, not documented. Two periods of harmonics are safe up to about 276 Hz at
+  44.1 kHz; above that the highest frames lose their top.
 
 ## What dois_44 changed
 
