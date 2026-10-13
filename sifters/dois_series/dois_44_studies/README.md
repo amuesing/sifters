@@ -72,6 +72,46 @@ median brightness within a few percent — which is the check that Serum loaded 
 and landed on the same frames. The pitched studies differ by design: Serum's init patch is
 a bright, sustained tone at the written pitch.
 
+## A percussion kit
+
+`percussion.py` builds four Serum 2 drums, one per voice, by one rule — as one weather
+covers all four voices — with each voice's own rhythm supplying the numbers:
+
+| part | from | A | B | C | D |
+|---|---|---|---|---|---|
+| body | the voice's own `dois_44` wavetable, pitch tracking off | `A.wav` | `B.wav` | `C.wav` | `D.wav` |
+| pitch | attacks per second, five octaves up | 172.8 Hz | 83.2 Hz | 172.8 Hz | 96 Hz |
+| decay | the median gap between attacks | 0.125 s | 0.375 s | 0.125 s | 0.333 s |
+| strike | pitch falls 390 ¢ (the lattice's ×13 in 40 steps) over one step | 0.125 s | 0.125 s | 0.125 s | 0.167 s |
+
+Each voice comes in two patches: **accents** (VELO → WT POS, each accent state its own
+frame) for the static set, and **lattice** (NOTE → WT POS) for the lattice and canon sets
+and their forms. In both, VELO → level runs from 0.35 to 1.0.
+
+```sh
+~/serum-venv/bin/python percussion.py --install   # renders audio_kit/, writes presets/
+```
+
+`presets/` holds each patch twice: `.SerumPreset`, which `--install` copies into Serum's
+`Presets/User/sifters`, and `.vstpreset`, each checked by loading it into Serum. The
+`.SerumPreset` header matches Serum's own presets key for key, but Serum's browser has not
+yet been seen opening one. `kit_summary.json` holds the derived numbers.
+
+- **Holds:** one rule for every voice; pitch, decay and strike length from each voice's own
+  rhythm, the strike's depth from the lattice; the MIDI is `dois_44`'s, unchanged. C is A
+  rotated, so the rule gives it A's pitch and decay — a canon on one drum, told apart by
+  its wavetable.
+- **Diverges — pitch.** The accents patches ignore the note, so none of `dois_44`'s pitch
+  reaches them, and on the form (which changes only pitch and presence) their sections
+  would repeat. The form is rendered with the lattice patches.
+- **Chosen:** the five octaves; having a strike at all, and its shape (Serum's default
+  envelope curve); the level range. Everything else is Serum's init patch.
+
+Not yet done: the 40-step tuning. Serum saves a loaded `.tun` in the patch as `tuningName`
+and `tuningData`, but `tuningData`'s encoding is not documented, and every guess at it —
+and MIDI Tuning Standard messages sent to Serum's input — was refused or ignored. One
+preset saved by Serum with `dois_44_tuning.tun` loaded would show it.
+
 ## 1. A second moving accent — 16 velocity states
 
 **What.** `dois_44` has one moving accent per grid, the span accent. This adds a second,

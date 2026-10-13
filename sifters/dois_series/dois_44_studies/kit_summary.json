@@ -1,0 +1,30 @@
+{
+ "A": {
+  "attacks": 27,
+  "attack_rate_hz": 5.4,
+  "pitch_hz": 172.8,
+  "decay_s": 0.125,
+  "step_s": 0.125
+ },
+ "B": {
+  "attacks": 13,
+  "attack_rate_hz": 2.6,
+  "pitch_hz": 83.2,
+  "decay_s": 0.375,
+  "step_s": 0.125
+ },
+ "C": {
+  "attacks": 27,
+  "attack_rate_hz": 5.4,
+  "pitch_hz": 172.8,
+  "decay_s": 0.125,
+  "step_s": 0.125
+ },
+ "D": {
+  "attacks": 20,
+  "attack_rate_hz": 3.0,
+  "pitch_hz": 96.0,
+  "decay_s": 0.3333,
+  "step_s": 0.1667
+ }
+}

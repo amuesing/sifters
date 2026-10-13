@@ -5,3 +5,4 @@ __pycache__/
 # The studies' audio previews rebuild in seconds (python3 studies.py): 32 MB kept out
 sifters/dois_series/dois_44_studies/audio/
 sifters/dois_series/dois_44_studies/audio_serum/
+sifters/dois_series/dois_44_studies/audio_kit/
