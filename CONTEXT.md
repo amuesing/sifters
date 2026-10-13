@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-11
+> Last updated: 2026-10-12
 
 ---
 
@@ -57,7 +57,45 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_40`: a frame for every whole number (2026-10-11)
+## CURRENT — `dois_41`: a register for every frame, and one derived number (2026-10-12)
+
+**Why.** The author, on `dois_40`: "each frame is so similar." Right, and `dois_40`'s own
+figure (neighbours 39–45 dB apart) was the wrong measure — it counted a missing harmonic as
+a huge difference. Measured as the ear hears it (spectral centroid, octaves), `dois_40`'s
+128 frames spanned 0.17: every frame lived in harmonics 1..40.
+
+**The rule now.** Frame *i* reads one period of the sieve from *i* + 1 (`dois_40`'s reading)
+and sounds it from just above its cut *c* = 13·*i* mod 40: harmonic *c* + *h* sounds when
+*i* + *h* is in the sieve. 40 distinct frames per voice; register spans 1.53 octaves across
+the table and 0.55 between neighbours; lattice-melody steps 0.62; harmonics stop at 79 (two
+periods), so a fixed-pitch oscillator at middle C stays under 22 kHz. One gain per table
+(ChatGPT's 0.4–1.2 dB level drift, fixed and checked).
+
+**Found on the way.** (1) The leap prototypes I installed reached harmonic 166; the guide
+never says what pitch a non-tracking oscillator plays, and at middle C a third of their
+frames would be silent. (2) A rule that only moves the cut — residue m at harmonic m —
+changes a frame only when the cut crosses a member, so a voice gets as many frames as it
+has attacks: B had 14, and two of its velocity states shared one. Reading from *i* keeps 40.
+
+**One derived number.** 13 = 5 + 8 is the lattice's diagonal, sum(P/m) — `sieve.diagonal`.
+C's `shift_amount` is now `'diagonal'` (13 for psappha, no note moved), and the wavetables'
+frame order uses it too. For other sieves it follows the sieve: 12 for 7×5 (renders, 8/8),
+14 for 11×3 (D too sparse; refused with the full-profile message, nothing written — a
+number restores the old behaviour).
+
+**Housekeeping.** Augmentation was `np.repeat` (an attack became `factor` attacks), now
+spaced; `check.py` imports `tile_to`; `sieve_moduli` cached (the 'diagonal' shift made the
+suite 10× slower without it); install path `Tables/sifters/<version>/`; the stale "up to
+four residues below 16" corrected in config and README; D's meaning stated — an
+intersection of step numbers re-timed on the triplet grid, only 10 of its 60 notes land on
+a real A–C coincidence. The three Finder duplicates in `dois_40/mid/` removed (ad2650d);
+ChatGPT's 2026-10-12 review committed as [GPT] (a6df2a4).
+
+89 tests. MIDI notes and velocities identical to `dois_40`. Not yet heard.
+
+---
+
+## `dois_40`: a frame for every whole number (2026-10-11)
 
 **The first listening.** The author heard `dois_39`'s tables in Serum 2 and found the frames
 too alike, "like a distorted sine wave". Measured, they were: 71–85% of each frame's energy

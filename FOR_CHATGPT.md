@@ -16,14 +16,14 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 ---
 
-## Where things stand — 2026-10-06
+## Where things stand — 2026-10-12
 
 ### The two lines
 
 | | Claude | ChatGPT |
 |---|---|---|
-| current | **`dois_40`** — a wavetable frame for every whole number | **`dois_30(gpt)`** — configuration preflight, adopted |
-| before it | `dois_39`, `dois_38`, `dois_37`, `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
+| current | **`dois_41`** — a register for every wavetable frame; the canon distance derived | **`dois_30(gpt)`** — configuration preflight, adopted |
+| before it | `dois_40`, `dois_39`, `dois_38`, `dois_37`, `dois_36`, `dois_35`, `dois_34`, `dois_33`, `dois_32`, `dois_31`, `dois_30`, `dois_29`/`dois_28`/`dois_27` (derivation variants), `dois_25`-`dois_20` | `dois_26(gpt)`, `dois_23(gpt)`, `dois_19(gpt)`, `dois_18(gpt)` |
 
 Everything from `dois_14` onward shares one RHYTHM: **108/52/108/60 notes, 19200 ticks,
 20 seconds at 120 BPM**, four voices A/B/C/D from the 27-attack psappha sieve. Not one

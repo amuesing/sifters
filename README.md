@@ -1,6 +1,6 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_40`** — `sifters/dois_series/dois_40/`, with its own README.
+> **Current version: `dois_41`** — `sifters/dois_series/dois_41/`, with its own README.
 > Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
 > accent field the velocities are built from, the parity point, the meter, and the pitch
 > lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
@@ -51,7 +51,7 @@ It follows that **voices are not all the same length, and should not be**. When 
 
 ```
 sifters/
-  dois_series/     the main line of development, dois_01 through dois_40,
+  dois_series/     the main line of development, dois_01 through dois_41,
                    interleaved with ChatGPT's dois_NN(gpt) folders
   amen/            Amen break analysis — compression indices
   psappha/         the Xenakis sieve on its own
@@ -62,7 +62,7 @@ CONTEXT.md         detailed working reference — state, decisions, verification
 
 Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
 
-## Current work: `dois_40`
+## Current work: `dois_41`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -72,11 +72,13 @@ are exact by construction rather than by coincidence:
 |---|---|---|---|
 | A | the psappha sieve itself | 16th note | 36 |
 | B | complement of A | 16th note | 37 |
-| C | A shifted 13 steps — a rhythmic canon | 16th note | 38 |
+| C | A shifted by the lattice's diagonal, 8 + 5 = 13 steps — a rhythmic canon | 16th note | 38 |
 | D | intersection of A and C — where they converge | **triplet 8th** | 39 |
 
 A and B together fill all 40 steps with no gaps and no collisions, because they are
-complements. D sounds only where A and C coincide. D's triplet unit against the others'
+complements. D takes the steps where A and C coincide and replays them on its own triplet
+grid, so in time it is the convergence re-timed: only 10 of its 60 notes land where A and C
+are actually sounding together. D's triplet unit against the others'
 sixteenths gives a 4:3 polyrhythm.
 
 **Accents.** Accents are not written; they are read off the sieve. Each modulus the sieve
@@ -110,13 +112,14 @@ the intended instrument. `lattice` reads pitch off the sieve's own grid: because
 are coprime, every step has a unique address `(n mod 8, n mod 5)`, and
 `root + (5·(n mod 8) + 8·(n mod 5)) mod 40` turns that address into a pitch.
 
-**Serum wavetables.** A note number and a velocity are whole numbers, and a sieve is a rule
-about whole numbers — so each voice gets a 128-frame table where frame *i* sounds harmonic
-*h*, at full strength, if *i + h* is in the voice's sieve. Nothing about a frame is chosen.
-Route NOTE (pitch tracking off) or VELO to wavetable position in Serum 2 and every note, or
-every accent state, selects its own very different timbre — the pitch lattice becomes a
+**Serum wavetables.** A note number and a velocity are whole numbers, and a sieve is a
+rule about whole numbers — so each voice gets a 128-frame table in which frame *i* reads one
+period of its sieve from *i* + 1 and sounds it from just above harmonic 13 × *i* mod 40: the
+reading gives 40 different frames, the cut gives each its own register, 13 harmonics from
+its neighbours. Route NOTE (pitch tracking off) or VELO to wavetable position in Serum 2
+and every note, or every accent state, selects its own timbre — the pitch lattice becomes a
 lattice of timbres. `python3 compose.py --install-serum` puts the tables in Serum's menu,
-under "sifters dois_40"
+under sifters → dois_41.
 
 Output is twelve MIDI files, six per pitch mode, plus eight wavetables: one per voice, a four-track arrangement,
 and a single-track ensemble. Each per-voice file is identical note-for-note to its track
@@ -138,7 +141,7 @@ written and verified, so nothing that goes wrong reaches your files (`dois_33`).
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_40
+cd sifters/dois_series/dois_41
 python3 compose.py                      # renders and then verifies every file
 python3 compose.py --suggest-span       # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests
@@ -155,7 +158,7 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
 detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to `dois_40`.
+heading, along with the reasoning that led from it to the current version.
 
 ## Further reading
 
