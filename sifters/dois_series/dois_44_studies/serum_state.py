@@ -20,6 +20,8 @@ a map of modules; the ones `serum_render.py` touches:
   ModSlotN                              source [code, 0]; destModuleTypeString,
                                         destModuleID, destModuleParamID,
                                         destModuleParamName; plainParams.kParamAmount
+  tuningName, tuningData                a loaded .tun: its name, and its bytes as a
+                                        list of integers
 """
 import hashlib
 import json

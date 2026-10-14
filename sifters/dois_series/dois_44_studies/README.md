@@ -50,7 +50,7 @@ tracking, pitch and mod routings written into Serum's saved state (`serum_state.
 
 ```sh
 python3 -m venv ~/serum-venv && ~/serum-venv/bin/pip install pedalboard zstandard cbor2 mido numpy
-~/serum-venv/bin/python serum_render.py      # about 20 seconds for all eleven
+~/serum-venv/bin/python serum_render.py      # about 20 seconds for all fourteen
 ```
 
 Found while building it, on Serum 2.1.5:
@@ -63,9 +63,15 @@ Found while building it, on Serum 2.1.5:
   compressed CBOR, a map of modules (`Oscillator0`, `ModSlot0`…). A `.SerumPreset` file is
   the same container.
 
+- **A loaded tuning file is kept in the patch as `tuningName` and `tuningData`**: the
+  file's name without `.tun`, and its bytes, unchanged, as a list of integers. Read from a
+  preset saved in Serum with `dois_44_tuning.tun` loaded; written back the same way, it
+  retunes Serum exactly (30.0 cents a key, 1200.0 over 40 keys). The 40-step versions of
+  study 5 are rendered this way, with OCT +2 so that note 36 sits at 261.6 Hz as in the
+  Python previews (the file puts it at 65.4 Hz).
+
 **Unofficial.** Xfer does not document the state format, so the script refuses any Serum
-version but the one it was read from. The 40-step versions of study 5 are not rendered:
-how Serum keeps a tuning file in its state was not found.
+version but the one it was read from.
 
 The Serum renders match the Python previews closely wherever both play the same tables —
 median brightness within a few percent — which is the check that Serum loaded the tables
@@ -94,8 +100,8 @@ and their forms. In both, VELO → level runs from 0.35 to 1.0.
 
 `presets/` holds each patch twice: `.SerumPreset`, which `--install` copies into Serum's
 `Presets/User/sifters`, and `.vstpreset`, each checked by loading it into Serum. The
-`.SerumPreset` header matches Serum's own presets key for key, but Serum's browser has not
-yet been seen opening one. `kit_summary.json` holds the derived numbers.
+`.SerumPreset` header matches Serum's own presets key for key. `kit_summary.json` holds
+the derived numbers.
 
 - **Holds:** one rule for every voice; pitch, decay and strike length from each voice's own
   rhythm, the strike's depth from the lattice; the MIDI is `dois_44`'s, unchanged. C is A
@@ -107,10 +113,8 @@ yet been seen opening one. `kit_summary.json` holds the derived numbers.
 - **Chosen:** the five octaves; having a strike at all, and its shape (Serum's default
   envelope curve); the level range. Everything else is Serum's init patch.
 
-Not yet done: the 40-step tuning. Serum saves a loaded `.tun` in the patch as `tuningName`
-and `tuningData`, but `tuningData`'s encoding is not documented, and every guess at it —
-and MIDI Tuning Standard messages sent to Serum's input — was refused or ignored. One
-preset saved by Serum with `dois_44_tuning.tun` loaded would show it.
+The kit needs no tuning: with pitch tracking off, a note only picks a frame. Serum's
+browser opens the `.SerumPreset` files.
 
 ## 1. A second moving accent — 16 velocity states
 

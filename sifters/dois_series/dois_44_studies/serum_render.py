@@ -14,8 +14,10 @@ patch and changes only:
     heard as loudness as in the Python previews.
 
 The pitched studies (4 and 5) use the init patch untouched, pitch tracking on, at the
-pitches the MIDI writes. Their 40-step versions are not rendered: how Serum stores a tuning
-file in its state was not found, so those stay as Python previews.
+pitches the MIDI writes. Their 40-step versions add dois_44's tuning file, written into the
+patch the way Serum saves a loaded .tun (read from a preset saved in Serum): `tuningName`,
+the file's name, and `tuningData`, its bytes as a list of integers. OCT +2 puts note 36 at
+261.6 Hz, where the Python previews put it; the file itself puts it at 65.4 Hz.
 
 Measured while building this (Serum 2.1.5): with pitch tracking off the oscillator plays
 MIDI note 0, 8.18 Hz, and OCT/SEM move it from there — OCT +4 is 130.8 Hz. NOTE is mod
@@ -45,10 +47,12 @@ SR = 44100
 LOUDNESS = 0.075                      # the previews' RMS, so the two sets compare fairly
 
 NOTE, VELO = (17, 0), (16, 0)         # Serum 2's mod-source codes, found by probing
-WT_POS = ('WTOsc', 0, 1, 'kParamTablePos')
+WT_POS = ('WTOsc', 0, 6, 'kParamTablePos')    # Serum matches by name, but saves 6
 OSC_LEVEL = ('Oscillator', 0, 1, 'kParamVolume')
 # Above MIDI note 0 (8.18 Hz): A 110 Hz, B 165 Hz, C 131 Hz, D 82 Hz, as in the previews.
 FIXED = {'A': (3, 9), 'B': (4, 4), 'C': (4, 0), 'D': (3, 4)}
+TUNING = ENGINE_MID / 'dois_44_tuning.tun'          # the 40-step tuning, as dois_43 writes it
+TUNED_OCTAVE = 2.0                                  # note 36: 65.4 Hz -> 261.6 Hz, as the previews
 
 
 def slot(source, target, amount):
@@ -83,8 +87,13 @@ class Serum:
             data['ModSlot1'] = slot(VELO, OSC_LEVEL, 65.0)
         return serum_state.write_state(self.xml, self.header, self.marker, data)
 
-    def init_patch(self):
-        return serum_state.write_state(self.xml, self.header, self.marker, self.init)
+    def init_patch(self, tuning=None):
+        data = copy.deepcopy(self.init)
+        if tuning:
+            data['tuningName'] = tuning.stem
+            data['tuningData'] = list(tuning.read_bytes())
+            data['Oscillator0']['plainParams']['kParamOctave'] = TUNED_OCTAVE
+        return serum_state.write_state(self.xml, self.header, self.marker, data)
 
     def play(self, state, notes, seconds):
         self.plugin.raw_state = state
@@ -136,12 +145,12 @@ def render_wavetables(serum, midi, tables, source, name):
     print(f"  {name}")
 
 
-def render_pitched(serum, midi, name):
+def render_pitched(serum, midi, name, tuning=None):
     voices, end = tracks(midi)
     mix = 0
     for notes in voices:                 # one track at a time: no voice is ever stolen
         if notes:
-            mix = mix + serum.play(serum.init_patch(), notes, end + 1.5)
+            mix = mix + serum.play(serum.init_patch(tuning), notes, end + 1.5)
     write_wav(OUT / name, mix)
     print(f"  {name}")
 
@@ -168,6 +177,10 @@ def main():
     render_pitched(serum, lattice, '5a_dois44_lattice_12tet.wav')
     render_pitched(serum, ENGINE_MID / 'dois_44_canon_arrangement.mid', '5b_dois44_canon_12tet.wav')
     render_pitched(serum, study / 'study5_multipliers_arrangement.mid', '5c_four_multipliers_12tet.wav')
+    render_pitched(serum, lattice, '5a_dois44_lattice_40step.wav', TUNING)
+    render_pitched(serum, ENGINE_MID / 'dois_44_canon_arrangement.mid', '5b_dois44_canon_40step.wav', TUNING)
+    render_pitched(serum, study / 'study5_multipliers_arrangement.mid', '5c_four_multipliers_40step.wav',
+                   TUNING)
 
 
 if __name__ == '__main__':

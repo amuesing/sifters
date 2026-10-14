@@ -56,7 +56,7 @@ SEMITONES_PER_AMOUNT = 1.2            # measured: a pitch mod amount of 10 is ~1
 
 NOTE, VELO = (17, 0), (16, 0)         # Serum 2's mod-source codes, found by probing
 ENV2 = (3, 0)
-WT_POS = ('WTOsc', 0, 1, 'kParamTablePos')
+WT_POS = ('WTOsc', 0, 6, 'kParamTablePos')    # Serum matches by name, but saves 6
 OSC_LEVEL = ('Oscillator', 0, 1, 'kParamVolume')
 OSC_COARSE = ('Oscillator', 0, 6, 'kParamCoarsePit')
 STATES = (1, 19, 37, 55, 73, 91, 109, 127)                  # dois_44's velocity levels
