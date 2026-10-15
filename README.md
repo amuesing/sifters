@@ -1,19 +1,37 @@
 # Sifters: A Data Synthesizer for Musical Composition
 
-> **Current version: `dois_44`** — `sifters/dois_series/dois_44/`, with its own README.
-> Everything musical is derived from the sieve you put in `config.py`: the rhythms, the
-> accent field the velocities are built from, the parity point, the meter, and the pitch
-> lattice. Change the sieve and all of it recomputes. Two pitch modes are rendered from
-> one rhythm — `static` (one fixed note per voice, for hardware that cannot take pitch as
-> a CV source) and `lattice` (pitch read off the sieve's own grid).
+Sifters is a data-driven system for developing musical compositions, using logical sieves
+as the foundation for creative exploration. The core idea behind Sifters is to synthesize
+data that generates musical forms, all derived from a single logical source. This approach
+draws inspiration from Iannis Xenakis’ analysis of Psappha (1975), where logical sieves are
+used to determine rhythmic and structural elements. In this system, the sieve functions
+similarly to an oscillator in an analog synthesizer, guiding the generation of musical
+material.
+
+The commit history in this repository chronicles my ongoing exploration of logic-based
+operations applied to musical composition within the Python programming environment. Each
+standalone folder within `sifters/` corresponds to a unique track intended to be realized
+through Ableton; `dois_series/` holds one piece's successive versions.
+
+> **Current version: [`dois_44`](sifters/dois_series/dois_44/)**, with its own
+> [README](sifters/dois_series/dois_44/README.md). Everything musical is derived from the
+> sieve in its `config.py`: rhythm, accents and velocity, the parity point, meter, pitch,
+> wavetables and form. Change the sieve and all of it recomputes.
 >
 > **Two parallel lines share the numbering.** Bare `dois_NN` are Claude's; `dois_NN(gpt)`
 > are ChatGPT's, most recently `dois_30(gpt)`. The numbers do not correspond between
 > them, and each line's work is committed separately.
 
-Sifters is a data-driven system for developing musical compositions, using logical sieves as the foundation for creative exploration. The core idea behind Sifters is to synthesize data that generates musical forms, all derived from a single logical source. This approach draws inspiration from Iannis Xenakis’ analysis of Psappha (1975), where logical sieves are used to determine rhythmic and structural elements. In this system, the sieve functions similarly to an oscillator in an analog synthesizer, guiding the generation of musical material.
+**Quick start:**
 
-The commit history in this repository chronicles my ongoing exploration of logic-based operations applied to musical composition within the Python programming environment. Each sub-directory within `sifters/` corresponds to a unique track intended to be realized through Ableton.
+```bash
+cd sifters/dois_series/dois_44
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+python3 compose.py          # renders every file into mid/, then verifies them
+```
+
+More options are under [Running it](#running-it), and how to play the result is under
+[Hearing it in Serum](#hearing-it-in-serum).
 
 ## What a sieve is
 
@@ -26,43 +44,82 @@ A sieve is a set of integers described by modular congruences, combined with boo
 1 - binary     complement
 ```
 
-`music21.sieve.Sieve` evaluates these into a binary array. **Where a number occurs, a sound occurs.** The psappha sieve used throughout this project,
+`music21.sieve.Sieve` evaluates these into a binary array. **Where a number occurs, a
+sound occurs.** The psappha sieve used throughout this project,
 
 ```
 (8@0|8@1|8@7)&(5@1|5@3)|((8@0|8@1|8@2)&5@0)|((8@5|8@6)&(5@2|5@3|5@4))
 |8@3|8@4|(8@1&5@2)|(8@6&5@1)
 ```
 
-draws on moduli 8 and 5, so it closes after LCM(8,5) = **40 steps**. That 40-step period is the unit the whole project is built on.
+draws on moduli 8 and 5, so it closes after LCM(8,5) = **40 steps**. That 40-step period
+is the unit the whole project is built on.
 
-The four terms on the second line are a correction made in `dois_14`: earlier versions of this repository used the first line alone, which is the expression printed in the *Frontiers in Psychology* article on Psappha. That article contradicts itself — the expression it prints gives 15 attacks in 40 steps while its own prose claims 27. The reading here matches the open-access copy (PMC7849451), and gives 27. `CONTEXT.md` records the check.
+The four terms on the second line are a correction made in `dois_14`: earlier versions of
+this repository used the first line alone, which is the expression printed in the
+*Frontiers in Psychology* article on Psappha. That article contradicts itself — the
+expression it prints gives 15 attacks in 40 steps while its own prose claims 27. The
+reading here matches the open-access copy (PMC7849451), and gives 27.
+[`CONTEXT.md`](CONTEXT.md) records the check.
 
 ## How a sieve becomes music
 
 Two decisions turn a set of integers into sound, and both matter:
 
-**The basic unit** — how much time one step occupies. Picture the sieve plotted on graph paper: the basic unit is the spacing between the lines, and the dots are the integers the sieve produced. Choosing a different unit for one voice against another is what creates polyrhythm.
+**The basic unit** — how much time one step occupies. Picture the sieve plotted on graph
+paper: the basic unit is the spacing between the lines, and the dots are the integers the
+sieve produced. Choosing a different unit for one voice against another is what creates
+polyrhythm.
 
-**The duration** — a voice's total length must equal the *periodicity of its sieve*, normally the LCM of all its moduli. This is not a formatting detail. A clip that stops anywhere else misstates the sieve, and one padded out to match another voice's length states a convenience rather than a structure.
+**The duration** — a voice's total length must equal the *periodicity of its sieve*,
+normally the LCM of all its moduli. This is not a formatting detail. A clip that stops
+anywhere else misstates the sieve, and one padded out to match another voice's length
+states a convenience rather than a structure.
 
-It follows that **voices are not all the same length, and should not be**. When two voices use different basic units, their durations differ — that is the polyrhythm being honest about itself.
+It follows that **voices are not all the same length, and should not be**. When two
+voices use different basic units, their durations differ — that is the polyrhythm being
+honest about itself.
+
+## Governing principles
+
+These are the rules every version is held to. The READMEs cite them by number, and
+`CONTEXT.md` sets each one out in full, with the reasoning behind it. The numbering skips
+V and VI.
+
+- **I. [What a duration must express](CONTEXT.md#governing-principle-what-a-duration-must-express).**
+  A voice lasts exactly its sieve's period on its own basic unit. Equal track lengths are
+  not a goal.
+- **II. [Parity through accent choice](CONTEXT.md#governing-principle-ii-parity-through-accent-choice-2026-09-02-restated-2026-10-02).**
+  Voices on different units end together at the *first* tick they can, and the accents
+  are what earn that length: exactly the minimum, never a multiple.
+- **III. [One weather](CONTEXT.md#governing-principle-iii-one-weather-2026-09-05).**
+  One accent field covers every voice. It licenses the repetition parity needs, and
+  nothing may repeat identically.
+- **IV. [The accent span is the parity justification](CONTEXT.md#governing-principle-iv-the-accent-span-is-the-parity-justification-2026-09-05).**
+  The accent that moves is exactly as long as parity requires, so every restatement of a
+  rhythm sounds different.
+- **VII. [The engine is general; only config is specific](CONTEXT.md#governing-principle-vii-the-engine-is-general-only-config-is-specific-2026-09-23-extended-2026-10-03).**
+  Any sieve and any combination of basic units must work. Only `config.py` describes this
+  composition.
 
 ## Repository structure
 
-```
-sifters/
-  dois_series/     the main line of development, dois_01 through dois_44,
-                   interleaved with ChatGPT's dois_NN(gpt) folders
-                   — and dois_44_studies/, five ideas built to be heard, not versions
-  amen/            Amen break analysis — compression indices
-  psappha/         the Xenakis sieve on its own
-  sixty/  third/  starbird/    earlier standalone pieces
-  eight_five/      the dois_44 engine with D at 8:5 — the sieve's moduli as the tempo ratio
-archive/           superseded work
-CONTEXT.md         detailed working reference — state, decisions, verification
-```
+| Path | What it holds |
+|---|---|
+| [`sifters/dois_series/`](sifters/dois_series/) | The main line of development, `dois_01` to `dois_44`, interleaved with ChatGPT's `dois_NN(gpt)` folders. |
+| [`sifters/dois_series/dois_44_studies/`](sifters/dois_series/dois_44_studies/) | Not a version: five ideas built to be heard, renders through Serum itself, and a percussion kit. |
+| [`sifters/eight_five/`](sifters/eight_five/) | The `dois_44` engine with D at 8:5, the sieve's moduli as the tempo ratio. |
+| [`sifters/psappha/`](sifters/psappha/) | The Xenakis sieve on its own. |
+| [`sifters/amen/`](sifters/amen/) | Amen break analysis: compression indices. |
+| [`sifters/sixty/`](sifters/sixty/), [`third/`](sifters/third/), [`starbird/`](sifters/starbird/) | Earlier standalone pieces. |
+| [`archive/`](archive/) | Superseded work. |
+| [`CONTEXT.md`](CONTEXT.md) | The working reference: state, decisions, verification. |
 
-Most projects share the same shape: `config.py` defines the voices, `composition.py` runs the pipeline, `transformations.py` holds binary operations, and generated MIDI lands in `mid/`.
+Every version since `dois_21` has the same shape: `config.py` defines the voices,
+`compose.py` runs the pipeline, `tests/` holds the test suite, and generated files land in
+`mid/`. Recent versions split the rest into small modules, one per idea (`sieve.py`,
+`accents.py`, `span.py`, `pitch.py`, `form.py`, `wavetable.py`…). The earlier versions and
+the standalone pieces use `composition.py` instead.
 
 ## Current work: `dois_44`
 
@@ -79,103 +136,131 @@ are exact by construction rather than by coincidence:
 
 A and B together fill all 40 steps with no gaps and no collisions, because they are
 complements. D takes the steps where A and C coincide and replays them on its own triplet
-grid, so in time it is the convergence re-timed: only 10 of its 60 notes land where A and C
-are actually sounding together. D's triplet unit against the others'
-sixteenths gives a 4:3 polyrhythm.
+grid, so in time it is the convergence re-timed: only 10 of its 60 notes land where A and
+C are actually sounding together. D's triplet unit against the others' sixteenths gives a
+4:3 polyrhythm.
 
-**Accents.** Accents are not written; they are read off the sieve. Each modulus the sieve
-uses contributes one accent firing on the residues that sieve *favours* — count the
-attacks landing on each residue of that modulus and keep the densest half. This field is
-the same for every voice (that is what makes a shared velocity meaningful), so it is
-called the **weather**. One further requirement decides between equally favoured
-candidates: every voice's attacks must meet every on/off combination of these accents,
-so that the whole velocity vocabulary can sound in every voice.
+**Accents: the weather.** Accents are not written; they are read off the sieve. Each
+modulus the sieve uses contributes one accent, on the residues where the sieve's attacks
+are densest. The field is the same for every voice (Principle III), and among equally
+dense candidates it is chosen so that every voice meets every combination of accents.
 
-**Velocity.** The combination of accents sounding at a step is a bitmask, and one shared
-table maps each combination to a velocity, ranked by how rare the combination is: a
-common one lifts a note barely, a rare one a lot. Because the table is shared, one
-combination means the same velocity in every voice. How often each level occurs is
-deliberately uneven — rare events should be rare. Velocity here is a control signal, not
-just loudness; on a synthesizer it can be routed to filter or envelope rather than volume.
+**Velocity.** The accents sounding at a step form a combination, and one shared table maps
+each combination to a velocity, rarer combinations higher. One combination means one
+velocity in every voice. Velocity is a control signal, not just loudness: in Serum it
+can pick a wavetable frame.
 
-**Parity.** A voice's rhythm closes at its own period, and voices on different basic
-units close at different times. Parity is the moment they all **end at the exact same
-time**, and it is the *first* such moment — LCM(4800, 6400) = **19,200 ticks** here, 40
-quarter notes, with nothing shorter possible. The accents must reach exactly that and no
-multiple of it: reaching parity means some voices restate their rhythm several times, so a
-further accent, the **span accent**, is given the *smallest* modulus that does not divide
-the rhythm but still lands on parity. Each pass of a step reads that accent at a different
-position of one small block, so filling every block exactly halfway makes the restatements
-differ most in total — the accent takes half its modulus — and among those sets the one
-whose closest passes are furthest apart is chosen. A's four passes now differ at 17–19 of
-its 27 attacks. Nothing is padded: parity is earned
-by the choice of sieve, and refused with an explanation when the material cannot earn it.
+**Parity.** One statement of the rhythm is 40 steps: 40 × 120 = 4,800 ticks on
+sixteenths, 40 × 160 = 6,400 on D's triplets. Parity is the first tick at which every
+voice ends together, LCM(4800, 6400) = **19,200 ticks**, 40 quarter notes. To get there
+A, B and C play their rhythm four times and D three, so one more accent, the **span
+accent**, moves against the rhythm and makes each pass differ: A's four passes differ at
+17–19 of its 27 attacks (Principles II and IV). Nothing is padded: a sieve that cannot
+earn parity is refused, with the reason.
 
-**Pitch.** Three modes render from the same rhythm and velocities. `static` gives each
-voice one fixed note, for hardware that cannot take pitch as a CV source — a Moog
-Grandmother was the intended instrument. `lattice` reads pitch off the sieve's own grid:
-because 8 and 5 are coprime, every step has a unique address `(n mod 8, n mod 5)`, and
-`root + (5·(n mod 8) + 8·(n mod 5)) mod 40` turns that address into a pitch. `canon` reads
-the same lattice at the step each note descends from, so C plays A's melody 13 steps
-later and the two sound a fixed interval where they meet instead of a unison. A tuning
-file makes the lattice's 40-step period one octave, where its ×13 is a 390-cent major
-third.
+**Pitch.** Three modes render from the same rhythm and velocities:
+- `static` gives each voice one fixed note, for hardware that cannot take pitch as a CV
+  source. A Moog Grandmother was the intended instrument.
+- `lattice` reads pitch off the sieve's own grid. Because 8 and 5 are coprime, every step
+  has a unique address `(n mod 8, n mod 5)`, and the pitch is
+  `root + (5·(n mod 8) + 8·(n mod 5)) mod 40`.
+- `canon` reads the same lattice at the step each note descends from, so C plays A's
+  melody 13 steps later. Where the two meet they sound a fixed interval instead of a
+  unison.
 
-**Serum wavetables.** A note number and a velocity are whole numbers, and a sieve is a
-rule about whole numbers — so each voice gets a 128-frame table in which frame *i* reads one
-period of its sieve from *i* + 1 and sounds it from just above harmonic 13 × *i* mod 40: the
-reading gives 40 different frames, the cut gives each its own register, 13 harmonics from
-its neighbours. Route NOTE (pitch tracking off) or VELO to wavetable position in Serum 2
-and every note, or every accent state, selects its own timbre — the pitch lattice becomes a
-lattice of timbres. `python3 compose.py --install-serum` puts the tables in Serum's menu,
-under sifters → dois_44.
+A tuning file makes the lattice's 40-step period one octave, where its ×13 is a 390-cent
+major third.
 
-Output is eighteen MIDI files, six per pitch mode, plus eight wavetables and the tuning
-files: per mode, one file per voice, a four-track arrangement,
-and a single-track ensemble. Each per-voice file is identical note-for-note to its track
-in the ensemble files, so it can be used to verify them.
+**Form.** The lattice and canon sets also come as a 40-section form. A voice plays in
+section *s* exactly when its rhythm has an attack at step *s*: the rhythm read again, one
+level up. Each section reads the lattice *s* steps further on, so no two are alike.
+13 minutes 20 seconds at 120 BPM.
 
-**Form.** The lattice and canon sets also come as a form: 40 sections, one per step of the
-sieve's period, each a whole parity statement. A voice plays in section *s* exactly when its
-rhythm has an attack at step *s* — the rhythm read again, one level up — and each section
-reads the lattice *s* steps further on, so no two are alike. 13 minutes 20 seconds at
-120 BPM.
+**Wavetables.** A note number and a velocity are whole numbers, and a sieve is a rule
+about whole numbers. So each voice gets a 128-frame Serum table built from its own sieve:
+frame *i* reads one period of the sieve from *i* + 1 and sounds it from just above harmonic
+13 × *i* mod 40. That gives 40 different frames, each in its own register. With NOTE or
+VELO routed to wavetable position, the pitch lattice becomes a lattice of timbres.
 
-**Change the sieve, or any voice's basic unit, and all of this recomputes** — rhythms,
-weather, span moduli and residues, parity, meter and the lattice axes. Nine combinations
-of base durations are verified to render, from every voice on one unit to 120 against
-180. Nothing above is written into the code; only
-`config.py` describes this particular composition.
+**Output:**
+- **20 MIDI files.** For each pitch mode, one file per voice, a four-track arrangement
+  and a single-track ensemble, plus the lattice and canon forms. Each per-voice file is
+  identical note-for-note to its track in the ensemble files, so it can be used to verify
+  them.
+- **8 wavetables**: each voice's table, and a sweep table that follows its whole parity
+  statement.
+- **The tuning files**: `.tun`, `.scl` and `.kbm`.
 
-**A setting that cannot work refuses the run before any file is replaced**, naming what
-is wrong and what to do about it, so your existing renders survive (`dois_31`, on three
-defects ChatGPT found in `dois_30`). And a sieve that genuinely cannot work is refused
-with the count that proves it, kept separate from a search that merely found nothing
-(`dois_32`). Renders are staged and only moved into `mid/` once every mode has been
-written and verified, so nothing that goes wrong reaches your files (`dois_33`).
+**Change the sieve, or any voice's basic unit, and all of this recomputes**: rhythms,
+weather, span accents, parity, meter, the lattice axes and the tables (Principle VII).
+`dois_36` rendered nine combinations of basic units, from every voice on one unit to 120
+against 180, and the tests keep the three hardest.
+
+**A setting that cannot work is refused before any file is replaced.** The refusal says
+what is wrong and what to do about it, and a sieve that genuinely cannot work is refused
+with the count that proves it. Renders are staged and only moved into `mid/` once every
+mode has been written and verified, so a failed run never reaches your files.
+
+## Hearing it in Serum
+
+The piece is written for Serum 2 playing the tables above. In brief (the full steps are
+in the `dois_44` README, under
+[Serum wavetables](sifters/dois_series/dois_44/README.md#serum-wavetables)):
+
+1. **Install the tables.** `python3 compose.py --install-serum` copies them into Serum's
+   own Tables folder, where they appear under **sifters → dois_44**.
+2. **Set the oscillator.** Load a voice's table and turn **pitch tracking off**
+   (right-click the oscillator's label). Then **raise OCT to +4**: with tracking off, Serum
+   plays the oscillator at MIDI note 0, 8.18 Hz, far too low to hear. OCT +4 is 130.8 Hz.
+3. **Route the timbre.** Send **NOTE → WT POS** (lattice or canon MIDI) or **VELO → WT
+   POS** (any set) at 100%. A value *v* lands exactly on frame *v*.
+
+**To hear pitch in the 40-step tuning**, there are two options:
+- In Serum, use Global → **TUN FILE** → Load Tuning and choose
+  `dois_44/mid/dois_44_tuning.tun`. The tuning is saved with the preset.
+- Load the `.scl` and `.kbm` into the free MTS-ESP MINI, which retunes every instance at
+  once.
+
+**To hear it rendered**, [`dois_44_studies`](sifters/dois_series/dois_44_studies/) has
+three scripts. Their audio is not kept in git, so each one rebuilds its own:
+- `studies.py` makes Python previews of the piece and of five studies, in about five
+  seconds, with no synth needed.
+- `serum_render.py` plays the same MIDI through Serum 2 itself, offline from Python.
+- `percussion.py` builds a kit of four Serum drums derived from the voices' rhythms. With
+  `--install` it puts them in Serum's browser under User → sifters. They use the tables
+  from step 1.
+
+The last two need Serum 2 and a few extra Python packages, which the studies README lists.
 
 ## Running it
 
 ```bash
 cd sifters/dois_series/dois_44
-python3 compose.py                      # renders and then verifies every file
-python3 compose.py --suggest-span       # searches accent residues, writes nothing
-python3 -B -m unittest discover -s tests
+python3 -m venv .venv && source .venv/bin/activate    # once; afterwards just activate
+pip install -r requirements.txt          # the exact versions the files were made with
+python3 compose.py                       # renders and then verifies every file
+python3 compose.py --install-serum       # the same, then copies the tables into Serum
+python3 compose.py --suggest-span        # searches accent residues, writes nothing
+python3 -B -m unittest discover -s tests # the test suite
 ```
 
-Requires `mido`, `music21`, `numpy` — the exact versions are pinned in the version
+Requires `mido`, `music21` and `numpy`, with the exact versions pinned in the version
 folder's `requirements.txt`. Output appears in `mid/`.
-(`sifters/amen/compression_indices.py` additionally uses `matplotlib`.)
+(`sifters/amen/compression_indices.py` also uses `matplotlib`.)
 
-The first run after a reboot can take about a minute before printing anything — that is
+The first run after a reboot can take about a minute before printing anything. That is
 macOS verifying numpy's compiled extensions on first load, not the script hanging.
 
-## Earlier versions
+## History and further reading
 
-Every `dois_NN` folder still runs, and `CONTEXT.md` describes what each one was for. The
-detailed account of `dois_10` that used to be in this file is there, under its own
-heading, along with the reasoning that led from it to the current version.
+Every `dois_NN` folder still runs. The current version's README ends with a "What
+`dois_NN` changed" section for each recent version.
 
-## Further reading
+[`CONTEXT.md`](CONTEXT.md) is the working reference. It covers:
+- what every version was for, including the detailed account of `dois_10` that used to be
+  in this file;
+- the reasoning behind each decision;
+- the bugs found and their root causes;
+- the verification methods that caught them.
 
-`CONTEXT.md` is the working reference: current state, the reasoning behind each decision, the bugs found and their root causes, and the verification methods that caught them. Read it before changing any duration, meter or accent.
+Read it before changing any duration, meter or accent.
