@@ -3,7 +3,7 @@
     python3 studies.py                    # MIDI into mid/, tables into tables/, previews into audio/
     python3 studies.py --install-serum    # also copies the study tables into Serum
 
-Each study borrows dois_44's engine (imported from ../dois_44, never written into) and
+Each study borrows dois_44's engine (imported from ../archive/dois_44, never written into) and
 changes one thing. README.md says what each one is and marks, plainly, where it departs
 from the project's principles. Nothing here is a version of the piece.
 
@@ -27,7 +27,7 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-ENGINE = HERE.parent / 'dois_44'
+ENGINE = HERE.parent / 'archive' / 'dois_44'
 sys.path.insert(0, str(ENGINE))
 
 import config                                   # noqa: E402  dois_44's settings
