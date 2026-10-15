@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-12
+> Last updated: 2026-10-15
 
 ---
 
@@ -57,6 +57,33 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
+## CURRENT — `dois_45`: one engine, two pieces; the series archived (2026-10-15)
+
+The author asked for the series streamlined: the current code as simple as possible with
+nothing lost, `eight_five` inside the series, and the file layout cleaned up.
+
+- **`dois_45` = `dois_44` simplified, same music.** `eight_five` was a full copy of the
+  engine with three settings changed; it is now `pieces/eight_five.py`, laid over
+  `config.py` by `compose.py --piece eight_five` (files into `mid/eight_five/`; a piece
+  names only what it changes, plus a `VOICES` dict of changes to named voices).
+  `transformations.py` folded into `sieve.py` (the RELATIONSHIPS table), `voice.py` into
+  `compose.py`; `main()` split into named stages; two dead functions and three
+  re-exported imports removed; docstrings keep what and why, not the version history.
+  Engine 3,423 -> 2,925 lines. A positional piece name was tried first and collided with
+  the tests, which pass their own positional arguments, hence `--piece`.
+- **Proven unchanged**: both pieces' renders compared with `dois_44/mid` and
+  `eight_five/mid`, every MIDI message and wavetable byte, identical but for the
+  provenance stamp (39 and 33 files); the render log is identical line for line. 119
+  tests (dois_44's 110 + eight_five's, now in `tests/test_eight_five.py`), ~50 s.
+- **Archive**: every superseded folder moved, unedited, into `sifters/dois_series/archive/`:
+  Claude's 41 versions `dois_01`-`dois_44`, `pitch_studies`, `eight_five`, and ChatGPT's 11
+  `dois_NN(gpt)` folders. Nothing in them reached outside its own folder, and spot checks
+  (dois_10, 30, 44, 30(gpt), eight_five) still render. `dois_44_studies` stays at the top
+  and now imports `archive/dois_44`, the version it was built on; all three of its
+  scripts run unchanged.
+
+---
+
 ## `dois_44_studies` — five ideas built to be heard (2026-10-12)
 
 `sifters/dois_series/dois_44_studies/`: the ideas the review raised but did not build, each
@@ -77,6 +104,7 @@ Serum to the Trash on the author's say-so.
 
 ## `eight_five` — a piece at 8:5 (2026-10-12)
 
+(Now `archive/eight_five/`; from `dois_45` it is `pieces/eight_five.py`.)
 `sifters/eight_five/`: the `dois_44` engine, unchanged, with D on a quintuplet eighth (192
 ticks) — 8:5 against the sixteenth, the sieve's own moduli, where the series uses 4:3.
 Parity 38,400 ticks (40 s); A/B/C restate 8 times, D 5; span moduli 64 and 25 (mod 25
@@ -86,7 +114,7 @@ tests; the engine's tests are `dois_44`'s. Unheard.
 
 ---
 
-## CURRENT — `dois_44`: a form read from the sieve (2026-10-12)
+## `dois_44`: a form read from the sieve (2026-10-12)
 
 `form.py`: the lattice and canon sets also render as a 40-section form, one section per step
 of the period, each a whole parity statement. Voice X plays in section s iff its layer has

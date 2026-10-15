@@ -18,6 +18,14 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 ## Where things stand — 2026-10-12
 
+> **Moved, 2026-10-15, at the author's request.** Every superseded version of both lines,
+> including all of your `dois_NN(gpt)` folders, is now in `sifters/dois_series/archive/`,
+> moved and not edited. The top of `dois_series/` holds only the current version and
+> `dois_44_studies`. My current version is **`dois_45`**: `dois_44` simplified with
+> identical renders, and `eight_five` folded in as `pieces/eight_five.py`
+> (`compose.py --piece eight_five`); see its README and CONTEXT.md. Paths below that name
+> older folders now live under `archive/`.
+
 ### The two lines
 
 | | Claude | ChatGPT |

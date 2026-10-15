@@ -13,8 +13,8 @@ operations applied to musical composition within the Python programming environm
 standalone folder within `sifters/` corresponds to a unique track intended to be realized
 through Ableton; `dois_series/` holds one piece's successive versions.
 
-> **Current version: [`dois_44`](sifters/dois_series/dois_44/)**, with its own
-> [README](sifters/dois_series/dois_44/README.md). Everything musical is derived from the
+> **Current version: [`dois_45`](sifters/dois_series/dois_45/)**, with its own
+> [README](sifters/dois_series/dois_45/README.md). Everything musical is derived from the
 > sieve in its `config.py`: rhythm, accents and velocity, the parity point, meter, pitch,
 > wavetables and form. Change the sieve and all of it recomputes.
 >
@@ -25,7 +25,7 @@ through Ableton; `dois_series/` holds one piece's successive versions.
 **Quick start:**
 
 ```bash
-cd sifters/dois_series/dois_44
+cd sifters/dois_series/dois_45
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 python3 compose.py          # renders every file into mid/, then verifies them
 ```
@@ -106,9 +106,9 @@ V and VI.
 
 | Path | What it holds |
 |---|---|
-| [`sifters/dois_series/`](sifters/dois_series/) | The main line of development, `dois_01` to `dois_44`, interleaved with ChatGPT's `dois_NN(gpt)` folders. |
+| [`sifters/dois_series/dois_45/`](sifters/dois_series/dois_45/) | **The current version**: one engine, two pieces (psappha at 4:3, and `eight_five` at 8:5). |
 | [`sifters/dois_series/dois_44_studies/`](sifters/dois_series/dois_44_studies/) | Not a version: five ideas built to be heard, renders through Serum itself, and a percussion kit. |
-| [`sifters/eight_five/`](sifters/eight_five/) | The `dois_44` engine with D at 8:5, the sieve's moduli as the tempo ratio. |
+| [`sifters/dois_series/archive/`](sifters/dois_series/archive/) | Every earlier version, unchanged: Claude's `dois_01` to `dois_44` and ChatGPT's `dois_NN(gpt)`, plus `eight_five` and `pitch_studies`. |
 | [`sifters/psappha/`](sifters/psappha/) | The Xenakis sieve on its own. |
 | [`sifters/amen/`](sifters/amen/) | Amen break analysis: compression indices. |
 | [`sifters/sixty/`](sifters/sixty/), [`third/`](sifters/third/), [`starbird/`](sifters/starbird/) | Earlier standalone pieces. |
@@ -121,7 +121,7 @@ Every version since `dois_21` has the same shape: `config.py` defines the voices
 `accents.py`, `span.py`, `pitch.py`, `form.py`, `wavetable.py`…). The earlier versions and
 the standalone pieces use `composition.py` instead.
 
-## Current work: `dois_44`
+## Current work: `dois_45`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -139,6 +139,10 @@ complements. D takes the steps where A and C coincide and replays them on its ow
 grid, so in time it is the convergence re-timed: only 10 of its 60 notes land where A and
 C are actually sounding together. D's triplet unit against the others' sixteenths gives a
 4:3 polyrhythm.
+
+**A second piece on the same engine.** `eight_five` puts D on a quintuplet eighth instead:
+8:5, the ratio of the sieve's own moduli, parity at 40 seconds. It is three settings in
+`pieces/eight_five.py`, rendered with `python3 compose.py --piece eight_five`.
 
 **Accents: the weather.** Accents are not written; they are read off the sieve. Each
 modulus the sieve uses contributes one accent, on the residues where the sieve's attacks
@@ -204,11 +208,11 @@ mode has been written and verified, so a failed run never reaches your files.
 ## Hearing it in Serum
 
 The piece is written for Serum 2 playing the tables above. In brief (the full steps are
-in the `dois_44` README, under
-[Serum wavetables](sifters/dois_series/dois_44/README.md#serum-wavetables)):
+in the `dois_45` README, under
+[Serum wavetables](sifters/dois_series/dois_45/README.md#serum-wavetables)):
 
 1. **Install the tables.** `python3 compose.py --install-serum` copies them into Serum's
-   own Tables folder, where they appear under **sifters → dois_44**.
+   own Tables folder, where they appear under **sifters → dois_45**.
 2. **Set the oscillator.** Load a voice's table and turn **pitch tracking off**
    (right-click the oscillator's label). Then **raise OCT to +4**: with tracking off, Serum
    plays the oscillator at MIDI note 0, 8.18 Hz, far too low to hear. OCT +4 is 130.8 Hz.
@@ -217,7 +221,7 @@ in the `dois_44` README, under
 
 **To hear pitch in the 40-step tuning**, there are two options:
 - In Serum, use Global → **TUN FILE** → Load Tuning and choose
-  `dois_44/mid/dois_44_tuning.tun`. The tuning is saved with the preset.
+  `dois_45/mid/dois_45_tuning.tun`. The tuning is saved with the preset.
 - Load the `.scl` and `.kbm` into the free MTS-ESP MINI, which retunes every instance at
   once.
 
@@ -235,10 +239,11 @@ The last two need Serum 2 and a few extra Python packages, which the studies REA
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_44
+cd sifters/dois_series/dois_45
 python3 -m venv .venv && source .venv/bin/activate    # once; afterwards just activate
 pip install -r requirements.txt          # the exact versions the files were made with
 python3 compose.py                       # renders and then verifies every file
+python3 compose.py --piece eight_five    # the second piece, into mid/eight_five/
 python3 compose.py --install-serum       # the same, then copies the tables into Serum
 python3 compose.py --suggest-span        # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests # the test suite
@@ -253,8 +258,9 @@ macOS verifying numpy's compiled extensions on first load, not the script hangin
 
 ## History and further reading
 
-Every `dois_NN` folder still runs. The current version's README ends with a "What
-`dois_NN` changed" section for each recent version.
+Every earlier version is in [`sifters/dois_series/archive/`](sifters/dois_series/archive/),
+unchanged, and still runs from there. `dois_44`'s README ends with a "What `dois_NN`
+changed" section for each version from `dois_31` on.
 
 [`CONTEXT.md`](CONTEXT.md) is the working reference. It covers:
 - what every version was for, including the detailed account of `dois_10` that used to be
