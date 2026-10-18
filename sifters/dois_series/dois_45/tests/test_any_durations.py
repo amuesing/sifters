@@ -77,7 +77,7 @@ import sys, tempfile, io, contextlib, re
 import config, compose
 units = [int(x) for x in sys.argv[1].split(',')]
 config.SPAN_RESIDUES = None
-config.OUTPUT_DIR = tempfile.mkdtemp()
+config.OUTPUT_DIRS = {kind: tempfile.mkdtemp() for kind in config.OUTPUT_DIRS}
 for cfg, ticks in zip(config.INSTRUMENT_CONFIGS, units):
     cfg.pop('duration', None)
     cfg['step_ticks'] = ticks
@@ -94,7 +94,7 @@ print(re.search(r'ceiling \\(([^)]*)\\)', text).group(1))
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'copy'
             shutil.copytree(PROJECT, root,
-                            ignore=shutil.ignore_patterns('mid', '__pycache__'))
+                            ignore=shutil.ignore_patterns('mid', 'wavetables', 'tuning', '__pycache__'))
             result = subprocess.run([sys.executable, '-B', '-c', self.SCRIPT, units],
                                     cwd=root, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr[-3000:])

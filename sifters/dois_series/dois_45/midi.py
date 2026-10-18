@@ -1,6 +1,5 @@
 """Steps to MIDI, and back again."""
 import contextlib
-import glob
 import os
 import shutil
 import tempfile
@@ -13,23 +12,35 @@ import config
 
 # ------------------------------------------------------------------ where files go
 #
-# Renders go to a STAGING folder and only reach mid/ once every pitch mode has been
-# written AND verified, so a failed or interrupted run never leaves mid/ half-replaced.
+# Each kind of file has its own folder (config.OUTPUT_DIRS), chosen by its extension.
+# Renders go to a STAGING folder first and only move into those folders once every pitch
+# mode has been written AND verified, so a failed or interrupted run moves nothing.
+KINDS = {'.mid': 'mid', '.wav': 'wavetables', '.txt': 'wavetables',
+         '.tun': 'tuning', '.scl': 'tuning', '.kbm': 'tuning'}
 _staging = None
 
 
-def output_dir():
-    """Where files are being written or read right now."""
-    return _staging or config.OUTPUT_DIR
+def kind_of(filename):
+    """'mid', 'wavetables' or 'tuning'. A name without an extension is a MIDI file."""
+    return KINDS[os.path.splitext(filename)[1] or '.mid']
+
+
+def output_dir(kind='mid'):
+    """Where files of this kind are being written or read right now."""
+    return os.path.join(_staging, kind) if _staging else config.OUTPUT_DIRS[kind]
 
 
 @contextlib.contextmanager
 def staged_output():
-    """Render into a sibling of mid/ (same filesystem, so committing is a rename).
-    Leaving without `commit_staged` throws the staged files away."""
+    """Render into a staging folder beside the output folders, one subfolder per kind
+    (same filesystem, so committing is a rename). Leaving without `commit_staged`
+    throws the staged files away."""
     global _staging
-    os.makedirs(config.OUTPUT_DIR, exist_ok=True)
-    _staging = tempfile.mkdtemp(prefix='.staging-', dir=os.path.dirname(config.OUTPUT_DIR))
+    home = os.path.dirname(config.OUTPUT_DIRS['mid'])
+    os.makedirs(home, exist_ok=True)
+    _staging = tempfile.mkdtemp(prefix='.staging-', dir=home)
+    for kind in config.OUTPUT_DIRS:
+        os.makedirs(os.path.join(_staging, kind))
     try:
         yield
     finally:
@@ -38,28 +49,31 @@ def staged_output():
 
 
 def commit_staged(filenames):
-    """Move the verified renders into mid/, replacing only our own files.
+    """Move the verified renders into their folders, replacing only our own files.
 
     `os.replace` is atomic per file, and every byte was written and verified before the
-    first one moves. Names without an extension are MIDI files.
+    first one moves.
     """
     if _staging is None:
         raise RuntimeError('commit_staged() outside staged_output()')
     ours = {name if os.path.splitext(name)[1] else f"{name}.mid" for name in filenames}
-    moved = 0
+    moved = dict.fromkeys(config.OUTPUT_DIRS, 0)
     for name in sorted(ours):
-        staged = os.path.join(_staging, name)
-        final = os.path.join(config.OUTPUT_DIR, name)
+        kind = kind_of(name)
+        staged = os.path.join(_staging, kind, name)
+        final = os.path.join(config.OUTPUT_DIRS[kind], name)
         if os.path.exists(staged):
+            os.makedirs(config.OUTPUT_DIRS[kind], exist_ok=True)
             os.replace(staged, final)
-            moved += 1
+            moved[kind] += 1
         elif os.path.exists(final):
             os.remove(final)          # we own the name but did not produce it this run
-    kept = sorted(os.path.basename(x)
-                  for pattern in ('*.mid', '*.wav')
-                  for x in glob.glob(os.path.join(config.OUTPUT_DIR, pattern))
-                  if os.path.basename(x) not in ours)
-    print(f"\n  {moved} file(s) moved into mid/ after every mode verified")
+    kept = sorted(entry.name for folder in config.OUTPUT_DIRS.values() if os.path.isdir(folder)
+                  for entry in os.scandir(folder)
+                  if entry.is_file() and not entry.name.startswith('.')
+                  and entry.name not in ours)
+    print(f"\n  {sum(moved.values())} file(s) moved into place after every mode verified: "
+          + ", ".join(f"{n} into {kind}/" for kind, n in moved.items() if n))
     if kept:
         print(f"  leaving {len(kept)} other file(s) there untouched: {', '.join(kept)}")
 

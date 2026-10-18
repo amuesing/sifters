@@ -83,7 +83,7 @@ class Rendered(unittest.TestCase):
 
     def table(self, voice, sweep=False):
         suffix = '_sweep' if sweep else ''
-        chunks, audio = read(self.root / 'mid' / f'dois_45_wavetable_{voice}{suffix}.wav')
+        chunks, audio = read(self.root / 'wavetables' / f'dois_45_wavetable_{voice}{suffix}.wav')
         return chunks, audio.reshape(-1, FRAME)
 
     def rule(self, voice, i):
@@ -207,7 +207,7 @@ class Rendered(unittest.TestCase):
     def test_every_table_has_its_sidecar(self):
         for voice in 'ABCD':
             for suffix in ('', '_sweep'):
-                sidecar = self.root / 'mid' / f'dois_45_wavetable_{voice}{suffix}.txt'
+                sidecar = self.root / 'wavetables' / f'dois_45_wavetable_{voice}{suffix}.txt'
                 self.assertEqual(sidecar.read_text(), '[2048]\n[no interp]\n')
 
     def test_the_midi_is_the_dois_42_snapshot(self):
@@ -277,11 +277,11 @@ sys.exit('a broken wavetable passed verification')
     def refuse(self, mode):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'copy'
-            shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', '__pycache__'))
+            shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', 'wavetables', 'tuning', '__pycache__'))
             result = subprocess.run([sys.executable, '-B', '-c', self.SCRIPT, mode],
                                     cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr)
-            self.assertEqual(list((root / 'mid').glob('*.wav')), [])
+            self.assertEqual(list((root / 'wavetables').glob('*')), [])
 
     def test_the_factory_flag_is_caught(self):
         self.refuse('factory')
@@ -327,7 +327,7 @@ class InstallingIntoSerum(unittest.TestCase):
 
     def test_tables_get_short_names_and_nothing_else_is_copied(self):
         with tempfile.TemporaryDirectory() as tmp:
-            source = Path(tmp) / 'mid'
+            source = Path(tmp) / 'wavetables'
             source.mkdir()
             for name in ('dois_45_wavetable_A.wav', 'dois_45_wavetable_A_sweep.wav'):
                 (source / name).write_bytes(b'wav')

@@ -1,7 +1,9 @@
 """Run the composition: config -> voices -> MIDI files -> checks.
 
-    python3 compose.py                    the piece in config.py, into mid/
-        --piece eight_five                a piece from pieces/ instead, into mid/eight_five/
+    python3 compose.py                    the piece in config.py: MIDI into mid/,
+                                          wavetables into wavetables/, tuning into tuning/
+        --piece eight_five                a piece from pieces/ instead, into an
+                                          eight_five/ folder inside each
         --suggest-span                    report on the span residues, write nothing
         --install-serum                   also copy the wavetables into Serum
 """
@@ -48,7 +50,8 @@ class Voice:
 
 def load_piece(name):
     """Lay pieces/<name>.py over config.py: a piece names only what it changes, and
-    VOICES changes the named voices' settings. Its files go to mid/<name>/."""
+    VOICES changes the named voices' settings. Its files go to a <name>/ folder inside
+    each output folder."""
     path = os.path.join(HERE, 'pieces', f'{name}.py')
     if not os.path.exists(path):
         known = sorted(p[:-3] for p in os.listdir(os.path.join(HERE, 'pieces'))
@@ -63,7 +66,8 @@ def load_piece(name):
                 cfg.update(value.get(cfg['name'], {}))
         elif key.isupper():
             setattr(config, key, value)
-    config.OUTPUT_DIR = os.path.join(config.OUTPUT_DIR, name)
+    config.OUTPUT_DIRS = {kind: os.path.join(folder, name)
+                          for kind, folder in config.OUTPUT_DIRS.items()}
     print(f"Piece {name!r}: pieces/{name}.py over config.py\n")
 
 
@@ -72,7 +76,7 @@ def load_piece(name):
 def config_fingerprint():
     """A short hash of everything that determines the output: settings, code, libraries."""
     settings = {key: value for key, value in sorted(vars(config).items())
-                if key.isupper() and key != 'OUTPUT_DIR'}
+                if key.isupper() and key != 'OUTPUT_DIRS'}
     source = {name: hashlib.sha256(open(os.path.join(HERE, name), 'rb').read()).hexdigest()
               for name in sorted(os.listdir(HERE)) if name.endswith('.py')}
     libraries = {name: importlib.metadata.version(name)
@@ -393,7 +397,7 @@ def render_modes(fields, note_layers, base_binaries, periods, total_ticks, meter
 def render_wavetables(fields, base_binaries, voices, periods, written, failed):
     print(f"\n{'=' * 70}\nSerum wavetables: a frame for every whole number a note "
           f"or velocity can be, each one period of the sieve in its own register\n")
-    written += write_wavetables(fields, base_binaries, config.TITLE, output_dir())
+    written += write_wavetables(fields, base_binaries, config.TITLE, output_dir('wavetables'))
     problems = check_wavetables(voices, periods, base_binaries, config.TITLE)
     for problem in problems:
         print(f"    - {problem}")
@@ -411,7 +415,7 @@ def render_wavetables(fields, base_binaries, voices, periods, written, failed):
 def render_tuning(written, failed):
     print(f"\n{'=' * 70}\nTuning: the sieve's period as one octave, for the "
           f"lattice and canon sets\n")
-    written += write_tuning(config.TITLE, output_dir())
+    written += write_tuning(config.TITLE, output_dir('tuning'))
     problems = check_tuning(config.TITLE, tuning_period())
     for problem in problems:
         print(f"    - {problem}")
@@ -431,7 +435,6 @@ def main():
         if at == len(sys.argv):
             sys.exit("--piece needs a name from pieces/, e.g. --piece eight_five")
         load_piece(sys.argv[at])
-    os.makedirs(config.OUTPUT_DIR, exist_ok=True)
 
     base_binaries, note_layers = derive_note_layers()
     units = {cfg['name']: get_step_ticks(cfg) for cfg in config.INSTRUMENT_CONFIGS}
@@ -472,7 +475,7 @@ def main():
     meters, ensemble_meter = choose_meters(note_layers, periods, units, total_ticks)
 
     # Every mode is checked before ANY writes, and everything renders into a staging
-    # folder: mid/ is only touched once every file has been written and verified.
+    # folder: nothing moves into place until every file has been written and verified.
     described = {mode: MODES[mode][1](note_layers) for mode in config.PITCH_MODES}
     failed, written = [], []
     with staged_output():
@@ -485,7 +488,7 @@ def main():
                 and any(mode in ('lattice', 'canon') for mode in config.PITCH_MODES)):
             render_tuning(written, failed)
         if failed:
-            print(f"\n  {', '.join(failed)} FAILED verification — mid/ is untouched, "
+            print(f"\n  {', '.join(failed)} FAILED verification — nothing was moved, "
                   f"the files you had are still there")
             sys.exit(1)
         commit_staged(written)
@@ -493,7 +496,7 @@ def main():
     # Only on request: the one thing that writes outside the project.
     if '--install-serum' in sys.argv and config.WAVETABLES:
         folder = serum_tables_folder()
-        copied = install_into_serum(config.OUTPUT_DIR, written, folder)
+        copied = install_into_serum(config.OUTPUT_DIRS['wavetables'], written, folder)
         print(f"\n  {len(copied)} wavetable(s) installed in Serum: {folder}"
               f"\n  In Serum, pick them from an oscillator's wavetable menu, under "
               f"'{os.path.basename(folder)}'.")

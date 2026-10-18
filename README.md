@@ -27,7 +27,7 @@ through Ableton; `dois_series/` holds one piece's successive versions.
 ```bash
 cd sifters/dois_series/dois_45
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python3 compose.py          # renders every file into mid/, then verifies them
+python3 compose.py          # renders into mid/, wavetables/ and tuning/, verifying it all
 ```
 
 More options are under [Running it](#running-it), and how to play the result is under
@@ -117,9 +117,10 @@ V and VI.
 
 Every version since `dois_21` has the same shape: `config.py` defines the voices,
 `compose.py` runs the pipeline, `tests/` holds the test suite, and generated files land in
-`mid/`. Recent versions split the rest into small modules, one per idea (`sieve.py`,
-`accents.py`, `span.py`, `pitch.py`, `form.py`, `wavetable.py`…). The earlier versions and
-the standalone pieces use `composition.py` instead.
+`mid/` (from `dois_45`, wavetables and tuning files have folders of their own). Recent
+versions split the rest into small modules, one per idea (`sieve.py`, `accents.py`,
+`span.py`, `pitch.py`, `form.py`, `wavetable.py`…). The earlier versions and the
+standalone pieces use `composition.py` instead.
 
 ## Current work: `dois_45`
 
@@ -202,7 +203,7 @@ against 180, and the tests keep the three hardest.
 
 **A setting that cannot work is refused before any file is replaced.** The refusal says
 what is wrong and what to do about it, and a sieve that genuinely cannot work is refused
-with the count that proves it. Renders are staged and only moved into `mid/` once every
+with the count that proves it. Renders are staged and only moved into place once every
 mode has been written and verified, so a failed run never reaches your files.
 
 ## Hearing it in Serum
@@ -221,7 +222,7 @@ in the `dois_45` README, under
 
 **To hear pitch in the 40-step tuning**, there are two options:
 - In Serum, use Global → **TUN FILE** → Load Tuning and choose
-  `dois_45/mid/dois_45_tuning.tun`. The tuning is saved with the preset.
+  `dois_45/tuning/dois_45_tuning.tun`. The tuning is saved with the preset.
 - Load the `.scl` and `.kbm` into the free MTS-ESP MINI, which retunes every instance at
   once.
 
@@ -243,14 +244,15 @@ cd sifters/dois_series/dois_45
 python3 -m venv .venv && source .venv/bin/activate    # once; afterwards just activate
 pip install -r requirements.txt          # the exact versions the files were made with
 python3 compose.py                       # renders and then verifies every file
-python3 compose.py --piece eight_five    # the second piece, into mid/eight_five/
+python3 compose.py --piece eight_five    # the second piece, into eight_five/ folders
 python3 compose.py --install-serum       # the same, then copies the tables into Serum
 python3 compose.py --suggest-span        # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests # the test suite
 ```
 
 Requires `mido`, `music21` and `numpy`, with the exact versions pinned in the version
-folder's `requirements.txt`. Output appears in `mid/`.
+folder's `requirements.txt`. MIDI appears in `mid/`, wavetables in `wavetables/` and tuning
+files in `tuning/`.
 (`sifters/amen/compression_indices.py` also uses `matplotlib`.)
 
 The first run after a reboot can take about a minute before printing anything. That is

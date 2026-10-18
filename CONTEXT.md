@@ -81,6 +81,11 @@ nothing lost, `eight_five` inside the series, and the file layout cleaned up.
   (dois_10, 30, 44, 30(gpt), eight_five) still render. `dois_44_studies` stays at the top
   and now imports `archive/dois_44`, the version it was built on; all three of its
   scripts run unchanged.
+- **A folder per kind of file** (same day, at the author's request): MIDI in `mid/`,
+  wavetables + sidecars in `wavetables/`, `.tun`/`.scl`/`.kbm` in `tuning/`
+  (`config.OUTPUT_DIRS`, routed by extension in `midi.kind_of`); a piece gets a
+  `<name>/` folder inside each. Staging mirrors the three folders. Renders still match
+  the archive file for file; 119 tests pass.
 
 ---
 

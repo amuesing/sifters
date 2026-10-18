@@ -17,7 +17,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_engine import PROJECT, project_copy, run
+from test_engine import PROJECT, project_copy, rendered, run
 
 # Patch compose's OWN references: it imports these names directly.
 BREAK_VERIFY = '''
@@ -59,9 +59,8 @@ class MidSurvives(unittest.TestCase):
     def rendered_copy(self, tmp):
         root = project_copy(tmp)
         self.assertEqual(run(root).returncode, 0)
-        before = {p: Path(p).read_bytes()
-                  for p in glob.glob(os.path.join(root, 'mid', '*.mid'))}
-        self.assertEqual(len(before), 20)      # three pitch modes, two forms
+        before = rendered(root)
+        self.assertEqual(len(before), 39)      # 20 MIDI, 8 + 8 wavetables, 3 tuning
         return root, before
 
     def assert_untouched(self, script):
@@ -70,16 +69,14 @@ class MidSurvives(unittest.TestCase):
             result = subprocess.run([sys.executable, '-B', '-c', script], cwd=root,
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr)
-            after = {p: Path(p).read_bytes()
-                     for p in glob.glob(os.path.join(root, 'mid', '*.mid'))}
-            self.assertEqual(before, after, 'mid/ was modified by a failed render')
+            self.assertEqual(before, rendered(root), 'a failed render changed a file')
             leftovers = glob.glob(os.path.join(root, '.staging-*'))
             self.assertEqual(leftovers, [], 'a staging folder was left behind')
             return result
 
     def test_a_mode_that_fails_verification_leaves_every_file_alone(self):
         result = self.assert_untouched(BREAK_VERIFY)
-        self.assertIn('mid/ is untouched', result.stdout)
+        self.assertIn('nothing was moved', result.stdout)
 
     def test_a_write_that_dies_partway_leaves_every_file_alone(self):
         self.assert_untouched(BREAK_WRITE)
@@ -95,7 +92,8 @@ class MidSurvives(unittest.TestCase):
             self.assertEqual(foreign.read_bytes(),
                              b'not a real midi file, and not ours to touch')
             self.assertIn('my_own_take.mid', result.stdout)
-            self.assertIn('39 file(s) moved into mid/', result.stdout)   # 20 MIDI, 8 + 8 wavetables, 3 tuning
+            self.assertIn('39 file(s) moved into place after every mode verified: 20 into mid/, '
+                          '16 into wavetables/, 3 into tuning/', result.stdout)
 
 
 if __name__ == '__main__':

@@ -525,8 +525,8 @@ def check_wavetables(voices, periods, base_binaries, prefix):
         name = voice.name
         rhythm = [int(x) for x in base_binaries[name]]
         order = expected_frame_order(configs[name], len(rhythm))
-        table_path = os.path.join(output_dir(), f"{prefix}_wavetable_{name}.wav")
-        sweep_path = os.path.join(output_dir(), f"{prefix}_wavetable_{name}_sweep.wav")
+        table_path = os.path.join(output_dir('wavetables'), f"{prefix}_wavetable_{name}.wav")
+        sweep_path = os.path.join(output_dir('wavetables'), f"{prefix}_wavetable_{name}_sweep.wav")
         table_rms = inspect(f"{name} table", table_path,
                             [expected_set(rhythm, order, i) for i in range(128)])
         if table_rms is not None:
@@ -568,7 +568,7 @@ def check_tuning(prefix, period):
     root = config.PITCH_ROOT
     exact = {n: 100 * root + (n - root) * (1200 / period) for n in range(128)}
 
-    with open(os.path.join(output_dir(), f"{prefix}_tuning.tun")) as handle:
+    with open(os.path.join(output_dir('tuning'), f"{prefix}_tuning.tun")) as handle:
         section, rounded, precise = None, {}, {}
         for line in handle:
             line = line.strip()
@@ -584,14 +584,14 @@ def check_tuning(prefix, period):
         failures.append(f"tuning .tun: notes are not {period} equal steps to the octave "
                         f"from MIDI {root}")
 
-    with open(os.path.join(output_dir(), f"{prefix}_tuning.scl")) as handle:
+    with open(os.path.join(output_dir('tuning'), f"{prefix}_tuning.scl")) as handle:
         lines = [x.strip() for x in handle if not x.startswith('!')]
     degrees = lines[2:]
     if int(lines[1]) != period or len(degrees) != period or degrees[-1] != '2/1' or any(
             abs(float(d) - k * 1200 / period) > 1e-5 for k, d in enumerate(degrees[:-1], 1)):
         failures.append(f"tuning .scl: not {period} equal steps closing on 2/1")
 
-    with open(os.path.join(output_dir(), f"{prefix}_tuning.kbm")) as handle:
+    with open(os.path.join(output_dir('tuning'), f"{prefix}_tuning.kbm")) as handle:
         fields = [x.strip() for x in handle if not x.startswith('!')]
     hz = 440.0 * 2 ** ((root - 69) / 12)
     if (fields[:5] != ['0', '0', '127', str(root), str(root)]

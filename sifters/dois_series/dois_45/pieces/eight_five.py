@@ -5,8 +5,8 @@ D runs against the others in the ratio of the sieve's own two moduli. 4800 and 7
 ticks first meet at 38,400: A, B and C state their rhythm 8 times, D 5 times, and the
 piece runs 40 seconds; its form, 26'40".
 
-Render with `python3 compose.py --piece eight_five`; files go to mid/eight_five/.
-Everything not named here is config.py's.
+Render with `python3 compose.py --piece eight_five`; its files go to an eight_five/
+folder inside mid/, wavetables/ and tuning/. Everything not named here is config.py's.
 """
 TITLE = 'eight_five'
 

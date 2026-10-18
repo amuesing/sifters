@@ -55,7 +55,7 @@ voices, periods, _, _, _, prefix, _, *_rest = captured[0]
 assert all(v.accents and v.step_ticks > 0 for v in voices)
 
 # A wrong early note must not be hidden by later notes in the same accent state.
-path = Path(config.OUTPUT_DIR) / f"{prefix}_D_prime.mid"
+path = Path(config.OUTPUT_DIRS['mid']) / f"{prefix}_D_prime.mid"
 original = path.read_bytes()
 mid = mido.MidiFile(path)
 first = next(m for m in mid.tracks[0] if m.type == 'note_on' and m.velocity)
@@ -69,7 +69,7 @@ path.write_bytes(original)
 
 # Agreement between all voices is insufficient when they share a wrong table.
 for voice in voices:
-    path = Path(config.OUTPUT_DIR) / f"{prefix}_{voice.name}_prime.mid"
+    path = Path(config.OUTPUT_DIRS['mid']) / f"{prefix}_{voice.name}_prime.mid"
     mid = mido.MidiFile(path)
     for message in mid.tracks[0]:
         if message.type == 'note_on' and message.velocity:

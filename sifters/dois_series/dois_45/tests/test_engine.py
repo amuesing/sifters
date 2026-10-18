@@ -30,6 +30,15 @@ WEATHER = re.compile(r"^WEATHER = (?:None|\{.*?\n\})", re.S | re.M)
 SPAN = re.compile(r"^SPAN_RESIDUES = (?:None|\{[^\n]*\})", re.M)
 
 
+OUTPUTS = ('mid', 'wavetables', 'tuning')
+
+
+def rendered(root):
+    """Every rendered file, as {'folder/name': bytes}."""
+    return {f"{kind}/{p.name}": p.read_bytes() for kind in OUTPUTS
+            for p in sorted((Path(root) / kind).glob('*')) if p.is_file()}
+
+
 def notes(path):
     tracks = []
     for track in mido.MidiFile(path).tracks:
@@ -60,7 +69,7 @@ def project_copy(tmp, sieve=None, weather=None, span=None):
     between dois_27, where both settings became None, and dois_31.
     """
     root = Path(tmp) / 'copy'
-    shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', '__pycache__'))
+    shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', 'wavetables', 'tuning', '__pycache__'))
     (root / 'mid').mkdir()
     text = (root / 'config.py').read_text()
     if sieve:
@@ -281,7 +290,7 @@ class AnotherSieve(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = project_copy(tmp)
             self.assertEqual(run(root).returncode, 0)
-            before = {p.name: p.read_bytes() for p in (root / 'mid').iterdir()}
+            before = rendered(root)
             self.assertEqual(len(before), 39)      # 20 MIDI, 8 + 8 wavetables, 3 tuning
             # three moduli: the rhythm is fine, but the lattice needs exactly two
             text = (root / 'config.py').read_text()
@@ -294,8 +303,7 @@ class AnotherSieve(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('exactly two coprime moduli', result.stderr)
             self.assertNotIn('Saved', result.stdout)
-            self.assertEqual(before,
-                             {p.name: p.read_bytes() for p in (root / 'mid').iterdir()})
+            self.assertEqual(before, rendered(root))
 
     def test_suggest_span_reports_without_writing(self):
         with tempfile.TemporaryDirectory() as tmp:

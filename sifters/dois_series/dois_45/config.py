@@ -6,7 +6,9 @@ Another piece names only what it changes, in pieces/<name>.py, and renders with
 """
 TITLE = 'dois_45'
 import os as _os
-OUTPUT_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'mid')
+_HERE = _os.path.dirname(_os.path.abspath(__file__))
+# Where renders go, a folder per kind of file; another piece gets its own inside each.
+OUTPUT_DIRS = {kind: _os.path.join(_HERE, kind) for kind in ('mid', 'wavetables', 'tuning')}
 TICKS_PER_QUARTER_NOTE = 480
 TEMPO_BPM = 120
 

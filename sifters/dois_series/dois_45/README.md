@@ -22,7 +22,7 @@ and `eight_five` rendered; only the provenance stamp differs.
 | parity | 19,200 ticks, 20 s; A/B/C state their rhythm 4x, D 3x | 38,400 ticks, 40 s; 8x and 5x |
 | span moduli | 32 and 3 | 64 and 25 |
 | form | 13'20" | 26'40" |
-| renders into | `mid/` | `mid/eight_five/` |
+| renders into | `mid/`, `wavetables/`, `tuning/` | an `eight_five/` folder inside each |
 
 A piece names only what it changes (`TITLE`, settings, and a `VOICES` dict of changes to
 named voices); everything else is `config.py`'s.
@@ -32,22 +32,26 @@ named voices); everything else is `config.py`'s.
 With Python and the pinned versions installed (`pip install -r requirements.txt`):
 
 ```sh
-python3 compose.py                        # dois_45, into mid/
-python3 compose.py --piece eight_five     # eight_five, into mid/eight_five/
+python3 compose.py                        # dois_45
+python3 compose.py --piece eight_five     # eight_five
 python3 compose.py --suggest-span         # reports on the span residues, writes nothing
 python3 compose.py --install-serum        # also copies the wavetables into Serum
 python3 -B -m unittest discover -s tests  # 119 tests, about 50 seconds
 ```
 
-Each piece writes, into its own folder:
+Each kind of file has its own folder (`eight_five`'s go in an `eight_five/` folder inside
+each):
 
-- `<title>_static_*`: fixed pitches A=36, B=37, C=38, D=39;
-- `<title>_lattice_*`: pitches derived from the sieve's lattice;
-- `<title>_canon_*`: the lattice read at each note's source step, so C is a literal canon
-  of A;
-- `<title>_lattice_form.mid`, `<title>_canon_form.mid`: the form, four tracks, 40 sections;
-- `<title>_wavetable_*`: the Serum wavetables, each with a `.txt` sidecar;
-- `<title>_tuning.tun`, `.scl`, `.kbm`: the 40-step period as one octave.
+- **`mid/`**
+  - `<title>_static_*`: fixed pitches A=36, B=37, C=38, D=39;
+  - `<title>_lattice_*`: pitches derived from the sieve's lattice;
+  - `<title>_canon_*`: the lattice read at each note's source step, so C is a literal
+    canon of A;
+  - `<title>_lattice_form.mid`, `<title>_canon_form.mid`: the form, four tracks, 40
+    sections.
+- **`wavetables/`**: the Serum wavetables, `<title>_wavetable_*.wav`, each with a `.txt`
+  sidecar.
+- **`tuning/`**: `<title>_tuning.tun`, `.scl` and `.kbm`, the 40-step period as one octave.
 
 Each mode has four `_prime` voice files, a four-track `_arrangement`, and a single-track
 `_ensemble` with the voices on separate MIDI channels. For `dois_45` every file ends at
@@ -232,8 +236,8 @@ were:
 | a pitch mode that cannot render for this sieve | refused before any mode writes |
 | a search that finds nothing | says the bounded SEARCH failed, not the sieve, and names any set that meets Principle IV but misses a selection rule |
 
-Renders go to a **staging folder** beside `mid/` and move in only once every file is
-written and verified; files in `mid/` that the run did not produce are never touched.
+Renders go to a **staging folder** beside the output folders and move in only once every
+file is written and verified; files there that the run did not produce are never touched.
 
 ## Known limits
 
@@ -252,11 +256,13 @@ written and verified; files in `mid/` that the run did not produce are never tou
 ## What dois_45 changed
 
 - **One engine, several pieces.** `pieces/eight_five.py` replaces the `eight_five` folder's
-  copy of the engine; `compose.py --piece eight_five` renders it into `mid/eight_five/`.
+  copy of the engine; `compose.py --piece eight_five` renders it.
   Its tests joined this suite (`tests/test_eight_five.py`).
 - **Two fewer modules.** `transformations.py` is now the relationship table in `sieve.py`,
   and the `Voice` record lives in `compose.py`. `compose.py`'s long `main()` is split into
   named stages.
+- **A folder per kind of file**: MIDI in `mid/`, wavetables in `wavetables/`, tuning files
+  in `tuning/` (`config.OUTPUT_DIRS`); each file is routed by its extension.
 - **No dead code.** Two unused functions and three re-exported imports are gone.
 - **Shorter commentary.** Docstrings keep what each part does and why, without the
   version-by-version history.

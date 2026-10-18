@@ -14,7 +14,7 @@ from pathlib import Path
 
 import mido
 
-from test_engine import PROJECT, notes, project_copy, run
+from test_engine import PROJECT, notes, project_copy, rendered, run
 
 PARITY = 19200
 SECTIONS = 40
@@ -135,11 +135,11 @@ sys.exit('a form whose sections repeat passed verification')
     def test_a_form_without_its_transposition_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'copy'
-            shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', '__pycache__'))
+            shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', 'wavetables', 'tuning', '__pycache__'))
             result = subprocess.run([sys.executable, '-B', '-c', self.SCRIPT],
                                     cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr)
-            self.assertEqual(list((root / 'mid').glob('*')), [])
+            self.assertEqual(rendered(root), {})
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 """eight_five, a second piece on the same engine: D on a quintuplet eighth, 8 against 5.
 
 The piece is pieces/eight_five.py laid over config.py. These tests are about the piece:
-that it renders and verifies into mid/eight_five/; that the 8:5 arithmetic comes out as
+that it renders and verifies into an eight_five/ folder inside each output folder; that the 8:5 arithmetic comes out as
 its settings say; that the residues it pins are what the search derives; and that the
 forms hold. They also check that loading a piece leaves config.py's piece alone.
 """
@@ -38,6 +38,7 @@ class ThePiece(unittest.TestCase):
         cls.result = run(cls.root, '--piece', 'eight_five')
         assert cls.result.returncode == 0, cls.result.stdout[-3000:] + cls.result.stderr
         cls.out = cls.root / 'mid' / 'eight_five'
+        cls.tables = cls.root / 'wavetables' / 'eight_five'
 
     @classmethod
     def tearDownClass(cls):
@@ -50,9 +51,12 @@ class ThePiece(unittest.TestCase):
         self.assertIn('tuning verified', self.result.stdout)
         self.assertNotIn('FAILED', self.result.stdout)
 
-    def test_its_files_go_to_their_own_folder(self):
+    def test_its_files_go_to_their_own_folders(self):
         self.assertEqual(len(list(self.out.glob('eight_five_*.mid'))), 20)
-        self.assertEqual(list((self.root / 'mid').glob('*.mid')), [])
+        self.assertEqual(len(list(self.tables.glob('eight_five_*'))), 10)   # 5 tables + sidecars
+        self.assertEqual(len(list((self.root / 'tuning' / 'eight_five').glob('eight_five_*'))), 3)
+        for kind in ('mid', 'wavetables', 'tuning'):
+            self.assertEqual([p for p in (self.root / kind).glob('*') if p.is_file()], [], kind)
 
     def test_eight_against_five(self):
         """4800 and 7680 ticks meet first at 38,400: A, B, C restate 8 times, D 5."""
@@ -93,8 +97,8 @@ class ThePiece(unittest.TestCase):
     def test_only_d_has_a_sweep_table(self):
         """A, B and C state themselves over 320 steps, more than Serum's 256 frames."""
         for voice in 'ABC':
-            self.assertFalse((self.out / f'eight_five_wavetable_{voice}_sweep.wav').exists())
-        self.assertTrue((self.out / 'eight_five_wavetable_D_sweep.wav').exists())
+            self.assertFalse((self.tables / f'eight_five_wavetable_{voice}_sweep.wav').exists())
+        self.assertTrue((self.tables / 'eight_five_wavetable_D_sweep.wav').exists())
 
     def test_an_unknown_piece_is_refused(self):
         result = run(self.root, '--piece', 'no_such_piece')

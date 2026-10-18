@@ -15,7 +15,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_engine import PROJECT, notes, project_copy, run
+from test_engine import PROJECT, notes, project_copy, rendered, run
 
 UNITS = {'A': 120, 'B': 120, 'C': 120, 'D': 160}
 
@@ -67,7 +67,7 @@ class Rendered(unittest.TestCase):
     # ------------------------------------------------------------------ the tuning
 
     def tun(self):
-        text = (self.root / 'mid' / 'dois_45_tuning.tun').read_text()
+        text = (self.root / 'tuning' / 'dois_45_tuning.tun').read_text()
         rounded = dict(map(int, m) for m in re.findall(r'^note (\d+)=(-?\d+)$', text, re.M))
         exact = {int(n): float(v) for n, v in
                  re.findall(r'^note (\d+)=(-?\d+\.\d+)$', text, re.M)}
@@ -91,12 +91,12 @@ class Rendered(unittest.TestCase):
             self.assertLess(abs(cents - 1200 * math.log2(ratio)), 4, steps)
 
     def test_scala_files_for_mts_esp(self):
-        scl = [x.strip() for x in (self.root / 'mid' / 'dois_45_tuning.scl').read_text()
+        scl = [x.strip() for x in (self.root / 'tuning' / 'dois_45_tuning.scl').read_text()
                .splitlines() if not x.startswith('!')]
         self.assertEqual(int(scl[1]), 40)
         self.assertEqual(scl[2:][-1], '2/1')
         self.assertEqual([float(x) for x in scl[2:-1]], [30.0 * k for k in range(1, 40)])
-        kbm = [x.strip() for x in (self.root / 'mid' / 'dois_45_tuning.kbm').read_text()
+        kbm = [x.strip() for x in (self.root / 'tuning' / 'dois_45_tuning.kbm').read_text()
                .splitlines() if not x.startswith('!')]
         self.assertEqual(kbm[:5], ['0', '0', '127', '36', '36'])
         self.assertAlmostEqual(float(kbm[5]), 65.406391, places=5)
@@ -162,11 +162,11 @@ sys.exit('a broken render passed verification')
     def refuse(self, mode):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'copy'
-            shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', '__pycache__'))
+            shutil.copytree(PROJECT, root, ignore=shutil.ignore_patterns('mid', 'wavetables', 'tuning', '__pycache__'))
             result = subprocess.run([sys.executable, '-B', '-c', self.SCRIPT, mode],
                                     cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr)
-            self.assertEqual(list((root / 'mid').glob('*')), [])
+            self.assertEqual(rendered(root), {})
 
     def test_a_canon_set_that_is_not_a_canon_is_caught(self):
         self.refuse('canon')
