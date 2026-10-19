@@ -1,7 +1,7 @@
-# dois_44 studies — five ideas, built to be heard
+# dois_44 studies — six ideas, built to be heard
 
 The ideas the review raised but did not build, each made audible on `dois_44` and changed
-in one way only. **None of this is a version of the piece.** Each study says exactly where
+in one way only, and a sixth that grew out of the percussion kit: FM pairs. **None of this is a version of the piece.** Each study says exactly where
 it departs from the project's principles, in three lists:
 
 - **Holds** — what stays as the principles require;
@@ -275,6 +275,73 @@ tuning: A by major thirds, B in 90-cent steps down, C by 7/6, D by 30-cent micro
 
 Files: `mid/study5_multipliers_*`.
 
+## 6. FM pairs: the kit, modulated by each voice's complement
+
+**What.** The percussion kit with a second oscillator as a live FM modulator in Serum:
+warp `kFM_OSC` on oscillator A takes oscillator B, which plays the voice's **complement**,
+a table of every step the voice leaves out, built by the voices' own table rule. What a
+voice leaves out modulates what it keeps. "not A" is byte for byte B's table and "not B"
+A's, so A and B modulate each other; "not C" and "not D" are new. The FM depth has an
+envelope of its own, decaying over the voice's median gap like the drum's ring, and
+velocity scales it: every stroke starts bright and settles, and the accent weather is
+heard as brightness. Ratios (modulator to carrier) come from the sieve's numbers: 1:1,
+8:5 from its moduli, 13:1 from its lattice diagonal.
+
+| B's loudest stroke, kHz | 0–15 ms | 15–40 | 40–80 | 80–150 | 150–300 |
+|---|---|---|---|---|---|
+| kit | 3.4 | 3.1 | 2.9 | 2.8 | 2.8 |
+| FM 1:1 | 11.2 | 10.2 | 11.3 | 4.9 | 2.8 |
+| FM 8:5 | 11.4 | 11.6 | 10.9 | 5.1 | 2.8 |
+| FM 13:1 | 10.5 | 12.1 | 8.7 | 3.5 | 2.8 |
+| baked | 0.4 | 0.4 | 0.3 | 0.2 | 0.1 |
+
+Rendered: strokes at every accent state and the static set in every version; the canon
+set and the lattice set with held notes at 1:1; eight_five's static set at every ratio,
+with D's drum re-derived for its grid (80 Hz, ringing 400 ms).
+
+**Baked FM** (`fm_tables.py`): a table per voice whose frame number is the FM depth,
+swept by the same envelope. The depth is bounded the way every sifters table is, 99.9%
+of the energy within two periods of harmonics. With the voice's own frame as carrier that
+bound allows 0.03 rad, no FM at all, because the frame already fills half the band; so
+the baked carrier is a sine and the voice's frame its modulator, which allows 2.2-2.35
+rad: a low drum that the sieve bends, settling into the pure sine. Live FM has no such
+ceiling, which is why the live pairs reach 11 kHz.
+
+**Presets**: 28, named `sifters FM <voice> <accents|lattice> <1-1|8-5|13-1>` and
+`sifters FM <voice> baked 1-1`, tagged sifters and FM pair, in `presets/fm_pairs/` as
+`.SerumPreset` and `.vstpreset`, and in Serum under **User → sifters → FM pairs**. Every
+`.vstpreset` is loaded back into Serum and checked for its FM pair.
+
+```sh
+~/serum-venv/bin/pip install music21==10.5.0     # fm_pairs.py also builds tables
+~/serum-venv/bin/python fm_pairs.py              # about 30 seconds
+```
+
+It writes `audio_fm/` (not in git), `tables/fm_*.wav`, `presets/fm_pairs/` and
+`fm_summary.json`, and installs the tables and presets into Serum's own folders.
+
+Measured in Serum 2.1.5 while building it: oscillator B must be enabled to modulate, but
+can sit at volume 0; a mod slot's amount maps straight onto warp depth (50 = 0.5); a source
+written `[4, 16]` is envelope 3 scaled by velocity; the coarse pitch is continuous and
+reaches at least +64 semitones, so any ratio sits exactly; below depth ~0.15 the FM is
+inaudible. On the kit's one-step strike envelope the FM lasted only 15–40 ms, a click,
+hence an envelope of its own.
+
+- **Holds:** both operators come from the sieve; every ratio is one of its numbers; the
+  FM decays by the drum's own rule; the baked depth is derived; the MIDI is unchanged.
+- **Diverges — loud accents converge.** At the top of the velocity range the FM overrides
+  each frame's register: B's four loudest strokes span 3.0–4.5 kHz in the kit and
+  9.2–10.9 kHz at 1:1.
+- **Diverges — the baked carrier** is a sine, not the voice's frame.
+- **Diverges — new tables:** "not C", "not D" and the four depth tables are not in the
+  piece itself.
+- **Chosen:** which of the sieve's ratios; the peak depth (warp 1.0 at velocity 127);
+  Serum's FM mode and envelope curve.
+
+Files: `fm_pairs.py`, `fm_tables.py`, `tables/fm_*.wav`, `presets/fm_pairs/`,
+`fm_summary.json`.
+
 ---
 
-`summary.json` holds every figure quoted here, as `studies.py` measured it.
+`summary.json` holds every figure quoted for studies 1–5, as `studies.py` measured it;
+`fm_summary.json` those for study 6.

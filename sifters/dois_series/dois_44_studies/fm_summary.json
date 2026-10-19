@@ -1,0 +1,481 @@
+{
+ "brightness_hz": {
+  "kit": {
+   "A": {
+    "per_state_hz": [
+     6506,
+     5330,
+     4137,
+     10571,
+     9384,
+     8204,
+     7305,
+     5839
+    ],
+    "loudest_over_time_hz": [
+     6441,
+     5916,
+     5524,
+     5332,
+     null
+    ]
+   },
+   "B": {
+    "per_state_hz": [
+     2843,
+     2406,
+     1904,
+     5032,
+     4529,
+     4026,
+     3243,
+     3019
+    ],
+    "loudest_over_time_hz": [
+     3373,
+     3095,
+     2890,
+     2785,
+     2776
+    ]
+   },
+   "C": {
+    "per_state_hz": [
+     6436,
+     5266,
+     4072,
+     10507,
+     9602,
+     8421,
+     7242,
+     5775
+    ],
+    "loudest_over_time_hz": [
+     6371,
+     5850,
+     5464,
+     5273,
+     null
+    ]
+   },
+   "D": {
+    "per_state_hz": [
+     3224,
+     3238,
+     2165,
+     6033,
+     5173,
+     4742,
+     4098,
+     3237
+    ],
+    "loudest_over_time_hz": [
+     3574,
+     3316,
+     3094,
+     2948,
+     2900
+    ]
+   }
+  },
+  "baked": {
+   "A": {
+    "per_state_hz": [
+     190,
+     197,
+     213,
+     239,
+     271,
+     309,
+     348,
+     387
+    ],
+    "loudest_over_time_hz": [
+     667,
+     428,
+     226,
+     175,
+     null
+    ]
+   },
+   "B": {
+    "per_state_hz": [
+     87,
+     101,
+     130,
+     170,
+     215,
+     264,
+     312,
+     358
+    ],
+    "loudest_over_time_hz": [
+     448,
+     390,
+     281,
+     168,
+     95
+    ]
+   },
+   "C": {
+    "per_state_hz": [
+     190,
+     197,
+     214,
+     240,
+     271,
+     307,
+     342,
+     376
+    ],
+    "loudest_over_time_hz": [
+     606,
+     414,
+     227,
+     176,
+     null
+    ]
+   },
+   "D": {
+    "per_state_hz": [
+     101,
+     115,
+     140,
+     176,
+     219,
+     268,
+     318,
+     367
+    ],
+    "loudest_over_time_hz": [
+     507,
+     412,
+     275,
+     158,
+     102
+    ]
+   }
+  },
+  "fm_1-1": {
+   "A": {
+    "per_state_hz": [
+     6490,
+     5324,
+     4562,
+     11167,
+     8977,
+     7976,
+     9712,
+     11112
+    ],
+    "loudest_over_time_hz": [
+     11314,
+     11098,
+     7740,
+     5430,
+     null
+    ]
+   },
+   "B": {
+    "per_state_hz": [
+     2844,
+     2403,
+     1949,
+     6523,
+     9210,
+     10849,
+     10651,
+     10880
+    ],
+    "loudest_over_time_hz": [
+     11211,
+     10179,
+     11283,
+     4885,
+     2798
+    ]
+   },
+   "C": {
+    "per_state_hz": [
+     6412,
+     5260,
+     4414,
+     8702,
+     9726,
+     10181,
+     9923,
+     10646
+    ],
+    "loudest_over_time_hz": [
+     10953,
+     11721,
+     8551,
+     5219,
+     null
+    ]
+   },
+   "D": {
+    "per_state_hz": [
+     3249,
+     3226,
+     2487,
+     8668,
+     10448,
+     11613,
+     11988,
+     10676
+    ],
+    "loudest_over_time_hz": [
+     11365,
+     10957,
+     10719,
+     4535,
+     2892
+    ]
+   }
+  },
+  "fm_8-5": {
+   "A": {
+    "per_state_hz": [
+     6485,
+     5330,
+     4163,
+     10135,
+     10219,
+     9544,
+     10273,
+     10451
+    ],
+    "loudest_over_time_hz": [
+     10092,
+     11139,
+     7100,
+     5320,
+     null
+    ]
+   },
+   "B": {
+    "per_state_hz": [
+     2935,
+     2405,
+     1975,
+     6423,
+     8753,
+     10678,
+     11132,
+     11117
+    ],
+    "loudest_over_time_hz": [
+     11443,
+     11565,
+     10923,
+     5074,
+     2782
+    ]
+   },
+   "C": {
+    "per_state_hz": [
+     6445,
+     5261,
+     4109,
+     10056,
+     9501,
+     9981,
+     9959,
+     9863
+    ],
+    "loudest_over_time_hz": [
+     11072,
+     11375,
+     7232,
+     5276,
+     null
+    ]
+   },
+   "D": {
+    "per_state_hz": [
+     3337,
+     3231,
+     2214,
+     7142,
+     8140,
+     11041,
+     11182,
+     11171
+    ],
+    "loudest_over_time_hz": [
+     10907,
+     11123,
+     10066,
+     4211,
+     2900
+    ]
+   }
+  },
+  "fm_13-1": {
+   "A": {
+    "per_state_hz": [
+     6506,
+     5330,
+     4165,
+     10571,
+     9384,
+     8204,
+     7305,
+     7179
+    ],
+    "loudest_over_time_hz": [
+     9908,
+     9463,
+     5529,
+     5332,
+     null
+    ]
+   },
+   "B": {
+    "per_state_hz": [
+     2890,
+     2406,
+     1932,
+     5032,
+     4502,
+     5736,
+     8339,
+     10870
+    ],
+    "loudest_over_time_hz": [
+     10537,
+     12079,
+     8666,
+     3454,
+     2776
+    ]
+   },
+   "C": {
+    "per_state_hz": [
+     6436,
+     5266,
+     4099,
+     10507,
+     9602,
+     8421,
+     7242,
+     5775
+    ],
+    "loudest_over_time_hz": [
+     6371,
+     5850,
+     5464,
+     5273,
+     null
+    ]
+   },
+   "D": {
+    "per_state_hz": [
+     3301,
+     3238,
+     2205,
+     6033,
+     5167,
+     4955,
+     5245,
+     12254
+    ],
+    "loudest_over_time_hz": [
+     11919,
+     12782,
+     8593,
+     3140,
+     2900
+    ]
+   }
+  }
+ },
+ "states": [
+  1,
+  19,
+  37,
+  55,
+  73,
+  91,
+  109,
+  127
+ ],
+ "windows_s": [
+  [
+   0.0,
+   0.015
+  ],
+  [
+   0.015,
+   0.04
+  ],
+  [
+   0.04,
+   0.08
+  ],
+  [
+   0.08,
+   0.15
+  ],
+  [
+   0.15,
+   0.3
+  ]
+ ],
+ "ratios": {
+  "1-1": 1.0,
+  "8-5": 1.6,
+  "13-1": 13.0
+ },
+ "peak_depth": 1.0,
+ "baked_depth_rad": {
+  "A": 2.231813500293356,
+  "B": 2.3523191668573418,
+  "C": 2.3458905127699836,
+  "D": 2.191721333165333
+ },
+ "decay_s": {
+  "A": 0.125,
+  "B": 0.375,
+  "C": 0.125,
+  "D": 0.3333
+ },
+ "eight_five_D": {
+  "attacks": 20,
+  "attack_rate_hz": 2.5,
+  "pitch_hz": 80.0,
+  "decay_s": 0.4,
+  "step_s": 0.2
+ },
+ "presets": [
+  "sifters FM A accents 1-1",
+  "sifters FM A lattice 1-1",
+  "sifters FM B accents 1-1",
+  "sifters FM B lattice 1-1",
+  "sifters FM C accents 1-1",
+  "sifters FM C lattice 1-1",
+  "sifters FM D accents 1-1",
+  "sifters FM D lattice 1-1",
+  "sifters FM A accents 8-5",
+  "sifters FM A lattice 8-5",
+  "sifters FM B accents 8-5",
+  "sifters FM B lattice 8-5",
+  "sifters FM C accents 8-5",
+  "sifters FM C lattice 8-5",
+  "sifters FM D accents 8-5",
+  "sifters FM D lattice 8-5",
+  "sifters FM A accents 13-1",
+  "sifters FM A lattice 13-1",
+  "sifters FM B accents 13-1",
+  "sifters FM B lattice 13-1",
+  "sifters FM C accents 13-1",
+  "sifters FM C lattice 13-1",
+  "sifters FM D accents 13-1",
+  "sifters FM D lattice 13-1",
+  "sifters FM A baked 1-1",
+  "sifters FM B baked 1-1",
+  "sifters FM C baked 1-1",
+  "sifters FM D baked 1-1"
+ ]
+}

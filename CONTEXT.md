@@ -89,6 +89,22 @@ nothing lost, `eight_five` inside the series, and the file layout cleaned up.
 
 ---
 
+## FM pairs — `dois_44_studies` study 6 (2026-10-19)
+
+The author asked about more dynamic wavetables through FM. Live FM in Serum (warp
+`kFM_OSC` on osc A, osc B enabled at volume 0) with each voice modulated by its own
+complement table (not A = B's table byte for byte; not C, not D new); FM depth on its own
+envelope (env 3) decaying over the voice's median gap, scaled by velocity via source
+`[4, 16]`; ratios 1:1, 8:5 (moduli), 13:1 (diagonal). B's loudest stroke opens near 11 kHz
+(kit 3.4) and settles after 150 ms. On the kit's one-step strike envelope the FM was a
+15-40 ms click. Baked FM (`fm_tables.py`, depth on the frame axis) is bounded to 0.03 rad
+with the voice's frame as carrier under the two-period rule, so baked uses a sine carrier
+(2.2-2.35 rad): a different, low drum. 28 presets in `presets/fm_pairs/` and Serum's
+User → sifters → FM pairs, every .vstpreset round-tripped. The author's favourite so far:
+the static set with FM pairs at 1:1. Page: https://claude.ai/artifact/XrFuerXrwPae3PEVcgXhc5
+
+---
+
 ## `dois_44_studies` — five ideas built to be heard (2026-10-12)
 
 `sifters/dois_series/dois_44_studies/`: the ideas the review raised but did not build, each

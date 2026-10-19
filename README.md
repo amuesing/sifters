@@ -107,7 +107,7 @@ V and VI.
 | Path | What it holds |
 |---|---|
 | [`sifters/dois_series/dois_45/`](sifters/dois_series/dois_45/) | **The current version**: one engine, two pieces (psappha at 4:3, and `eight_five` at 8:5). |
-| [`sifters/dois_series/dois_44_studies/`](sifters/dois_series/dois_44_studies/) | Not a version: five ideas built to be heard, renders through Serum itself, and a percussion kit. |
+| [`sifters/dois_series/dois_44_studies/`](sifters/dois_series/dois_44_studies/) | Not a version: six ideas built to be heard, renders through Serum itself, a percussion kit and its FM pairs. |
 | [`sifters/dois_series/archive/`](sifters/dois_series/archive/) | Every earlier version, unchanged: Claude's `dois_01` to `dois_44` and ChatGPT's `dois_NN(gpt)`, plus `eight_five` and `pitch_studies`. |
 | [`sifters/psappha/`](sifters/psappha/) | The Xenakis sieve on its own. |
 | [`sifters/amen/`](sifters/amen/) | Amen break analysis: compression indices. |
@@ -227,15 +227,19 @@ in the `dois_45` README, under
   once.
 
 **To hear it rendered**, [`dois_44_studies`](sifters/dois_series/dois_44_studies/) has
-three scripts. Their audio is not kept in git, so each one rebuilds its own:
+four scripts. Their audio is not kept in git, so each one rebuilds its own:
 - `studies.py` makes Python previews of the piece and of five studies, in about five
   seconds, with no synth needed.
 - `serum_render.py` plays the same MIDI through Serum 2 itself, offline from Python.
 - `percussion.py` builds a kit of four Serum drums derived from the voices' rhythms. With
   `--install` it puts them in Serum's browser under User → sifters. They use the tables
   from step 1.
+- `fm_pairs.py` gives each of those drums a live FM modulator in Serum, the voice's own
+  complement, at three ratios from the sieve's numbers, and saves them as presets under
+  User → sifters → FM pairs.
 
-The last two need Serum 2 and a few extra Python packages, which the studies README lists.
+The last three need Serum 2 and a few extra Python packages, which the studies README
+lists.
 
 ## Running it
 
