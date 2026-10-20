@@ -35,7 +35,7 @@ and Serum's own FM mode.
 Writes: audio_fm/ (renders); tables/fm_not_*.wav and fm_depth_*.wav; presets/fm_pairs/
 (every patch as .SerumPreset and .vstpreset); and, because Serum loads tables and lists
 presets only from its own folders, Tables/sifters/dois_45 experiments/ and
-Presets/User/sifters/FM pairs/ there.
+Presets/User/sifters/dois_44 studies FM pairs/ there.
 """
 import copy
 import json
@@ -55,12 +55,12 @@ import wavetable                      # dois_44's, through percussion's path: th
 import fm_tables
 
 HERE = Path(__file__).resolve().parent
-DOIS_45 = HERE.parent / 'dois_45'
+DOIS_45 = HERE.parent / 'archive' / 'dois_45'     # the version this study was built on
 OUT = HERE / 'audio_fm'
 TABLES = HERE / 'tables'
 PRESETS = HERE / 'presets' / 'fm_pairs'
 SERUM_TABLES = 'sifters/dois_45 experiments'
-SERUM_PRESETS = Path('Presets') / 'User' / 'sifters' / 'FM pairs'
+SERUM_PRESETS = Path('Presets') / 'User' / 'sifters' / 'dois_44 studies FM pairs'
 RATIOS = {'1-1': 1.0, '8-5': 8 / 5, '13-1': 13.0}       # modulator : carrier
 PEAK_DEPTH = 100.0                    # chosen: warp depth 1.0 at velocity 127
 ENV3_X_VELO = (4, 16)                 # envelope 3, scaled by velocity
@@ -227,6 +227,8 @@ def save_presets(kit, numbers):
         shutil.rmtree(PRESETS)
     PRESETS.mkdir(parents=True)
     serum.mkdir(parents=True, exist_ok=True)
+    for old in serum.glob('*.SerumPreset'):            # replace the folder, never merge
+        old.unlink()
     patches = {}
     for ratio, value in RATIOS.items():
         for voice in 'ABCD':

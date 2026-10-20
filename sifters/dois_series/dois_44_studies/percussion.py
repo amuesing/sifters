@@ -238,12 +238,15 @@ def main():
 
 
 def install():
-    """The .SerumPreset files into Serum's own presets folder, under User/sifters."""
+    """The .SerumPreset files into Serum's own presets folder, in a folder labelled with
+    the study (User/sifters/dois_44 studies kit), replacing what it held."""
     import shutil
     prefs = Path('~/Library/Preferences/Serum2Prefs.json').expanduser()
     root = Path(json.loads(prefs.read_text())['Serum Presets Path'].rstrip('/'))
-    folder = root / 'Presets' / 'User' / 'sifters'
+    folder = root / 'Presets' / 'User' / 'sifters' / 'dois_44 studies kit'
     folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob('*.SerumPreset'):
+        old.unlink()
     for path in sorted(PRESETS.glob('*.SerumPreset')):
         shutil.copyfile(path, folder / path.name)
     print(f"  presets installed in {folder}")

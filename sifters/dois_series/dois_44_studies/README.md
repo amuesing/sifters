@@ -100,7 +100,8 @@ and their forms. In both, VELO → level runs from 0.35 to 1.0.
 ```
 
 `presets/` holds each patch twice: `.SerumPreset`, which `--install` copies into Serum's
-`Presets/User/sifters`, and `.vstpreset`, each checked by loading it into Serum. The
+`Presets/User/sifters/dois_44 studies kit`, and `.vstpreset`, each checked by loading it
+into Serum. The
 `.SerumPreset` header matches Serum's own presets key for key. `kit_summary.json` holds
 the derived numbers.
 
@@ -309,7 +310,8 @@ ceiling, which is why the live pairs reach 11 kHz.
 
 **Presets**: 28, named `sifters FM <voice> <accents|lattice> <1-1|8-5|13-1>` and
 `sifters FM <voice> baked 1-1`, tagged sifters and FM pair, in `presets/fm_pairs/` as
-`.SerumPreset` and `.vstpreset`, and in Serum under **User → sifters → FM pairs**. Every
+`.SerumPreset` and `.vstpreset`, and in Serum under **User → sifters → dois_44 studies FM
+pairs**. Every
 `.vstpreset` is loaded back into Serum and checked for its FM pair.
 
 ```sh
