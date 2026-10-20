@@ -1,0 +1,622 @@
+{
+ "Arp0": {
+  "activeClip": -1,
+  "plainParams": {}
+ },
+ "ArpClip0": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip1": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip10": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip11": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip2": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip3": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip4": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip5": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip6": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip7": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip8": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ArpClip9": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ClipPlayer0": {
+  "plainParams": {}
+ },
+ "Env0": {
+  "plainParams": {
+   "kParamCurve1": 50.0,
+   "kParamCurve2": 66.60000000000001,
+   "kParamCurve3": 66.60000000000001
+  }
+ },
+ "Env1": {
+  "plainParams": {
+   "kParamCurve1": 50.0,
+   "kParamCurve2": 66.60000000000001,
+   "kParamCurve3": 66.60000000000001
+  }
+ },
+ "Env2": {
+  "plainParams": {
+   "kParamCurve1": 50.0,
+   "kParamCurve2": 66.60000000000001,
+   "kParamCurve3": 66.60000000000001
+  }
+ },
+ "Env3": {
+  "plainParams": {
+   "kParamCurve1": 50.0,
+   "kParamCurve2": 66.60000000000001,
+   "kParamCurve3": 66.60000000000001
+  }
+ },
+ "FXRack0": {
+  "FX": [],
+  "plainParams": {}
+ },
+ "FXRack1": {
+  "FX": [],
+  "plainParams": {}
+ },
+ "FXRack2": {
+  "FX": [],
+  "plainParams": {}
+ },
+ "Global0": {
+  "plainParams": {}
+ },
+ "LFO0": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO1": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO2": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO3": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO4": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO5": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO6": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO7": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO8": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFO9": {
+  "curveData": {},
+  "pathData": {},
+  "plainParams": {}
+ },
+ "LFOPointModBus0": {
+  "plainParams": {}
+ },
+ "LFOPointModBus1": {
+  "plainParams": {}
+ },
+ "LFOPointModBus10": {
+  "plainParams": {}
+ },
+ "LFOPointModBus11": {
+  "plainParams": {}
+ },
+ "LFOPointModBus12": {
+  "plainParams": {}
+ },
+ "LFOPointModBus13": {
+  "plainParams": {}
+ },
+ "LFOPointModBus14": {
+  "plainParams": {}
+ },
+ "LFOPointModBus15": {
+  "plainParams": {}
+ },
+ "LFOPointModBus2": {
+  "plainParams": {}
+ },
+ "LFOPointModBus3": {
+  "plainParams": {}
+ },
+ "LFOPointModBus4": {
+  "plainParams": {}
+ },
+ "LFOPointModBus5": {
+  "plainParams": {}
+ },
+ "LFOPointModBus6": {
+  "plainParams": {}
+ },
+ "LFOPointModBus7": {
+  "plainParams": {}
+ },
+ "LFOPointModBus8": {
+  "plainParams": {}
+ },
+ "LFOPointModBus9": {
+  "plainParams": {}
+ },
+ "Macro0": {
+  "plainParams": {}
+ },
+ "Macro1": {
+  "plainParams": {}
+ },
+ "Macro2": {
+  "plainParams": {}
+ },
+ "Macro3": {
+  "plainParams": {}
+ },
+ "Macro4": {
+  "plainParams": {}
+ },
+ "Macro5": {
+  "plainParams": {}
+ },
+ "Macro6": {
+  "plainParams": {}
+ },
+ "Macro7": {
+  "plainParams": {}
+ },
+ "MidiClip0": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip1": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip10": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip11": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip2": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip3": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip4": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip5": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip6": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip7": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip8": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "MidiClip9": {
+  "clip": {},
+  "plainParams": {}
+ },
+ "ModSlot0": {
+  "plainParams": {}
+ },
+ "ModSlot1": {
+  "plainParams": {}
+ },
+ "ModSlot10": {
+  "plainParams": {}
+ },
+ "ModSlot11": {
+  "plainParams": {}
+ },
+ "ModSlot12": {
+  "plainParams": {}
+ },
+ "ModSlot13": {
+  "plainParams": {}
+ },
+ "ModSlot14": {
+  "plainParams": {}
+ },
+ "ModSlot15": {
+  "plainParams": {}
+ },
+ "ModSlot16": {
+  "plainParams": {}
+ },
+ "ModSlot17": {
+  "plainParams": {}
+ },
+ "ModSlot18": {
+  "plainParams": {}
+ },
+ "ModSlot19": {
+  "plainParams": {}
+ },
+ "ModSlot2": {
+  "plainParams": {}
+ },
+ "ModSlot20": {
+  "plainParams": {}
+ },
+ "ModSlot21": {
+  "plainParams": {}
+ },
+ "ModSlot22": {
+  "plainParams": {}
+ },
+ "ModSlot23": {
+  "plainParams": {}
+ },
+ "ModSlot24": {
+  "plainParams": {}
+ },
+ "ModSlot25": {
+  "plainParams": {}
+ },
+ "ModSlot26": {
+  "plainParams": {}
+ },
+ "ModSlot27": {
+  "plainParams": {}
+ },
+ "ModSlot28": {
+  "plainParams": {}
+ },
+ "ModSlot29": {
+  "plainParams": {}
+ },
+ "ModSlot3": {
+  "plainParams": {}
+ },
+ "ModSlot30": {
+  "plainParams": {}
+ },
+ "ModSlot31": {
+  "plainParams": {}
+ },
+ "ModSlot32": {
+  "plainParams": {}
+ },
+ "ModSlot33": {
+  "plainParams": {}
+ },
+ "ModSlot34": {
+  "plainParams": {}
+ },
+ "ModSlot35": {
+  "plainParams": {}
+ },
+ "ModSlot36": {
+  "plainParams": {}
+ },
+ "ModSlot37": {
+  "plainParams": {}
+ },
+ "ModSlot38": {
+  "plainParams": {}
+ },
+ "ModSlot39": {
+  "plainParams": {}
+ },
+ "ModSlot4": {
+  "plainParams": {}
+ },
+ "ModSlot40": {
+  "plainParams": {}
+ },
+ "ModSlot41": {
+  "plainParams": {}
+ },
+ "ModSlot42": {
+  "plainParams": {}
+ },
+ "ModSlot43": {
+  "plainParams": {}
+ },
+ "ModSlot44": {
+  "plainParams": {}
+ },
+ "ModSlot45": {
+  "plainParams": {}
+ },
+ "ModSlot46": {
+  "plainParams": {}
+ },
+ "ModSlot47": {
+  "plainParams": {}
+ },
+ "ModSlot48": {
+  "plainParams": {}
+ },
+ "ModSlot49": {
+  "plainParams": {}
+ },
+ "ModSlot5": {
+  "plainParams": {}
+ },
+ "ModSlot50": {
+  "plainParams": {}
+ },
+ "ModSlot51": {
+  "plainParams": {}
+ },
+ "ModSlot52": {
+  "plainParams": {}
+ },
+ "ModSlot53": {
+  "plainParams": {}
+ },
+ "ModSlot54": {
+  "plainParams": {}
+ },
+ "ModSlot55": {
+  "plainParams": {}
+ },
+ "ModSlot56": {
+  "plainParams": {}
+ },
+ "ModSlot57": {
+  "plainParams": {}
+ },
+ "ModSlot58": {
+  "plainParams": {}
+ },
+ "ModSlot59": {
+  "plainParams": {}
+ },
+ "ModSlot6": {
+  "plainParams": {}
+ },
+ "ModSlot60": {
+  "plainParams": {}
+ },
+ "ModSlot61": {
+  "plainParams": {}
+ },
+ "ModSlot62": {
+  "plainParams": {}
+ },
+ "ModSlot63": {
+  "plainParams": {}
+ },
+ "ModSlot7": {
+  "plainParams": {}
+ },
+ "ModSlot8": {
+  "plainParams": {}
+ },
+ "ModSlot9": {
+  "plainParams": {}
+ },
+ "Oscillator0": {
+  "GranularOsc0": {
+   "plainParams": {}
+  },
+  "MultiSampleOsc0": {
+   "plainParams": {}
+  },
+  "SampleOsc0": {
+   "plainParams": {}
+  },
+  "SpectralOsc0": {
+   "plainParams": {}
+  },
+  "WTOsc0": {
+   "flex": {},
+   "numChannels": 1,
+   "numFrames": 18432,
+   "plainParams": {},
+   "relativePathToWT": "S2 Tables/Default Shapes.wav",
+   "sampleRate": 44100
+  },
+  "plainParams": {}
+ },
+ "Oscillator1": {
+  "GranularOsc1": {
+   "plainParams": {}
+  },
+  "MultiSampleOsc1": {
+   "plainParams": {}
+  },
+  "SampleOsc1": {
+   "plainParams": {}
+  },
+  "SpectralOsc1": {
+   "plainParams": {}
+  },
+  "WTOsc1": {
+   "flex": {},
+   "numChannels": 1,
+   "numFrames": 18432,
+   "plainParams": {},
+   "relativePathToWT": "S2 Tables/Default Shapes.wav",
+   "sampleRate": 44100
+  },
+  "plainParams": {}
+ },
+ "Oscillator2": {
+  "GranularOsc2": {
+   "plainParams": {}
+  },
+  "MultiSampleOsc2": {
+   "plainParams": {}
+  },
+  "SampleOsc2": {
+   "plainParams": {}
+  },
+  "SpectralOsc2": {
+   "plainParams": {}
+  },
+  "WTOsc2": {
+   "flex": {},
+   "numChannels": 1,
+   "numFrames": 18432,
+   "plainParams": {},
+   "relativePathToWT": "S2 Tables/Default Shapes.wav",
+   "sampleRate": 44100
+  },
+  "plainParams": {}
+ },
+ "Oscillator3": {
+  "NoiseOsc3": {
+   "detuneFactor": 0.4758218478413068,
+   "numChannels": 1,
+   "numFrames": 78241,
+   "plainParams": {},
+   "relativePathToNoiseSample": "Organics/AC hum1.wav",
+   "sampleRate": 44100
+  },
+  "plainParams": {}
+ },
+ "Oscillator4": {
+  "SubOsc4": {
+   "plainParams": {}
+  },
+  "plainParams": {}
+ },
+ "PitchQuantizer0": {
+  "plainParams": {},
+  "scale": [
+   0,
+   2,
+   0,
+   2,
+   0,
+   0,
+   2,
+   0,
+   2,
+   0,
+   2,
+   0
+  ],
+  "scaleName": "Major"
+ },
+ "RetriggerState0": {
+  "plainParams": {}
+ },
+ "RoutingSlot0": {
+  "plainParams": {}
+ },
+ "RoutingSlot1": {
+  "plainParams": {}
+ },
+ "RoutingSlot2": {
+  "plainParams": {}
+ },
+ "RoutingSlot3": {
+  "plainParams": {}
+ },
+ "RoutingSlot4": {
+  "plainParams": {}
+ },
+ "RoutingSlot5": {
+  "plainParams": {}
+ },
+ "RoutingSlot6": {
+  "plainParams": {}
+ },
+ "VoiceFilter0": {
+  "plainParams": {}
+ },
+ "VoiceFilter1": {
+  "plainParams": {}
+ },
+ "VoicePanel0": {
+  "plainParams": {}
+ },
+ "lockOversampling": false,
+ "lockTuning": false,
+ "modMatrixLocked": false,
+ "mpeConfig": 0,
+ "mpeEnabled": false,
+ "mpePitchBendRange": 48,
+ "product": "Serum2",
+ "productVersion": "2.1.5",
+ "scalarCurvesLocked": [
+  false,
+  false
+ ],
+ "scalars": {
+  "note": {},
+  "velo": {}
+ },
+ "tags": [
+  "Wavetable",
+  "Poly"
+ ],
+ "url": "https://xferrecords.com/",
+ "vendor": "Xfer Records",
+ "version": 11.0
+}

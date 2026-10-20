@@ -57,7 +57,7 @@ Claude's lattice/pcoct before choosing a less restrictive mapping or added pitch
 
 ---
 
-## CURRENT — `dois_45`: one engine, two pieces; the series archived (2026-10-15)
+## `dois_45`: one engine, two pieces; the series archived (2026-10-15)
 
 The author asked for the series streamlined: the current code as simple as possible with
 nothing lost, `eight_five` inside the series, and the file layout cleaned up.
@@ -89,6 +89,31 @@ nothing lost, `eight_five` inside the series, and the file layout cleaned up.
 
 ---
 
+## CURRENT — `dois_46`: the instrument rendered with the music (2026-10-19)
+
+The author chose to build the FM pairs (their favourite: the static set at 1:1) into the
+engine. `serum.py` writes 32 Serum presets per piece into `presets/`: each voice's drum
+(the kit's rule: pitch = attack rate x 2^KIT_OCTAVES_UP, decay = median gap, strike = d/P
+of an octave over one step) and its FM pairs (complement table as modulator, ratios from
+the sieve's numbers: 1:1, the two moduli, the diagonal), with velocity ('accents') or the
+note ('lattice') picking the frame. `wavetable.py` adds each voice's complement table.
+`--install-serum` installs tables and presets in folders labelled with the version
+(`dois_46`, `dois_46 eight_five`; preset names carry the same label) and REPLACES that
+folder's files, at the author's request that versions never combine. No Serum or
+extra library needed: its own CBOR encoder (pinned to RFC 8949's examples) and Python
+3.14's `compression.zstd`; every patch starts from `serum_init.json` (Serum 2.1.5's init).
+`check.py` reads every preset back with its own CBOR/container reader and recomputes each
+derived number (pitch from OCT/SEM/FINE, decays, strike, ratio, routings).
+
+Proven: MIDI, voice tables and tuning identical to dois_45 (39 files); complement tables
+byte-identical to the study's; all 32 presets decode to the study's patches apart from
+names/paths; Serum loading the engine's files renders sample-identically. 136 tests (17
+new: encoder vectors, preset numbers, four tamper cases, install, labelled folders). `dois_45` archived;
+`fm_pairs.py` now reads `archive/dois_45`. Chosen settings: KIT_OCTAVES_UP 5, KIT_LEVEL
+0.35, FM_PEAK_DEPTH 1.0.
+
+---
+
 ## FM pairs — `dois_44_studies` study 6 (2026-10-19)
 
 The author asked about more dynamic wavetables through FM. Live FM in Serum (warp
@@ -100,7 +125,8 @@ envelope (env 3) decaying over the voice's median gap, scaled by velocity via so
 15-40 ms click. Baked FM (`fm_tables.py`, depth on the frame axis) is bounded to 0.03 rad
 with the voice's frame as carrier under the two-period rule, so baked uses a sine carrier
 (2.2-2.35 rad): a different, low drum. 28 presets in `presets/fm_pairs/` and Serum's
-User → sifters → FM pairs, every .vstpreset round-tripped. The author's favourite so far:
+User → sifters → dois_44 studies FM pairs (the kit's in dois_44 studies kit), every
+.vstpreset round-tripped. The author's favourite so far:
 the static set with FM pairs at 1:1. Page: https://claude.ai/artifact/XrFuerXrwPae3PEVcgXhc5
 
 ---

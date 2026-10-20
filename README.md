@@ -13,10 +13,11 @@ operations applied to musical composition within the Python programming environm
 standalone folder within `sifters/` corresponds to a unique track intended to be realized
 through Ableton; `dois_series/` holds one piece's successive versions.
 
-> **Current version: [`dois_45`](sifters/dois_series/dois_45/)**, with its own
-> [README](sifters/dois_series/dois_45/README.md). Everything musical is derived from the
+> **Current version: [`dois_46`](sifters/dois_series/dois_46/)**, with its own
+> [README](sifters/dois_series/dois_46/README.md). Everything musical is derived from the
 > sieve in its `config.py`: rhythm, accents and velocity, the parity point, meter, pitch,
-> wavetables and form. Change the sieve and all of it recomputes.
+> wavetables, form, and Serum presets for every voice (a drum, and FM pairs with its
+> complement). Change the sieve and all of it recomputes.
 >
 > **Two parallel lines share the numbering.** Bare `dois_NN` are Claude's; `dois_NN(gpt)`
 > are ChatGPT's, most recently `dois_30(gpt)`. The numbers do not correspond between
@@ -25,9 +26,9 @@ through Ableton; `dois_series/` holds one piece's successive versions.
 **Quick start:**
 
 ```bash
-cd sifters/dois_series/dois_45
+cd sifters/dois_series/dois_46
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python3 compose.py          # renders into mid/, wavetables/ and tuning/, verifying it all
+python3 compose.py          # renders MIDI, wavetables, tuning and presets, verifying it all
 ```
 
 More options are under [Running it](#running-it), and how to play the result is under
@@ -106,9 +107,9 @@ V and VI.
 
 | Path | What it holds |
 |---|---|
-| [`sifters/dois_series/dois_45/`](sifters/dois_series/dois_45/) | **The current version**: one engine, two pieces (psappha at 4:3, and `eight_five` at 8:5). |
+| [`sifters/dois_series/dois_46/`](sifters/dois_series/dois_46/) | **The current version**: one engine, two pieces (psappha at 4:3, and `eight_five` at 8:5), each with its Serum presets. |
 | [`sifters/dois_series/dois_44_studies/`](sifters/dois_series/dois_44_studies/) | Not a version: six ideas built to be heard, renders through Serum itself, a percussion kit and its FM pairs. |
-| [`sifters/dois_series/archive/`](sifters/dois_series/archive/) | Every earlier version, unchanged: Claude's `dois_01` to `dois_44` and ChatGPT's `dois_NN(gpt)`, plus `eight_five` and `pitch_studies`. |
+| [`sifters/dois_series/archive/`](sifters/dois_series/archive/) | Every earlier version, unchanged: Claude's `dois_01` to `dois_45` and ChatGPT's `dois_NN(gpt)`, plus `eight_five` and `pitch_studies`. |
 | [`sifters/psappha/`](sifters/psappha/) | The Xenakis sieve on its own. |
 | [`sifters/amen/`](sifters/amen/) | Amen break analysis: compression indices. |
 | [`sifters/sixty/`](sifters/sixty/), [`third/`](sifters/third/), [`starbird/`](sifters/starbird/) | Earlier standalone pieces. |
@@ -117,12 +118,13 @@ V and VI.
 
 Every version since `dois_21` has the same shape: `config.py` defines the voices,
 `compose.py` runs the pipeline, `tests/` holds the test suite, and generated files land in
-`mid/` (from `dois_45`, wavetables and tuning files have folders of their own). Recent
+`mid/` (from `dois_45`, wavetables and tuning files have folders of their own, and from
+`dois_46` Serum presets too). Recent
 versions split the rest into small modules, one per idea (`sieve.py`, `accents.py`,
 `span.py`, `pitch.py`, `form.py`, `wavetable.py`…). The earlier versions and the
 standalone pieces use `composition.py` instead.
 
-## Current work: `dois_45`
+## Current work: `dois_46`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -192,9 +194,12 @@ VELO routed to wavetable position, the pitch lattice becomes a lattice of timbre
   and a single-track ensemble, plus the lattice and canon forms. Each per-voice file is
   identical note-for-note to its track in the ensemble files, so it can be used to verify
   them.
-- **8 wavetables**: each voice's table, and a sweep table that follows its whole parity
-  statement.
+- **12 wavetables**: each voice's table, a sweep table that follows its whole parity
+  statement, and the voice's complement, the table of every step it leaves out.
 - **The tuning files**: `.tun`, `.scl` and `.kbm`.
+- **32 Serum presets**: each voice as a drum whose pitch, decay and strike come from its
+  own rhythm, and as FM pairs, modulated by its complement at ratios from the sieve's
+  numbers (1:1, 8:5, 13:1), with velocity or the note picking the frame.
 
 **Change the sieve, or any voice's basic unit, and all of this recomputes**: rhythms,
 weather, span accents, parity, meter, the lattice axes and the tables (Principle VII).
@@ -208,12 +213,14 @@ mode has been written and verified, so a failed run never reaches your files.
 
 ## Hearing it in Serum
 
-The piece is written for Serum 2 playing the tables above. In brief (the full steps are
-in the `dois_45` README, under
-[Serum wavetables](sifters/dois_series/dois_45/README.md#serum-wavetables)):
+The piece is written for Serum 2 playing the tables above. The quickest way in is the
+presets: `python3 compose.py --install-serum` installs the tables and, in Serum's browser
+under **User → sifters → dois_46**, a drum for every voice and its FM pairs, ready to play
+the MIDI. To set up a patch by hand instead (the full steps are in the `dois_46` README,
+under [Serum wavetables](sifters/dois_series/dois_46/README.md#serum-wavetables)):
 
 1. **Install the tables.** `python3 compose.py --install-serum` copies them into Serum's
-   own Tables folder, where they appear under **sifters → dois_45**.
+   own Tables folder, where they appear under **sifters → dois_46**.
 2. **Set the oscillator.** Load a voice's table and turn **pitch tracking off**
    (right-click the oscillator's label). Then **raise OCT to +4**: with tracking off, Serum
    plays the oscillator at MIDI note 0, 8.18 Hz, far too low to hear. OCT +4 is 130.8 Hz.
@@ -222,7 +229,7 @@ in the `dois_45` README, under
 
 **To hear pitch in the 40-step tuning**, there are two options:
 - In Serum, use Global → **TUN FILE** → Load Tuning and choose
-  `dois_45/tuning/dois_45_tuning.tun`. The tuning is saved with the preset.
+  `dois_46/tuning/dois_46_tuning.tun`. The tuning is saved with the preset.
 - Load the `.scl` and `.kbm` into the free MTS-ESP MINI, which retunes every instance at
   once.
 
@@ -232,11 +239,12 @@ four scripts. Their audio is not kept in git, so each one rebuilds its own:
   seconds, with no synth needed.
 - `serum_render.py` plays the same MIDI through Serum 2 itself, offline from Python.
 - `percussion.py` builds a kit of four Serum drums derived from the voices' rhythms. With
-  `--install` it puts them in Serum's browser under User → sifters. They use the tables
+  `--install` it puts them in Serum's browser under User → sifters → dois_44 studies kit.
+  They use the tables
   from step 1.
 - `fm_pairs.py` gives each of those drums a live FM modulator in Serum, the voice's own
   complement, at three ratios from the sieve's numbers, and saves them as presets under
-  User → sifters → FM pairs.
+  User → sifters → dois_44 studies FM pairs.
 
 The last three need Serum 2 and a few extra Python packages, which the studies README
 lists.
@@ -244,12 +252,12 @@ lists.
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_45
+cd sifters/dois_series/dois_46
 python3 -m venv .venv && source .venv/bin/activate    # once; afterwards just activate
 pip install -r requirements.txt          # the exact versions the files were made with
 python3 compose.py                       # renders and then verifies every file
 python3 compose.py --piece eight_five    # the second piece, into eight_five/ folders
-python3 compose.py --install-serum       # the same, then copies the tables into Serum
+python3 compose.py --install-serum       # the same, then installs tables and presets in Serum
 python3 compose.py --suggest-span        # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests # the test suite
 ```
