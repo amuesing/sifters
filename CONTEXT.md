@@ -2,7 +2,7 @@
 
 > This file is the canonical reference for continuing work across machines and sessions.
 > **Always update this file at the end of a working session.**
-> Last updated: 2026-10-15
+> Last updated: 2026-10-20
 
 ---
 
@@ -89,7 +89,68 @@ nothing lost, `eight_five` inside the series, and the file layout cleaned up.
 
 ---
 
-## CURRENT — `dois_46`: the instrument rendered with the music (2026-10-19)
+## CURRENT — `dois_47`: one starting point (2026-10-20)
+
+The author asked for the project to be simpler to work on, in Ableton, then for "a
+starting off point for a composition", as efficient and focused as possible, with a
+review of every iteration and principle: is the code production ready, and is the music
+the right starting point?
+
+**What it renders: 13 files.** `mid/dois_47.mid` (a track per voice, named A-D, one note
+each, 36-39; 19,200 ticks, 40/16), `wavetables/` (A-D and not A-D), `presets/`
+(`dois_47 A`-`D`: the FM pair at 1:1, velocity -> frame, level and FM depth, the author's
+favourite from study 6). In Ableton: 120 BPM, drag the file in, the preset of the same
+name on each track, loop. Every render ends by printing those steps.
+
+**Removed, by the author's choice after measurement:** through the chosen presets (pitch
+tracking off, velocity picks the frame) the lattice and canon sets were identical to the
+static set, and the 13'20" forms had only 4 distinct sections of 40 (presence is fixed by
+whether A and C strike at step s: B = not A, D = A and C), so the form broke "nothing
+repeats identically" as heard. Gone: pitch.py, tuning.py, form.py, PITCH_MODES and the
+lattice settings, FORM, TUNING, pieces/ and `--piece`, eight_five, VERSION. Earlier the
+same day: the per-voice `_prime` and `_ensemble` files (exact copies of the four-track
+file), sweeps, `.txt` sidecars, kit / 8:5 / 13:1 / note-picking presets. All of it is in
+`archive/dois_46`, which still renders it. Form is built in Ableton, as the September
+plan had it.
+
+**Production fixes:** the provenance fingerprint hashed config's `_HERE` (`'_HERE'.isupper()`
+is True), so identical music got a different stamp per folder: names starting with `_` are
+now excluded (tested: two folders, same bytes). Unknown `--options` are refused
+(`--install`, the studies' spelling, used to render and install nothing). Python < 3.14 gets
+a clear message. A three-moduli sieve (8 x 5 x 3) now renders: only the lattice needed two
+moduli (tested). `.gitignore` drops `* [2-9].*` conflict copies.
+
+**Verified:** `dois_47.mid` = dois_46's static arrangement message for message; the 8
+tables and 4 presets = dois_46's byte for byte / value for value; Serum renders the
+presets sample-identically to dois_46's FM accents 1-1 (only after giving the decoded
+patch `'component': 'processor'`; without it Serum silently keeps its init patch and every
+comparison passes vacuously, caught by a broken-table control). Fresh venv from
+requirements.txt: renders, all tests pass. 107 tests, ~30 s. Mix: four voices peak -7.4
+dBFS, RMS -32 dBFS (very transient; raise gain in Ableton).
+
+**Environment risks found:** the repo is in ~/Documents, which iCloud Drive syncs (Desktop
+& Documents on): the likely source of the Finder " 2" duplicates in dois_40 and dois_46
+(35 removed from archive/dois_46 to the Trash, all identical in music to their
+originals). Moving the repo out of iCloud is the author's call. Serum's preset format is
+undocumented and pinned to 2.1.5. Old Serum folders (dois_39-46, eight_five) are left in
+place: saved Ableton sets may load their tables by path.
+
+**`dois_44_studies` moved into `archive/`** (author's request): `dois_series/` now holds
+only `dois_47` and `archive/`. Four path constants changed from `HERE.parent / 'archive' /
+...` to `HERE.parent / ...` (percussion, studies, serum_render: dois_44; fm_pairs:
+dois_45); `.gitignore`'s audio paths followed. `studies.py` runs from there and rewrites
+`summary.json` byte for byte.
+
+**Stale staging folders.** Twice an empty `.staging-*` skeleton (empty mid/, wavetables/,
+presets/) reappeared in the real dois_47 after a successful render; never in temp copies,
+never reproducible in ~20 tries, no rmtree errors. Most likely iCloud restoring the synced
+folder. Each render now removes earlier staging folders holding no files
+(`midi.clear_stale_staging`), and test copies skip `.staging-*` (one had been copied into
+every test project and failed test_atomic).
+
+---
+
+## `dois_46`: the instrument rendered with the music (2026-10-19)
 
 The author chose to build the FM pairs (their favourite: the static set at 1:1) into the
 engine. `serum.py` writes 32 Serum presets per piece into `presets/`: each voice's drum

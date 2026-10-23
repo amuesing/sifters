@@ -13,11 +13,12 @@ operations applied to musical composition within the Python programming environm
 standalone folder within `sifters/` corresponds to a unique track intended to be realized
 through Ableton; `dois_series/` holds one piece's successive versions.
 
-> **Current version: [`dois_46`](sifters/dois_series/dois_46/)**, with its own
-> [README](sifters/dois_series/dois_46/README.md). Everything musical is derived from the
-> sieve in its `config.py`: rhythm, accents and velocity, the parity point, meter, pitch,
-> wavetables, form, and Serum presets for every voice (a drum, and FM pairs with its
-> complement). Change the sieve and all of it recomputes.
+> **Current version: [`dois_47`](sifters/dois_series/dois_47/)**, with its own
+> [README](sifters/dois_series/dois_47/README.md): a 20-second, four-voice starting point
+> for a composition in Ableton. Everything in it is derived from the sieve in its
+> `config.py`: rhythm, accents and velocity, the parity point, meter, wavetables, and a
+> Serum preset for every voice (its drum, FM-modulated by its complement). Change the
+> sieve and all of it recomputes.
 >
 > **Two parallel lines share the numbering.** Bare `dois_NN` are Claude's; `dois_NN(gpt)`
 > are ChatGPT's, most recently `dois_30(gpt)`. The numbers do not correspond between
@@ -26,13 +27,20 @@ through Ableton; `dois_series/` holds one piece's successive versions.
 **Quick start:**
 
 ```bash
-cd sifters/dois_series/dois_46
+cd sifters/dois_series/dois_47
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-python3 compose.py          # renders MIDI, wavetables, tuning and presets, verifying it all
+python3 compose.py --install-serum   # renders and verifies it all, then installs it in Serum
 ```
 
-More options are under [Running it](#running-it), and how to play the result is under
-[Hearing it in Serum](#hearing-it-in-serum).
+Then, in Ableton at 120 BPM:
+1. drag `mid/dois_47.mid` into the arrangement: four tracks, A, B, C, D;
+2. on each track, load Serum with the preset of the same name, `dois_47 A` to
+   `dois_47 D`, under **User → sifters → dois_47**;
+3. loop the 20 seconds.
+
+The version's README, under
+[Start here](sifters/dois_series/dois_47/README.md#start-here-in-ableton), has the details
+and what to develop from there.
 
 ## What a sieve is
 
@@ -107,9 +115,8 @@ V and VI.
 
 | Path | What it holds |
 |---|---|
-| [`sifters/dois_series/dois_46/`](sifters/dois_series/dois_46/) | **The current version**: one engine, two pieces (psappha at 4:3, and `eight_five` at 8:5), each with its Serum presets. |
-| [`sifters/dois_series/dois_44_studies/`](sifters/dois_series/dois_44_studies/) | Not a version: six ideas built to be heard, renders through Serum itself, a percussion kit and its FM pairs. |
-| [`sifters/dois_series/archive/`](sifters/dois_series/archive/) | Every earlier version, unchanged: Claude's `dois_01` to `dois_45` and ChatGPT's `dois_NN(gpt)`, plus `eight_five` and `pitch_studies`. |
+| [`sifters/dois_series/dois_47/`](sifters/dois_series/dois_47/) | **The current version**: 13 files a render, one four-track MIDI file, its wavetables, and a Serum preset per track. |
+| [`sifters/dois_series/archive/`](sifters/dois_series/archive/) | Every earlier version, unchanged: Claude's `dois_01` to `dois_46` and ChatGPT's `dois_NN(gpt)`, plus `eight_five`, `pitch_studies` and `dois_44_studies`, the lab where the instrument was found. `dois_46` is the last with the pitch lattice, canon, form and tuning. |
 | [`sifters/psappha/`](sifters/psappha/) | The Xenakis sieve on its own. |
 | [`sifters/amen/`](sifters/amen/) | Amen break analysis: compression indices. |
 | [`sifters/sixty/`](sifters/sixty/), [`third/`](sifters/third/), [`starbird/`](sifters/starbird/) | Earlier standalone pieces. |
@@ -118,13 +125,12 @@ V and VI.
 
 Every version since `dois_21` has the same shape: `config.py` defines the voices,
 `compose.py` runs the pipeline, `tests/` holds the test suite, and generated files land in
-`mid/` (from `dois_45`, wavetables and tuning files have folders of their own, and from
-`dois_46` Serum presets too). Recent
-versions split the rest into small modules, one per idea (`sieve.py`, `accents.py`,
-`span.py`, `pitch.py`, `form.py`, `wavetable.py`…). The earlier versions and the
+`mid/` (from `dois_45`, wavetables have a folder of their own, and from `dois_46` Serum
+presets too). Recent versions split the rest into small modules, one per idea
+(`sieve.py`, `accents.py`, `span.py`, `wavetable.py`, `serum.py`…). The earlier versions and the
 standalone pieces use `composition.py` instead.
 
-## Current work: `dois_46`
+## Current work: `dois_47`
 
 One 40-step beat, four voices, no arrangement layer. Every voice is **derived from a
 single base sieve** rather than independently written, so the relationships between them
@@ -142,10 +148,6 @@ complements. D takes the steps where A and C coincide and replays them on its ow
 grid, so in time it is the convergence re-timed: only 10 of its 60 notes land where A and
 C are actually sounding together. D's triplet unit against the others' sixteenths gives a
 4:3 polyrhythm.
-
-**A second piece on the same engine.** `eight_five` puts D on a quintuplet eighth instead:
-8:5, the ratio of the sieve's own moduli, parity at 40 seconds. It is three settings in
-`pieces/eight_five.py`, rendered with `python3 compose.py --piece eight_five`.
 
 **Accents: the weather.** Accents are not written; they are read off the sieve. Each
 modulus the sieve uses contributes one accent, on the residues where the sieve's attacks
@@ -165,75 +167,46 @@ accent**, moves against the rhythm and makes each pass differ: A's four passes d
 17–19 of its 27 attacks (Principles II and IV). Nothing is padded: a sieve that cannot
 earn parity is refused, with the reason.
 
-**Pitch.** Three modes render from the same rhythm and velocities:
-- `static` gives each voice one fixed note, for hardware that cannot take pitch as a CV
-  source. A Moog Grandmother was the intended instrument.
-- `lattice` reads pitch off the sieve's own grid. Because 8 and 5 are coprime, every step
-  has a unique address `(n mod 8, n mod 5)`, and the pitch is
-  `root + (5·(n mod 8) + 8·(n mod 5)) mod 40`.
-- `canon` reads the same lattice at the step each note descends from, so C plays A's
-  melody 13 steps later. Where the two meet they sound a fixed interval instead of a
-  unison.
+**Pitch.** Each voice sits on one note (A 36, B 37, C 38, D 39), so a track is one key;
+the instrument, not the pitch, carries the sieve. The pitch lattice, a canon in pitch, a
+40-step tuning and a 40-section form were built in `dois_15` to `dois_46` and are kept in
+the archive; through the chosen instrument they could not be heard, so `dois_47` leaves
+them out, and form is built in Ableton.
 
-A tuning file makes the lattice's 40-step period one octave, where its ×13 is a 390-cent
-major third.
+**Wavetables.** A velocity is a whole number, and a sieve is a rule about whole numbers.
+So each voice gets a 128-frame Serum table built from its own sieve: frame *i* reads one
+period of the sieve from *i* + 1 and sounds it from just above harmonic 13 × *i* mod 40.
+That gives 40 different frames, each in its own register, and velocity picks the frame.
 
-**Form.** The lattice and canon sets also come as a 40-section form. A voice plays in
-section *s* exactly when its rhythm has an attack at step *s*: the rhythm read again, one
-level up. Each section reads the lattice *s* steps further on, so no two are alike.
-13 minutes 20 seconds at 120 BPM.
+**The instrument.** Each voice is a Serum drum whose pitch is its attack rate, five
+octaves up, whose decay is its median gap between attacks, and whose strike falls 13/40 of
+an octave; a second oscillator plays the voice's complement as an FM modulator. Velocity
+picks the frame, sets the level and opens the FM, so the accents are heard as timbre,
+loudness and brightness at once.
 
-**Wavetables.** A note number and a velocity are whole numbers, and a sieve is a rule
-about whole numbers. So each voice gets a 128-frame Serum table built from its own sieve:
-frame *i* reads one period of the sieve from *i* + 1 and sounds it from just above harmonic
-13 × *i* mod 40. That gives 40 different frames, each in its own register. With NOTE or
-VELO routed to wavetable position, the pitch lattice becomes a lattice of timbres.
-
-**Output:**
-- **20 MIDI files.** For each pitch mode, one file per voice, a four-track arrangement
-  and a single-track ensemble, plus the lattice and canon forms. Each per-voice file is
-  identical note-for-note to its track in the ensemble files, so it can be used to verify
-  them.
-- **12 wavetables**: each voice's table, a sweep table that follows its whole parity
-  statement, and the voice's complement, the table of every step it leaves out.
-- **The tuning files**: `.tun`, `.scl` and `.kbm`.
-- **32 Serum presets**: each voice as a drum whose pitch, decay and strike come from its
-  own rhythm, and as FM pairs, modulated by its complement at ratios from the sieve's
-  numbers (1:1, 8:5, 13:1), with velocity or the note picking the frame.
+**Output**, 13 files: one MIDI file with a track per voice, 8 wavetables (each voice's,
+and its complement's), and 4 Serum presets, one per track.
 
 **Change the sieve, or any voice's basic unit, and all of this recomputes**: rhythms,
-weather, span accents, parity, meter, the lattice axes and the tables (Principle VII).
+weather, span accents, parity, meter, the tables and the drums (Principle VII).
 `dois_36` rendered nine combinations of basic units, from every voice on one unit to 120
 against 180, and the tests keep the three hardest.
 
 **A setting that cannot work is refused before any file is replaced.** The refusal says
 what is wrong and what to do about it, and a sieve that genuinely cannot work is refused
 with the count that proves it. Renders are staged and only moved into place once every
-mode has been written and verified, so a failed run never reaches your files.
+file has been written and verified, so a failed run never reaches your files.
 
 ## Hearing it in Serum
 
-The piece is written for Serum 2 playing the tables above. The quickest way in is the
-presets: `python3 compose.py --install-serum` installs the tables and, in Serum's browser
-under **User → sifters → dois_46**, a drum for every voice and its FM pairs, ready to play
-the MIDI. To set up a patch by hand instead (the full steps are in the `dois_46` README,
-under [Serum wavetables](sifters/dois_series/dois_46/README.md#serum-wavetables)):
+The piece is written for Serum 2. `python3 compose.py --install-serum` installs the tables
+and, in Serum's browser under **User → sifters → dois_47**, one preset per voice, named for
+its track in the MIDI; nothing else needs setting. To build a patch of your own on the
+tables instead, the steps are in the `dois_47` README: with pitch tracking off Serum plays
+an oscillator at MIDI note 0, 8.18 Hz, so raise OCT to +4, and route VELO to the wavetable
+position at 100%, where a velocity *v* lands exactly on frame *v*.
 
-1. **Install the tables.** `python3 compose.py --install-serum` copies them into Serum's
-   own Tables folder, where they appear under **sifters → dois_46**.
-2. **Set the oscillator.** Load a voice's table and turn **pitch tracking off**
-   (right-click the oscillator's label). Then **raise OCT to +4**: with tracking off, Serum
-   plays the oscillator at MIDI note 0, 8.18 Hz, far too low to hear. OCT +4 is 130.8 Hz.
-3. **Route the timbre.** Send **NOTE → WT POS** (lattice or canon MIDI) or **VELO → WT
-   POS** (any set) at 100%. A value *v* lands exactly on frame *v*.
-
-**To hear pitch in the 40-step tuning**, there are two options:
-- In Serum, use Global → **TUN FILE** → Load Tuning and choose
-  `dois_46/tuning/dois_46_tuning.tun`. The tuning is saved with the preset.
-- Load the `.scl` and `.kbm` into the free MTS-ESP MINI, which retunes every instance at
-  once.
-
-**To hear it rendered**, [`dois_44_studies`](sifters/dois_series/dois_44_studies/) has
+**To hear it rendered**, [`archive/dois_44_studies`](sifters/dois_series/archive/dois_44_studies/) has
 four scripts. Their audio is not kept in git, so each one rebuilds its own:
 - `studies.py` makes Python previews of the piece and of five studies, in about five
   seconds, with no synth needed.
@@ -252,19 +225,18 @@ lists.
 ## Running it
 
 ```bash
-cd sifters/dois_series/dois_46
+cd sifters/dois_series/dois_47
 python3 -m venv .venv && source .venv/bin/activate    # once; afterwards just activate
 pip install -r requirements.txt          # the exact versions the files were made with
 python3 compose.py                       # renders and then verifies every file
-python3 compose.py --piece eight_five    # the second piece, into eight_five/ folders
 python3 compose.py --install-serum       # the same, then installs tables and presets in Serum
 python3 compose.py --suggest-span        # searches accent residues, writes nothing
 python3 -B -m unittest discover -s tests # the test suite
 ```
 
 Requires `mido`, `music21` and `numpy`, with the exact versions pinned in the version
-folder's `requirements.txt`. MIDI appears in `mid/`, wavetables in `wavetables/` and tuning
-files in `tuning/`.
+folder's `requirements.txt`, and Python 3.14. MIDI appears in `mid/`, wavetables in
+`wavetables/` and Serum presets in `presets/`.
 (`sifters/amen/compression_indices.py` also uses `matplotlib`.)
 
 The first run after a reboot can take about a minute before printing anything. That is

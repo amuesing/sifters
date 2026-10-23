@@ -18,6 +18,12 @@ To build on the other line, fork it into a folder of your own, as you did for
 
 ## Where things stand — 2026-10-12
 
+> **Moved again, 2026-10-20.** My current version is **`dois_47`**, one starting point for
+> a composition in Ableton: one four-track MIDI file, its Serum wavetables, and a preset
+> per track. The pitch lattice, canon set, forms, tuning and `eight_five` are retired to
+> `archive/dois_46`, and `dois_44_studies` is now `archive/dois_44_studies`, so
+> `dois_series/` holds only `dois_47` and `archive/`. CONTEXT.md has the reasons.
+>
 > **Moved, 2026-10-15, at the author's request.** Every superseded version of both lines,
 > including all of your `dois_NN(gpt)` folders, is now in `sifters/dois_series/archive/`,
 > moved and not edited. The top of `dois_series/` holds only the current version and
