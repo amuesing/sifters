@@ -55,7 +55,7 @@ import wavetable                      # dois_44's, through percussion's path: th
 import fm_tables
 
 HERE = Path(__file__).resolve().parent
-DOIS_45 = HERE.parent / 'archive' / 'dois_45'     # the version this study was built on
+DOIS_45 = HERE.parent / 'dois_45'     # the version this study was built on
 OUT = HERE / 'audio_fm'
 TABLES = HERE / 'tables'
 PRESETS = HERE / 'presets' / 'fm_pairs'

@@ -39,7 +39,7 @@ import pedalboard
 import serum_state
 
 HERE = Path(__file__).resolve().parent
-ENGINE_MID = HERE.parent / 'archive' / 'dois_44' / 'mid'
+ENGINE_MID = HERE.parent / 'dois_44' / 'mid'
 OUT = HERE / 'audio_serum'
 SERUM = '/Library/Audio/Plug-Ins/VST3/Serum2.vst3'
 KNOWN_VERSION = ('2.1.5', 11.0)       # productVersion, state version this was read from

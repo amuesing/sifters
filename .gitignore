@@ -3,7 +3,9 @@ __pycache__/
 # Ableton writes an analysis file beside every audio file it opens
 *.asd
 # The studies' audio previews rebuild in seconds (python3 studies.py): 32 MB kept out
-sifters/dois_series/dois_44_studies/audio/
-sifters/dois_series/dois_44_studies/audio_serum/
-sifters/dois_series/dois_44_studies/audio_kit/
-sifters/dois_series/dois_44_studies/audio_fm/
+sifters/dois_series/archive/dois_44_studies/audio/
+sifters/dois_series/archive/dois_44_studies/audio_serum/
+sifters/dois_series/archive/dois_44_studies/audio_kit/
+sifters/dois_series/archive/dois_44_studies/audio_fm/
+# Conflict copies ("name 2.mid") that Finder or iCloud make beside a rewritten file
+* [2-9].*

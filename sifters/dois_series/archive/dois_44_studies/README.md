@@ -9,7 +9,7 @@ it departs from the project's principles, in three lists:
 - **Chosen** — what came from me rather than from the sieve.
 
 `python3 studies.py` rebuilds everything here in about five seconds, borrowing `dois_44`'s
-engine (now in `../archive/dois_44`, where the studies keep using it) without writing
+engine (in `../dois_44`, beside this folder in the archive, where the studies keep using it) without writing
 into it. `python3 studies.py --install-serum` copies the study
 wavetables into Serum, under **sifters → dois_44 experiments**.
 

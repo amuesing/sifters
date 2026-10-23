@@ -37,7 +37,7 @@ from pedalboard.io import AudioFile
 import serum_state
 
 HERE = Path(__file__).resolve().parent
-ENGINE = HERE.parent / 'archive' / 'dois_44'
+ENGINE = HERE.parent / 'dois_44'
 sys.path.insert(0, str(ENGINE))
 import config                                   # noqa: E402  dois_44's settings: units only
 from midi import get_step_ticks                 # noqa: E402
