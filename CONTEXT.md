@@ -131,7 +131,7 @@ dBFS, RMS -32 dBFS (very transient; raise gain in Ableton).
 **Environment risks found:** the repo is in ~/Documents, which iCloud Drive syncs (Desktop
 & Documents on): the likely source of the Finder " 2" duplicates in dois_40 and dois_46
 (35 removed from archive/dois_46 to the Trash, all identical in music to their
-originals). Moving the repo out of iCloud is the author's call. Serum's preset format is
+originals). On 2026-10-22 the repo moved to ~/Developer/sifters, outside iCloud. Serum's preset format is
 undocumented and pinned to 2.1.5. Old Serum folders (dois_39-46, eight_five) are left in
 place: saved Ableton sets may load their tables by path.
 
